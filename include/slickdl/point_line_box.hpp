@@ -5,14 +5,11 @@
 #include <optional>
 #include <ranges>
 
-#include "stdfunc.hpp"
+#include "clipping_zone.hpp"
+#include "slickdl.hpp"
+#include "stddebug.hpp"
 
 namespace slickdl {
-
-// TODO: Move out
-template < typename T >
-concept is_int_or_float =
-    ( std::is_same_v< T, int > || std::is_same_v< T, float > );
 
 // The structure that defines a point
 template < typename T >
@@ -39,19 +36,6 @@ struct line {
 
 template < typename T >
 using line_t = line< T >;
-
-template < typename T >
-    requires is_int_or_float< T >
-struct clippingZone {
-    [[nodiscard]] constexpr auto operator<=>(
-        const clippingZone< T >& _box ) const = default;
-
-    T minX, minY, maxX, maxY;
-};
-
-template < typename T >
-    requires is_int_or_float< T >
-using clippingZone_t = struct clippingZone< T >;
 
 // A box, with the origin at the upper left
 template < typename T >
@@ -89,8 +73,8 @@ struct box {
     // "inside" and ( 0, 1 ) as not
     [[nodiscard]] constexpr auto contains( const point_t< T >& _point ) const
         -> bool {
-        return ( _inRange1D( _point.x, x, _right( *this ) ) &&
-                 _inRange1D( _point.y, y, _bottom( *this ) ) );
+        return ( inRange1D( _point.x, x, _right( *this ) ) &&
+                 inRange1D( _point.y, y, _bottom( *this ) ) );
     }
 
     // Determine whether a box resides inside a box
@@ -282,7 +266,8 @@ struct box {
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x, _clippingZone.y,
+            _clippingZone.x,
+            _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };
@@ -290,7 +275,7 @@ struct box {
         return (
             _points |
             std::views::filter( [ & ]( const point_t< T >& _point ) -> bool {
-                return ( _inRange2D( _point, l_clippingZone ) );
+                return ( inRange2D( _point, l_clippingZone ) );
             } ) );
     }
 
@@ -423,33 +408,35 @@ struct box {
         int l_outcode1 = 0, l_outcode2 = 0;
 
         if ( empty() ) {
-            return std::nullopt;
+            return ( std::nullopt );
         }
 
         line_t< T > l_line = _line;
 
         T l_rectx1 = x;
         T l_recty1 = y;
-        T l_rectx2 = x + width - l_enclosePointsEpsilon;
-        T l_recty2 = y + height - l_enclosePointsEpsilon;
+        T l_rectx2 = ( x + width - l_enclosePointsEpsilon );
+        T l_recty2 = ( y + height - l_enclosePointsEpsilon );
 
         // Check to see if entire line is inside rect
-        if ( l_line.start.x >= l_rectx1 && l_line.start.x <= l_rectx2 &&
-             l_line.end.x >= l_rectx1 && l_line.end.x <= l_rectx2 &&
-             l_line.start.y >= l_recty1 && l_line.start.y <= l_recty2 &&
-             l_line.end.y >= l_recty1 && l_line.end.y <= l_recty2 ) {
-            return true;
+        if ( ( l_line.start.x >= l_rectx1 ) && ( l_line.start.x <= l_rectx2 ) &&
+             ( l_line.end.x >= l_rectx1 ) && ( l_line.end.x <= l_rectx2 ) &&
+             ( l_line.start.y >= l_recty1 ) && ( l_line.start.y <= l_recty2 ) &&
+             ( l_line.end.y >= l_recty1 ) && ( l_line.end.y <= l_recty2 ) ) {
+            return ( true );
         }
 
         // Check to see if entire line is to one side of rect
-        if ( ( l_line.start.x < l_rectx1 && l_line.end.x < l_rectx1 ) ||
-             ( l_line.start.x > l_rectx2 && l_line.end.x > l_rectx2 ) ||
-             ( l_line.start.y < l_recty1 && l_line.end.y < l_recty1 ) ||
-             ( l_line.start.y > l_recty2 && l_line.end.y > l_recty2 ) ) {
-            return false;
+        if ( ( ( l_line.start.x < l_rectx1 ) && ( l_line.end.x < l_rectx1 ) ) ||
+             ( ( l_line.start.x > l_rectx2 ) && ( l_line.end.x > l_rectx2 ) ) ||
+             ( ( l_line.start.y < l_recty1 ) && ( l_line.end.y < l_recty1 ) ) ||
+             ( ( l_line.start.y > l_recty2 ) &&
+               ( l_line.end.y > l_recty2 ) ) ) {
+            return ( false );
         }
 
-        if ( l_line.start.y == l_line.end.y ) { // Horizontal line, easy to clip
+        // Horizontal line, easy to clip
+        if ( l_line.start.y == l_line.end.y ) {
             if ( l_line.start.x < l_rectx1 ) {
                 l_line.start.x = l_rectx1;
 
@@ -464,12 +451,14 @@ struct box {
                 l_line.end.x = l_rectx2;
             }
 
-            return true;
+            return ( true );
         }
 
-        if ( l_line.start.x == l_line.end.x ) { // Vertical line, easy to clip
+        // Vertical line, easy to clip
+        if ( l_line.start.x == l_line.end.x ) {
             if ( l_line.start.y < l_recty1 ) {
                 l_line.start.y = l_recty1;
+
             } else if ( l_line.start.y > l_recty2 ) {
                 l_line.start.y = l_recty2;
             }
@@ -481,7 +470,7 @@ struct box {
                 l_line.end.y = l_recty2;
             }
 
-            return true;
+            return ( true );
         }
 
         // More complicated Cohen-Sutherland algorithm
@@ -490,7 +479,7 @@ struct box {
 
         while ( l_outcode1 || l_outcode2 ) {
             if ( l_outcode1 & l_outcode2 ) {
-                return false;
+                return ( false );
             }
 
             if ( l_outcode1 ) {
@@ -501,6 +490,7 @@ struct box {
                                ( ( bigT_t )( l_line.end.x - l_line.start.x ) *
                                  ( l_y123 - l_line.start.y ) ) /
                                    ( l_line.end.y - l_line.start.y ) );
+
                 } else if ( l_outcode1 & l_bottom ) {
                     l_y123 = l_recty2;
                     l_x123 =
@@ -508,6 +498,7 @@ struct box {
                                ( ( bigT_t )( l_line.end.x - l_line.start.x ) *
                                  ( l_y123 - l_line.start.y ) ) /
                                    ( l_line.end.y - l_line.start.y ) );
+
                 } else if ( l_outcode1 & l_left ) {
                     l_x123 = l_rectx1;
                     l_y123 =
@@ -515,6 +506,7 @@ struct box {
                                ( ( bigT_t )( l_line.end.y - l_line.start.y ) *
                                  ( l_x123 - l_line.start.x ) ) /
                                    ( l_line.end.x - l_line.start.x ) );
+
                 } else if ( l_outcode1 & l_right ) {
                     l_x123 = l_rectx2;
                     l_y123 =
@@ -531,9 +523,8 @@ struct box {
 
             } else {
                 if ( l_outcode2 & l_top ) {
-                    stdfunc::assert(
-                        l_line.end.y !=
-                        l_line.start.y ); // if equal: division by zero.
+                    // If equal: division by zero
+                    stdfunc::assert( l_line.end.y != l_line.start.y );
 
                     l_y123 = l_recty1;
                     l_x123 =
@@ -543,9 +534,8 @@ struct box {
                                    ( l_line.end.y - l_line.start.y ) );
 
                 } else if ( l_outcode2 & l_bottom ) {
-                    stdfunc::assert(
-                        l_line.end.y !=
-                        l_line.start.y ); // if equal: division by zero.
+                    // If equal: division by zero
+                    stdfunc::assert( l_line.end.y != l_line.start.y );
 
                     l_y123 = l_recty2;
                     l_x123 =
@@ -553,14 +543,13 @@ struct box {
                                ( ( bigT_t )( l_line.end.x - l_line.start.x ) *
                                  ( l_y123 - l_line.start.y ) ) /
                                    ( l_line.end.y - l_line.start.y ) );
+
                 } else if ( l_outcode2 & l_left ) {
-                    /* If this assertion ever fires, here's the static analysis
-                       that warned about it:
-                       http://buildbot.libsdl.org/sdl-static-analysis/sdl-macosx-static-analysis/sdl-macosx-static-analysis-1101/report-b0d01a.html#EndPath
-                     */
-                    stdfunc::assert(
-                        l_line.end.x !=
-                        l_line.start.x ); // if equal: division by zero.
+                    // If this assertion ever fires, here's the static analysis
+                    // that warned about it:
+                    // http://buildbot.libsdl.org/sdl-static-analysis/sdl-macosx-static-analysis/sdl-macosx-static-analysis-1101/report-b0d01a.html#EndPath
+                    // If equal: division by zero
+                    stdfunc::assert( l_line.end.x != l_line.start.x );
 
                     l_x123 = l_rectx1;
                     l_y123 =
@@ -568,14 +557,13 @@ struct box {
                                ( ( bigT_t )( l_line.end.y - l_line.start.y ) *
                                  ( l_x123 - l_line.start.x ) ) /
                                    ( l_line.end.x - l_line.start.x ) );
+
                 } else if ( l_outcode2 & l_right ) {
-                    /* If this assertion ever fires, here's the static analysis
-                       that warned about it:
-                       http://buildbot.libsdl.org/sdl-static-analysis/sdl-macosx-static-analysis/sdl-macosx-static-analysis-1101/report-39b114.html#EndPath
-                     */
-                    stdfunc::assert(
-                        l_line.end.x !=
-                        l_line.start.x ); // if equal: division by zero.
+                    // If this assertion ever fires, here's the static analysis
+                    // that warned about it:
+                    // http://buildbot.libsdl.org/sdl-static-analysis/sdl-macosx-static-analysis/sdl-macosx-static-analysis-1101/report-39b114.html#EndPath
+                    // If equal: division by zero
+                    stdfunc::assert( l_line.end.x != l_line.start.x );
 
                     l_x123 = l_rectx2;
                     l_y123 =
@@ -601,19 +589,6 @@ struct box {
 
     // Helpers
 private:
-    [[nodiscard]] constexpr auto _inRange1D( T _point, T _min, T _max ) const
-        -> bool {
-        return ( ( _point >= _min ) && ( _point < _max ) );
-    }
-
-    [[nodiscard]] constexpr auto _inRange2D(
-        const point_t< T >& _point,
-        const clippingZone_t& _clippingZone ) const -> bool {
-        return (
-            _inRange1D( _point.x, _clippingZone.minX, _clippingZone.maxX ) &&
-            _inRange1D( _point.y, _clippingZone.minY, _clippingZone.maxY ) );
-    }
-
     [[nodiscard]] constexpr auto _right( const box< T >& _box ) const -> T {
         return ( _box.x + _box.width );
     }
@@ -625,6 +600,15 @@ private:
 
 template < typename T >
 using box_t = box< T >;
+
+template < typename T >
+    requires is_int_or_float< T >
+[[nodiscard]] constexpr auto inRange2D(
+    const point_t< T >& _point,
+    const clippingZone_t< T >& _clippingZone ) -> bool {
+    return ( inRange1D( _point.x, _clippingZone.minX, _clippingZone.maxX ) &&
+             inRange1D( _point.y, _clippingZone.minY, _clippingZone.maxY ) );
+}
 
 #if 0
 // Determine whether two floating point boxs are equal, within some
