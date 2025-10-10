@@ -56,9 +56,7 @@ using font_t = struct font {
 
     // Variables
 private:
-    using TTF_t = gsl::not_null< TTF_Font* >;
-
-    TTF_t _atlas;
+    gsl::not_null< TTF_Font* > _atlas;
 };
 
 } // namespace slickdl::text

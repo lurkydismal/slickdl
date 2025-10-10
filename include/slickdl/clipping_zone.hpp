@@ -10,6 +10,10 @@ struct clippingZone {
     [[nodiscard]] constexpr auto operator<=>(
         const clippingZone< T >& _box ) const = default;
 
+    constexpr operator SDL_Rect() const {
+        return ( SDL_Rect{ minX, minY, maxX, maxY } );
+    }
+
     T minX, minY, maxX, maxY;
 };
 

@@ -20,6 +20,9 @@ using color_t = struct color {
                      uint8_t _alpha )
         : red( _red ), green( _green ), blue( _blue ), alpha( _alpha ) {}
 
+    constexpr color( uint8_t _red, uint8_t _green, uint8_t _blue )
+        : red( _red ), green( _green ), blue( _blue ) {}
+
     constexpr color( uint32_t _colorPacked ) { unpack( _colorPacked ); }
 
     auto operator=( const color& ) -> color& = default;

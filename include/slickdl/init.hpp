@@ -125,19 +125,6 @@ using appResult_t = enum class appResult : uint8_t {
  * Consider reporting some basic metadata about your application before
  * calling SDL_Init, using either SDL_SetAppMetadata() or
  * SDL_SetAppMetadataProperty()
- *
- * \param flags subsystem initialization flags
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information
- *
- * \since This function is available since SDL 3.2.0
- *
- * \sa SDL_SetAppMetadata
- * \sa SDL_SetAppMetadataProperty
- * \sa SDL_InitSubSystem
- * \sa SDL_Quit
- * \sa SDL_SetMainReady
- * \sa SDL_WasInit
  */
 extern auto init( flag_t _flags ) -> bool;
 
