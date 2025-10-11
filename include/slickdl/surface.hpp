@@ -60,7 +60,15 @@ using surface_t = struct surface {
     };
 
     surface() = delete;
-    surface( const surface& ) = default;
+
+    // If the original surface has alternate images, the new surface will have a
+    // reference to them as well.
+    //
+    // Not thread safe.
+    surface( const surface& _other )
+        : _data( SDL_DuplicateSurface( _other ) ) {}
+
+    // TODO: Maybe will assert
     surface( surface&& ) = default;
 
     template < typename OtherType >
@@ -445,14 +453,645 @@ using surface_t = struct surface {
     //
     // Not thread safe.
     void clip( const clippingZone_t< int >& _zone ) {
-        const bool l_result = SDL_SetSurfaceClipRect( _data, _zone );
+        auto l_zone = static_cast< SDL_Rect >( _zone );
+
+        const bool l_result = SDL_SetSurfaceClipRect( _data, &l_zone );
 
         slickdl::assert( l_result );
+    }
+
+    // Get the clipping rectangle for a surface.
+    //
+    // When surface is the destination of a blit, only the area within the clip
+    // rectangle is drawn into.
+    //
+    // Not thread safe.
+    [[nodiscard]] auto clip() const -> clippingZone_t< int > {
+        SDL_Rect l_zone{};
+
+        const bool l_result = SDL_GetSurfaceClipRect( _data, &l_zone );
+
+        slickdl::assert( l_result );
+
+        return ( static_cast< clippingZone_t< int > >( l_zone ) );
+    }
+
+    // Flip a surface vertically or horizontally.
+    //
+    // Not thread safe.
+    void flip( SDL_FlipMode _flip ) {
+        const bool l_result = SDL_FlipSurface( _data, _flip );
+
+        slickdl::assert( l_result );
+    }
+
+    // Creates a new surface identical to the existing surface, scaled to the
+    // desired size.
+    //
+    // Not thread safe.
+    [[nodiscard]] auto scale( int _width,
+                              int _height,
+                              SDL_ScaleMode _scaleMode ) const -> surface {
+        return ( SDL_ScaleSurface( _data, _width, _height, _scaleMode ) );
+    }
+
+    // Copy an existing surface to a new surface of the specified format.
+    //
+    // This function is used to optimize images for faster *repeat* blitting.
+    // This is accomplished by converting the original and storing the result as
+    // a new surface. The new, optimized surface can then be used as the source
+    // for future blits, making them faster.
+    //
+    // If you are converting to an indexed surface and want to map colors to a
+    // palette, you can use SDL_ConvertSurfaceAndColorspace() instead.
+    //
+    // If the original surface has alternate images, the new surface will have a
+    // reference to them as well.
+    //
+    // Not thread safe.
+    [[nodiscard]] auto convert( SDL_PixelFormat _format ) const -> surface {
+        return ( SDL_ConvertSurface( _data, _format ) );
+    }
+
+    // Copy an existing surface to a new surface of the specified format and
+    // colorspace.
+    //
+    // This function converts an existing surface to a new format and colorspace
+    // and returns the new surface. This will perform any pixel format and
+    // colorspace conversion needed.
+    //
+    // If the original surface has alternate images, the new surface will have a
+    // reference to them as well.
+    //
+    // Not thread safe.
+    [[nodiscard]] auto convert( SDL_PixelFormat _format,
+                                palette_t _palette,
+                                SDL_Colorspace _colorspace,
+                                SDL_PropertiesID _props = 0 ) const -> surface {
+        return ( SDL_ConvertSurfaceAndColorspace( _data, _format, _palette,
+                                                  _colorspace, _props ) );
+    }
+
+    // Copy an existing surface to a new surface of the specified format and
+    // colorspace.
+    //
+    // This function converts an existing surface to a new format and colorspace
+    // and returns the new surface. This will perform any pixel format and
+    // colorspace conversion needed.
+    //
+    // If the original surface has alternate images, the new surface will have a
+    // reference to them as well.
+    //
+    // Not thread safe.
+    [[nodiscard]] auto convert( SDL_PixelFormat _format,
+                                SDL_Colorspace _colorspace,
+                                SDL_PropertiesID _props = 0 ) const -> surface {
+        return ( SDL_ConvertSurfaceAndColorspace( _data, _format, nullptr,
+                                                  _colorspace, _props ) );
+    }
+
+    // Premultiply the alpha in a surface.
+    //
+    // This is safe to use with src == dst, but not for other overlapping areas.
+    //
+    // \if linear is true to convert from sRGB to linear space for the alpha
+    // multiplication, false to do multiplication in sRGB space.
+    //
+    // Not thread safe.
+    void premultiplyAlpha( bool _linear ) {
+        const bool l_result = SDL_PremultiplySurfaceAlpha( _data, _linear );
+
+        stdfunc::assert( l_result );
     }
 
     // Variables
 private:
     gsl::not_null< SDL_Surface* > _data;
 };
+
+#if 0
+
+/**
+ * Clear a surface with a specific color, with floating point precision.
+ *
+ * This function handles all surface formats, and ignores any clip rectangle.
+ *
+ * If the surface is YUV, the color is assumed to be in the sRGB colorspace,
+ * otherwise the color is assumed to be in the colorspace of the suface.
+ *
+ * \param surface the SDL_Surface to clear.
+ * \param r the red component of the pixel, normally in the range 0-1.
+ * \param g the green component of the pixel, normally in the range 0-1.
+ * \param b the blue component of the pixel, normally in the range 0-1.
+ * \param a the alpha component of the pixel, normally in the range 0-1.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool ClearSurface(SDL_Surface *surface, float r, float g, float b, float a);
+
+/**
+ * Perform a fast fill of a rectangle with a specific color.
+ *
+ * `color` should be a pixel of the format used by the surface, and can be
+ * generated by SDL_MapRGB() or SDL_MapRGBA(). If the color value contains an
+ * alpha component then the destination is simply filled with that alpha
+ * information, no blending takes place.
+ *
+ * If there is a clip rectangle set on the destination (set via
+ * SDL_SetSurfaceClipRect()), then this function will fill based on the
+ * intersection of the clip rectangle and `rect`.
+ *
+ * \param dst the SDL_Surface structure that is the drawing target.
+ * \param rect the SDL_Rect structure representing the rectangle to fill, or
+ *             NULL to fill the entire surface.
+ * \param color the color to fill with.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool FillSurfaceRect(SDL_Surface *dst, const SDL_Rect *rect, Uint32 color);
+
+/**
+ * Perform a fast fill of a set of rectangles with a specific color.
+ *
+ * `color` should be a pixel of the format used by the surface, and can be
+ * generated by SDL_MapRGB() or SDL_MapRGBA(). If the color value contains an
+ * alpha component then the destination is simply filled with that alpha
+ * information, no blending takes place.
+ *
+ * If there is a clip rectangle set on the destination (set via
+ * SDL_SetSurfaceClipRect()), then this function will fill based on the
+ * intersection of the clip rectangle and `rect`.
+ *
+ * \param dst the SDL_Surface structure that is the drawing target.
+ * \param rects an array of SDL_Rects representing the rectangles to fill.
+ * \param count the number of rectangles in the array.
+ * \param color the color to fill with.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool FillSurfaceRects(SDL_Surface *dst, const SDL_Rect *rects, int count, Uint32 color);
+
+/**
+ * Performs a fast blit from the source surface to the destination surface
+ * with clipping.
+ *
+ * If either `srcrect` or `dstrect` are NULL, the entire surface (`src` or
+ * `dst`) is copied while ensuring clipping to `dst->clip_rect`.
+ *
+ * The blit function should not be called on a locked surface.
+ *
+ * The blit semantics for surfaces with and without blending and colorkey are
+ * defined as follows:
+ *
+ * ```
+ *    RGBA->RGB:
+ *      Source surface blend mode set to SDL_BLENDMODE_BLEND:
+ *       alpha-blend (using the source alpha-channel and per-surface alpha)
+ *       SDL_SRCCOLORKEY ignored.
+ *     Source surface blend mode set to SDL_BLENDMODE_NONE:
+ *       copy RGB.
+ *       if SDL_SRCCOLORKEY set, only copy the pixels that do not match the
+ *       RGB values of the source color key, ignoring alpha in the
+ *       comparison.
+ *
+ *   RGB->RGBA:
+ *     Source surface blend mode set to SDL_BLENDMODE_BLEND:
+ *       alpha-blend (using the source per-surface alpha)
+ *     Source surface blend mode set to SDL_BLENDMODE_NONE:
+ *       copy RGB, set destination alpha to source per-surface alpha value.
+ *     both:
+ *       if SDL_SRCCOLORKEY set, only copy the pixels that do not match the
+ *       source color key.
+ *
+ *   RGBA->RGBA:
+ *     Source surface blend mode set to SDL_BLENDMODE_BLEND:
+ *       alpha-blend (using the source alpha-channel and per-surface alpha)
+ *       SDL_SRCCOLORKEY ignored.
+ *     Source surface blend mode set to SDL_BLENDMODE_NONE:
+ *       copy all of RGBA to the destination.
+ *       if SDL_SRCCOLORKEY set, only copy the pixels that do not match the
+ *       RGB values of the source color key, ignoring alpha in the
+ *       comparison.
+ *
+ *   RGB->RGB:
+ *     Source surface blend mode set to SDL_BLENDMODE_BLEND:
+ *       alpha-blend (using the source per-surface alpha)
+ *     Source surface blend mode set to SDL_BLENDMODE_NONE:
+ *       copy RGB.
+ *     both:
+ *       if SDL_SRCCOLORKEY set, only copy the pixels that do not match the
+ *       source color key.
+ * ```
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, or NULL to copy the entire surface.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the x and y position in
+ *                the destination surface, or NULL for (0,0). The width and
+ *                height are ignored, and are copied from `srcrect`. If you
+ *                want a specific width and height, you should use
+ *                SDL_BlitSurfaceScaled().
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect);
+
+/**
+ * Perform low-level surface blitting only.
+ *
+ * This is a semi-private blit function and it performs low-level surface
+ * blitting, assuming the input rectangles have already been clipped.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, may not be NULL.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, may not be NULL.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurfaceUnchecked(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect);
+
+/**
+ * Perform a scaled blit to a destination surface, which may be of a different
+ * format.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, or NULL to copy the entire surface.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, or NULL to fill the entire
+ *                destination surface.
+ * \param scaleMode the SDL_ScaleMode to be used.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurfaceScaled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
+
+/**
+ * Perform low-level surface scaled blitting only.
+ *
+ * This is a semi-private function and it performs low-level surface blitting,
+ * assuming the input rectangles have already been clipped.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, may not be NULL.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, may not be NULL.
+ * \param scaleMode the SDL_ScaleMode to be used.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurfaceUncheckedScaled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
+
+/**
+ * Perform a stretched pixel copy from one surface to another.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, or NULL to copy the entire surface.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, or NULL to fill the entire
+ *                destination surface.
+ * \param scaleMode the SDL_ScaleMode to be used.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool StretchSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect, SDL_ScaleMode scaleMode);
+
+/**
+ * Perform a tiled blit to a destination surface, which may be of a different
+ * format.
+ *
+ * The pixels in `srcrect` will be repeated as many times as needed to
+ * completely fill `dstrect`.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, or NULL to copy the entire surface.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, or NULL to fill the entire surface.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurfaceTiled(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst, const SDL_Rect *dstrect);
+
+/**
+ * Perform a scaled and tiled blit to a destination surface, which may be of a
+ * different format.
+ *
+ * The pixels in `srcrect` will be scaled and repeated as many times as needed
+ * to completely fill `dstrect`.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be
+ *                copied, or NULL to copy the entire surface.
+ * \param scale the scale used to transform srcrect into the destination
+ *              rectangle, e.g. a 32x32 texture with a scale of 2 would fill
+ *              64x64 tiles.
+ * \param scaleMode scale algorithm to be used.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, or NULL to fill the entire surface.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurfaceTiledWithScale(SDL_Surface *src, const SDL_Rect *srcrect, float scale, SDL_ScaleMode scaleMode, SDL_Surface *dst, const SDL_Rect *dstrect);
+
+/**
+ * Perform a scaled blit using the 9-grid algorithm to a destination surface,
+ * which may be of a different format.
+ *
+ * The pixels in the source surface are split into a 3x3 grid, using the
+ * different corner sizes for each corner, and the sides and center making up
+ * the remaining pixels. The corners are then scaled using `scale` and fit
+ * into the corners of the destination rectangle. The sides and center are
+ * then stretched into place to cover the remaining destination rectangle.
+ *
+ * \param src the SDL_Surface structure to be copied from.
+ * \param srcrect the SDL_Rect structure representing the rectangle to be used
+ *                for the 9-grid, or NULL to use the entire surface.
+ * \param left_width the width, in pixels, of the left corners in `srcrect`.
+ * \param right_width the width, in pixels, of the right corners in `srcrect`.
+ * \param top_height the height, in pixels, of the top corners in `srcrect`.
+ * \param bottom_height the height, in pixels, of the bottom corners in
+ *                      `srcrect`.
+ * \param scale the scale used to transform the corner of `srcrect` into the
+ *              corner of `dstrect`, or 0.0f for an unscaled blit.
+ * \param scaleMode scale algorithm to be used.
+ * \param dst the SDL_Surface structure that is the blit target.
+ * \param dstrect the SDL_Rect structure representing the target rectangle in
+ *                the destination surface, or NULL to fill the entire surface.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety Only one thread should be using the `src` and `dst` surfaces
+ *               at any given time.
+ */
+bool BlitSurface9Grid(SDL_Surface *src, const SDL_Rect *srcrect, int left_width, int right_width, int top_height, int bottom_height, float scale, SDL_ScaleMode scaleMode, SDL_Surface *dst, const SDL_Rect *dstrect);
+
+/**
+ * Map an RGB triple to an opaque pixel value for a surface.
+ *
+ * This function maps the RGB color value to the specified pixel format and
+ * returns the pixel value best approximating the given RGB color value for
+ * the given pixel format.
+ *
+ * If the surface has a palette, the index of the closest matching color in
+ * the palette will be returned.
+ *
+ * If the surface pixel format has an alpha component it will be returned as
+ * all 1 bits (fully opaque).
+ *
+ * If the pixel format bpp (color depth) is less than 32-bpp then the unused
+ * upper bits of the return value can safely be ignored (e.g., with a 16-bpp
+ * format the return value can be assigned to a Uint16, and similarly a Uint8
+ * for an 8-bpp format).
+ *
+ * \param surface the surface to use for the pixel format and palette.
+ * \param r the red component of the pixel in the range 0-255.
+ * \param g the green component of the pixel in the range 0-255.
+ * \param b the blue component of the pixel in the range 0-255.
+ * \returns a pixel value.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ */
+Uint32 SDL_MapSurfaceRGB(SDL_Surface *surface, Uint8 r, Uint8 g, Uint8 b);
+
+/**
+ * Map an RGBA quadruple to a pixel value for a surface.
+ *
+ * This function maps the RGBA color value to the specified pixel format and
+ * returns the pixel value best approximating the given RGBA color value for
+ * the given pixel format.
+ *
+ * If the surface pixel format has no alpha component the alpha value will be
+ * ignored (as it will be in formats with a palette).
+ *
+ * If the surface has a palette, the index of the closest matching color in
+ * the palette will be returned.
+ *
+ * If the pixel format bpp (color depth) is less than 32-bpp then the unused
+ * upper bits of the return value can safely be ignored (e.g., with a 16-bpp
+ * format the return value can be assigned to a Uint16, and similarly a Uint8
+ * for an 8-bpp format).
+ *
+ * \param surface the surface to use for the pixel format and palette.
+ * \param r the red component of the pixel in the range 0-255.
+ * \param g the green component of the pixel in the range 0-255.
+ * \param b the blue component of the pixel in the range 0-255.
+ * \param a the alpha component of the pixel in the range 0-255.
+ * \returns a pixel value.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ */
+Uint32 SDL_MapSurfaceRGBA(SDL_Surface *surface, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+
+/**
+ * Retrieves a single pixel from a surface.
+ *
+ * This function prioritizes correctness over speed: it is suitable for unit
+ * tests, but is not intended for use in a game engine.
+ *
+ * Like SDL_GetRGBA, this uses the entire 0..255 range when converting color
+ * components from pixel formats with less than 8 bits per RGB component.
+ *
+ * \param surface the surface to read.
+ * \param x the horizontal coordinate, 0 <= x < width.
+ * \param y the vertical coordinate, 0 <= y < height.
+ * \param r a pointer filled in with the red channel, 0-255, or NULL to ignore
+ *          this channel.
+ * \param g a pointer filled in with the green channel, 0-255, or NULL to
+ *          ignore this channel.
+ * \param b a pointer filled in with the blue channel, 0-255, or NULL to
+ *          ignore this channel.
+ * \param a a pointer filled in with the alpha channel, 0-255, or NULL to
+ *          ignore this channel.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool ReadSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a);
+
+/**
+ * Retrieves a single pixel from a surface.
+ *
+ * This function prioritizes correctness over speed: it is suitable for unit
+ * tests, but is not intended for use in a game engine.
+ *
+ * \param surface the surface to read.
+ * \param x the horizontal coordinate, 0 <= x < width.
+ * \param y the vertical coordinate, 0 <= y < height.
+ * \param r a pointer filled in with the red channel, normally in the range
+ *          0-1, or NULL to ignore this channel.
+ * \param g a pointer filled in with the green channel, normally in the range
+ *          0-1, or NULL to ignore this channel.
+ * \param b a pointer filled in with the blue channel, normally in the range
+ *          0-1, or NULL to ignore this channel.
+ * \param a a pointer filled in with the alpha channel, normally in the range
+ *          0-1, or NULL to ignore this channel.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool ReadSurfacePixelFloat(SDL_Surface *surface, int x, int y, float *r, float *g, float *b, float *a);
+
+/**
+ * Writes a single pixel to a surface.
+ *
+ * This function prioritizes correctness over speed: it is suitable for unit
+ * tests, but is not intended for use in a game engine.
+ *
+ * Like SDL_MapRGBA, this uses the entire 0..255 range when converting color
+ * components from pixel formats with less than 8 bits per RGB component.
+ *
+ * \param surface the surface to write.
+ * \param x the horizontal coordinate, 0 <= x < width.
+ * \param y the vertical coordinate, 0 <= y < height.
+ * \param r the red channel value, 0-255.
+ * \param g the green channel value, 0-255.
+ * \param b the blue channel value, 0-255.
+ * \param a the alpha channel value, 0-255.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool WriteSurfacePixel(SDL_Surface *surface, int x, int y, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+
+/**
+ * Writes a single pixel to a surface.
+ *
+ * This function prioritizes correctness over speed: it is suitable for unit
+ * tests, but is not intended for use in a game engine.
+ *
+ * \param surface the surface to write.
+ * \param x the horizontal coordinate, 0 <= x < width.
+ * \param y the vertical coordinate, 0 <= y < height.
+ * \param r the red channel value, normally in the range 0-1.
+ * \param g the green channel value, normally in the range 0-1.
+ * \param b the blue channel value, normally in the range 0-1.
+ * \param a the alpha channel value, normally in the range 0-1.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * Not thread safe.
+ */
+bool WriteSurfacePixelFloat(SDL_Surface *surface, int x, int y, float r, float g, float b, float a);
+
+#endif
+
+#if 0
+
+/**
+ * Copy a block of pixels of one format to another format.
+ *
+ * \param width the width of the block to copy, in pixels.
+ * \param height the height of the block to copy, in pixels.
+ * \param src_format an SDL_PixelFormat value of the `src` pixels format.
+ * \param src a pointer to the source pixels.
+ * \param src_pitch the pitch of the source pixels, in bytes.
+ * \param dst_format an SDL_PixelFormat value of the `dst` pixels format.
+ * \param dst a pointer to be filled in with new pixel data.
+ * \param dst_pitch the pitch of the destination pixels, in bytes.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety The same destination pixels should not be used from two
+ *               threads at once. It is safe to use the same source pixels
+ *               from multiple threads.
+ */
+bool ConvertPixels(int width, int height, SDL_PixelFormat src_format, const void *src, int src_pitch, SDL_PixelFormat dst_format, void *dst, int dst_pitch);
+
+/**
+ * Copy a block of pixels of one format and colorspace to another format and
+ * colorspace.
+ *
+ * \param width the width of the block to copy, in pixels.
+ * \param height the height of the block to copy, in pixels.
+ * \param src_format an SDL_PixelFormat value of the `src` pixels format.
+ * \param src_colorspace an SDL_Colorspace value describing the colorspace of
+ *                       the `src` pixels.
+ * \param src_properties an SDL_PropertiesID with additional source color
+ *                       properties, or 0.
+ * \param src a pointer to the source pixels.
+ * \param src_pitch the pitch of the source pixels, in bytes.
+ * \param dst_format an SDL_PixelFormat value of the `dst` pixels format.
+ * \param dst_colorspace an SDL_Colorspace value describing the colorspace of
+ *                       the `dst` pixels.
+ * \param dst_properties an SDL_PropertiesID with additional destination color
+ *                       properties, or 0.
+ * \param dst a pointer to be filled in with new pixel data.
+ * \param dst_pitch the pitch of the destination pixels, in bytes.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety The same destination pixels should not be used from two
+ *               threads at once. It is safe to use the same source pixels
+ *               from multiple threads.
+ */
+bool ConvertPixelsAndColorspace(int width, int height, SDL_PixelFormat src_format, SDL_Colorspace src_colorspace, SDL_PropertiesID src_properties, const void *src, int src_pitch, SDL_PixelFormat dst_format, SDL_Colorspace dst_colorspace, SDL_PropertiesID dst_properties, void *dst, int dst_pitch);
+
+/**
+ * Premultiply the alpha on a block of pixels.
+ *
+ * This is safe to use with src == dst, but not for other overlapping areas.
+ *
+ * \param width the width of the block to convert, in pixels.
+ * \param height the height of the block to convert, in pixels.
+ * \param src_format an SDL_PixelFormat value of the `src` pixels format.
+ * \param src a pointer to the source pixels.
+ * \param src_pitch the pitch of the source pixels, in bytes.
+ * \param dst_format an SDL_PixelFormat value of the `dst` pixels format.
+ * \param dst a pointer to be filled in with premultiplied pixel data.
+ * \param dst_pitch the pitch of the destination pixels, in bytes.
+ * \param linear true to convert from sRGB to linear space for the alpha
+ *               multiplication, false to do multiplication in sRGB space.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety The same destination pixels should not be used from two
+ *               threads at once. It is safe to use the same source pixels
+ *               from multiple threads.
+ */
+bool PremultiplyAlpha(int width, int height, SDL_PixelFormat src_format, const void *src, int src_pitch, SDL_PixelFormat dst_format, void *dst, int dst_pitch, bool linear);
+
+#endif
 
 } // namespace slickdl
