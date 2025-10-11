@@ -21,7 +21,7 @@ using color_t = struct color {
         : red( _red ), green( _green ), blue( _blue ), alpha( _alpha ) {}
 
     constexpr color( uint8_t _red, uint8_t _green, uint8_t _blue )
-        : red( _red ), green( _green ), blue( _blue ) {}
+        : red( _red ), green( _green ), blue( _blue ), alpha( 0xFF ) {}
 
     constexpr color( uint32_t _colorPacked ) { unpack( _colorPacked ); }
 
