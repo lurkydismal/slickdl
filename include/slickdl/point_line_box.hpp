@@ -12,8 +12,7 @@
 namespace slickdl {
 
 // The structure that defines a point
-template < typename T >
-    requires is_int_or_float< T >
+template < is_int_or_float T >
 struct point {
     [[nodiscard]] constexpr auto operator<=>( const point< T >& _box ) const =
         default;
@@ -24,8 +23,7 @@ struct point {
 template < typename T >
 using point_t = point< T >;
 
-template < typename T >
-    requires is_int_or_float< T >
+template < is_int_or_float T >
 struct line {
     [[nodiscard]] constexpr auto operator<=>( const line< T >& _box ) const =
         default;
@@ -38,14 +36,18 @@ template < typename T >
 using line_t = line< T >;
 
 // A box, with the origin at the upper left
-template < typename T >
-    requires is_int_or_float< T >
+template < is_int_or_float T >
 struct box {
     // TODO: Improve
     using clippingZone_t = clippingZone_t< T >;
 
-    [[nodiscard]] constexpr auto operator<=>( const box< T >& _box ) const =
-        default;
+    constexpr box( SDL_Rect& _rectangle )
+        : x( _rectangle.x ),
+          y( _rectangle.y ),
+          width( _rectangle.w ),
+          height( _rectangle.h ) {}
+
+    [[nodiscard]] constexpr auto operator<=>( const box& _box ) const = default;
 
     template < typename T2 >
     [[nodiscard]] constexpr operator box< T2 >() const {
@@ -54,6 +56,21 @@ struct box {
             static_cast< T2 >( y ),
             static_cast< T2 >( width ),
             static_cast< T2 >( height ),
+        } );
+    }
+
+    constexpr auto operator=( SDL_Rect& _rectangle ) -> box& {
+        *this = box( _rectangle );
+
+        return ( *this );
+    }
+
+    [[nodiscard]] explicit constexpr operator SDL_Rect() const {
+        return ( SDL_Rect{
+            x,
+            y,
+            width,
+            height,
         } );
     }
 
@@ -78,16 +95,14 @@ struct box {
     }
 
     // Determine whether a box resides inside a box
-    [[nodiscard]] constexpr auto contains( const box< T >& _box ) const
-        -> bool {
+    [[nodiscard]] constexpr auto contains( const box& _box ) const -> bool {
         return ( ( x <= _box.x ) && ( y <= _box.y ) &&
                  ( _right( *this ) >= _rigth( _box ) ) &&
                  ( _bottom( *this ) >= _bottom( _box ) ) );
     }
 
     // Determine whether two boxs intersect
-    [[nodiscard]] constexpr auto intersects( const box< T >& _box ) const
-        -> bool {
+    [[nodiscard]] constexpr auto intersects( const box& _box ) const -> bool {
         bool l_returnValue = false;
 
         do {
@@ -137,9 +152,9 @@ struct box {
     }
 
     // Calculate the intersection of two boxs
-    [[nodiscard]] constexpr auto intersection( const box< T >& _box ) const
-        -> std::optional< box< T > > {
-        std::optional< box< T > > l_returnValue = std::nullopt;
+    [[nodiscard]] constexpr auto intersection( const box& _box ) const
+        -> std::optional< box > {
+        std::optional< box > l_returnValue = std::nullopt;
 
         do {
             if ( empty() || _box.empty() ) {
@@ -177,7 +192,7 @@ struct box {
         result->h = Amax - Amin;
 #endif
 
-            const box< T > l_composite = composite( _box );
+            const box l_composite = composite( _box );
 
             if ( ( l_composite ) &&
                  ( ( l_composite.x < l_composite.width ) &&
@@ -190,9 +205,9 @@ struct box {
     }
 
     // Calculate the composite of two boxs
-    [[nodiscard]] constexpr auto composite( const box< T >& _box ) const
-        -> std::optional< box< T > > {
-        std::optional< box< T > > l_returnValue = std::nullopt;
+    [[nodiscard]] constexpr auto composite( const box& _box ) const
+        -> std::optional< box > {
+        std::optional< box > l_returnValue = std::nullopt;
 
         do {
             // TODO: Maybe improve all IFs
@@ -259,15 +274,14 @@ struct box {
     // TODO :Improve return
     [[nodiscard]] constexpr auto encloses(
         std::span< const point_t< T > > _points,
-        std::optional< const box< T > >& _clippingZone = std::nullopt ) const
+        std::optional< const box >& _clippingZone = std::nullopt ) const
         -> auto {
         if ( _clippingZone.empty() ) {
-            return ( std::views::empty< const box< T > > );
+            return ( std::views::empty< const box > );
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x,
-            _clippingZone.y,
+            _clippingZone.x, _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };
@@ -282,9 +296,9 @@ struct box {
     // Calculate a minimal box enclosing a set of points
     [[nodiscard]] constexpr auto enclosing(
         std::span< const point_t< T > > _points,
-        std::optional< const box< T > >& _clippingZone = std::nullopt ) const
-        -> std::optional< box< T > > {
-        std::optional< box< T > > l_returnValue = std::nullopt;
+        std::optional< const box >& _clippingZone = std::nullopt ) const
+        -> std::optional< box > {
+        std::optional< box > l_returnValue = std::nullopt;
 
         do {
             // TODO: Maybe improve
@@ -589,11 +603,11 @@ struct box {
 
     // Helpers
 private:
-    [[nodiscard]] constexpr auto _right( const box< T >& _box ) const -> T {
+    [[nodiscard]] constexpr auto _right( const box& _box ) const -> T {
         return ( _box.x + _box.width );
     }
 
-    [[nodiscard]] constexpr auto _bottom( const box< T >& _box ) const -> T {
+    [[nodiscard]] constexpr auto _bottom( const box& _box ) const -> T {
         return ( _box.y + _box.height );
     }
 };
@@ -601,8 +615,7 @@ private:
 template < typename T >
 using box_t = box< T >;
 
-template < typename T >
-    requires is_int_or_float< T >
+template < is_int_or_float T >
 [[nodiscard]] constexpr auto inRange2D(
     const point_t< T >& _point,
     const clippingZone_t< T >& _clippingZone ) -> bool {

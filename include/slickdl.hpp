@@ -13,6 +13,10 @@ template < typename T >
 concept is_int_or_float =
     ( std::is_same_v< T, int > || std::is_same_v< T, float > );
 
+template < typename T >
+concept is_byte_or_float =
+    ( std::is_same_v< T, uint8_t > || std::is_same_v< T, float > );
+
 using renderer_t = gsl::not_null< SDL_Renderer* >;
 using texture_t = gsl::not_null< SDL_Texture* >;
 using palette_t = gsl::not_null< SDL_Palette* >;
