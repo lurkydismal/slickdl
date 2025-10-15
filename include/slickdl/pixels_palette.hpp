@@ -141,7 +141,7 @@ using palette_t = struct palette {
     // (100% opaque)
     template < std::unsigned_integral U >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
-    auto get( pixelValue_t< U > _value, pixelFormatDetails_t _format )
+    auto color( pixelValue_t< U > _value, pixelFormatDetails_t _format )
         -> color_t {
         color_t l_color{};
 
@@ -193,7 +193,8 @@ auto map( pixelFormatDetails_t _format, color_t _color ) -> U {
 // (100% opaque)
 template < std::unsigned_integral U >
     requires( sizeof( U ) <= sizeof( uint32_t ) )
-auto get( pixelValue_t< U > _value, pixelFormatDetails_t _format ) -> color_t {
+auto color( pixelValue_t< U > _value, pixelFormatDetails_t _format )
+    -> color_t {
     color_t l_color{};
 
     SDL_GetRGBA( _value, _format, nullptr, &l_color.red, &l_color.green,
@@ -1036,7 +1037,7 @@ using colorspaceUnderlying_t = std::underlying_type_t< colorspace_t >;
 }
 
 // Get the human readable name of a pixel format.
-[[nodiscard]] constexpr auto getName( format_t _format ) -> std::string_view {
+[[nodiscard]] constexpr auto name( format_t _format ) -> std::string_view {
     std::string_view l_returnValue;
 
     switch ( _format ) {
@@ -1304,437 +1305,562 @@ using colorspaceUnderlying_t = std::underlying_type_t< colorspace_t >;
     return ( l_returnValue );
 }
 
-/**
- * Convert one of the enumerated pixel formats to a BPP value and RGBA masks.
- *
- * \param bpp a bits per pixel value; usually 15, 16, or 32.
- */
-auto getMasks( format_t _format, int* _BPP ) -> ::slickdl::color_t {
-    Uint32 masks[ 4 ];
+using mask_t = struct mask {
+    uint32_t red;
+    uint32_t green;
+    uint32_t blue;
+    uint32_t alpha;
 
-#ifdef SDL_HAVE_YUV
-    // Partial support for SDL_Surface with FOURCC
-    if ( SDL_ISPIXELFORMAT_FOURCC( format ) ) {
-        // Not a format that uses masks
-        *Rmask = *Gmask = *Bmask = *Amask = 0;
-        // however, some of these are packed formats, and can legit declare
-        // bits-per-pixel!
-        switch ( format ) {
-            case SDL_PIXELFORMAT_YUY2:
-            case SDL_PIXELFORMAT_UYVY:
-            case SDL_PIXELFORMAT_YVYU:
-                *bpp = 32;
-                break;
-            default:
-                *bpp = 0; // oh well.
+    size_t bitsPerPixel;
+};
+
+// Convert one of the enumerated pixel formats to a BPP value and RGBA masks.
+[[nodiscard]] constexpr auto masks( format_t _format )
+    -> std::optional< mask_t > {
+    std::optional< mask_t > l_returnValue = std::nullopt;
+    mask_t l_mask{};
+
+    std::array< uint32_t, 4 > l_masks{};
+
+    do {
+        // Partial support for SDL_Surface with FOURCC
+        if ( isFourCC( _format ) ) {
+            // Not a _format that uses masks however, some of these are packed
+            // formats, and can legit declare bits-per-pixel!
+            switch ( _format ) {
+                case format_t::fYUY2:
+                case format_t::fUYVY:
+                case format_t::fYVYU: {
+                    l_mask.bitsPerPixel = 32;
+
+                    break;
+                }
+
+                default: {
+                    // Oh well
+                    // TODO: Maybe reduntant
+                    l_mask.bitsPerPixel = 0;
+                }
+            }
+
+            break;
         }
-        return true;
-    }
+
+        // Initialize the values here
+        if ( bytes( _format ) <= 2 ) {
+            l_mask.bitsPerPixel = bits( _format );
+
+        } else {
+            l_mask.bitsPerPixel = ( bytes( _format ) * 8UZ );
+        }
+
+        if ( _format == format_t::fRGB24 ) {
+#if __BYTE_ORDER == __BIG_ENDIAN
+
+            l_mask.red = 0x00FF0000;
+            l_mask.green = 0x0000FF00;
+            l_mask.blue = 0x000000FF;
+
 #else
-    if ( SDL_ISPIXELFORMAT_FOURCC( format ) ) {
-        return SDL_SetError( "SDL not built with YUV support" );
-    }
+
+            l_mask.red = 0x000000FF;
+            l_mask.green = 0x0000FF00;
+            l_mask.blue = 0x00FF0000;
+
 #endif
 
-    // Initialize the values here
-    if ( SDL_BYTESPERPIXEL( format ) <= 2 ) {
-        *bpp = SDL_BITSPERPIXEL( format );
-    } else {
-        *bpp = SDL_BYTESPERPIXEL( format ) * 8;
-    }
-    *Rmask = *Gmask = *Bmask = *Amask = 0;
+            break;
 
-    if ( format == SDL_PIXELFORMAT_RGB24 ) {
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-        *Rmask = 0x00FF0000;
-        *Gmask = 0x0000FF00;
-        *Bmask = 0x000000FF;
+        } else if ( _format == format_t::fBGR24 ) {
+#if __BYTE_ORDER == __BIG_ENDIAN
+
+            l_mask.red = 0x000000FF;
+            l_mask.green = 0x0000FF00;
+            l_mask.blue = 0x00FF0000;
+
 #else
-        *Rmask = 0x000000FF;
-        *Gmask = 0x0000FF00;
-        *Bmask = 0x00FF0000;
+
+            l_mask.red = 0x00FF0000;
+            l_mask.green = 0x0000FF00;
+            l_mask.blue = 0x000000FF;
+
 #endif
-        return true;
-    }
 
-    if ( format == SDL_PIXELFORMAT_BGR24 ) {
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-        *Rmask = 0x000000FF;
-        *Gmask = 0x0000FF00;
-        *Bmask = 0x00FF0000;
-#else
-        *Rmask = 0x00FF0000;
-        *Gmask = 0x0000FF00;
-        *Bmask = 0x000000FF;
-#endif
-        return true;
-    }
+            break;
+        }
 
-    if ( SDL_PIXELTYPE( format ) != SDL_PIXELTYPE_PACKED8 &&
-         SDL_PIXELTYPE( format ) != SDL_PIXELTYPE_PACKED16 &&
-         SDL_PIXELTYPE( format ) != SDL_PIXELTYPE_PACKED32 ) {
-        // Not a format that uses masks
-        return true;
-    }
+        // TODO: Write comment
+        // Check format
+        {
+            const pixel_t l_type = type( _format );
 
-    switch ( SDL_PIXELLAYOUT( format ) ) {
-        case SDL_PACKEDLAYOUT_332:
-            masks[ 0 ] = 0x00000000;
-            masks[ 1 ] = 0x000000E0;
-            masks[ 2 ] = 0x0000001C;
-            masks[ 3 ] = 0x00000003;
-            break;
-        case SDL_PACKEDLAYOUT_4444:
-            masks[ 0 ] = 0x0000F000;
-            masks[ 1 ] = 0x00000F00;
-            masks[ 2 ] = 0x000000F0;
-            masks[ 3 ] = 0x0000000F;
-            break;
-        case SDL_PACKEDLAYOUT_1555:
-            masks[ 0 ] = 0x00008000;
-            masks[ 1 ] = 0x00007C00;
-            masks[ 2 ] = 0x000003E0;
-            masks[ 3 ] = 0x0000001F;
-            break;
-        case SDL_PACKEDLAYOUT_5551:
-            masks[ 0 ] = 0x0000F800;
-            masks[ 1 ] = 0x000007C0;
-            masks[ 2 ] = 0x0000003E;
-            masks[ 3 ] = 0x00000001;
-            break;
-        case SDL_PACKEDLAYOUT_565:
-            masks[ 0 ] = 0x00000000;
-            masks[ 1 ] = 0x0000F800;
-            masks[ 2 ] = 0x000007E0;
-            masks[ 3 ] = 0x0000001F;
-            break;
-        case SDL_PACKEDLAYOUT_8888:
-            masks[ 0 ] = 0xFF000000;
-            masks[ 1 ] = 0x00FF0000;
-            masks[ 2 ] = 0x0000FF00;
-            masks[ 3 ] = 0x000000FF;
-            break;
-        case SDL_PACKEDLAYOUT_2101010:
-            masks[ 0 ] = 0xC0000000;
-            masks[ 1 ] = 0x3FF00000;
-            masks[ 2 ] = 0x000FFC00;
-            masks[ 3 ] = 0x000003FF;
-            break;
-        case SDL_PACKEDLAYOUT_1010102:
-            masks[ 0 ] = 0xFFC00000;
-            masks[ 1 ] = 0x003FF000;
-            masks[ 2 ] = 0x00000FFC;
-            masks[ 3 ] = 0x00000003;
-            break;
-        default:
-            return SDL_SetError( "Unknown pixel format" );
-    }
+            if ( ( l_type != pixel_t::packed8 ) &&
+                 ( l_type != pixel_t::packed16 ) &&
+                 ( l_type != pixel_t::packed32 ) ) {
+                // Not a _format that uses masks
+                break;
+            }
+        }
 
-    switch ( SDL_PIXELORDER( format ) ) {
-        case SDL_PACKEDORDER_XRGB:
-            *Rmask = masks[ 1 ];
-            *Gmask = masks[ 2 ];
-            *Bmask = masks[ 3 ];
-            break;
-        case SDL_PACKEDORDER_RGBX:
-            *Rmask = masks[ 0 ];
-            *Gmask = masks[ 1 ];
-            *Bmask = masks[ 2 ];
-            break;
-        case SDL_PACKEDORDER_ARGB:
-            *Amask = masks[ 0 ];
-            *Rmask = masks[ 1 ];
-            *Gmask = masks[ 2 ];
-            *Bmask = masks[ 3 ];
-            break;
-        case SDL_PACKEDORDER_RGBA:
-            *Rmask = masks[ 0 ];
-            *Gmask = masks[ 1 ];
-            *Bmask = masks[ 2 ];
-            *Amask = masks[ 3 ];
-            break;
-        case SDL_PACKEDORDER_XBGR:
-            *Bmask = masks[ 1 ];
-            *Gmask = masks[ 2 ];
-            *Rmask = masks[ 3 ];
-            break;
-        case SDL_PACKEDORDER_BGRX:
-            *Bmask = masks[ 0 ];
-            *Gmask = masks[ 1 ];
-            *Rmask = masks[ 2 ];
-            break;
-        case SDL_PACKEDORDER_BGRA:
-            *Bmask = masks[ 0 ];
-            *Gmask = masks[ 1 ];
-            *Rmask = masks[ 2 ];
-            *Amask = masks[ 3 ];
-            break;
-        case SDL_PACKEDORDER_ABGR:
-            *Amask = masks[ 0 ];
-            *Bmask = masks[ 1 ];
-            *Gmask = masks[ 2 ];
-            *Rmask = masks[ 3 ];
-            break;
-        default:
-            return SDL_SetError( "Unknown pixel format" );
-    }
-    return true;
+        switch ( layout( _format ) ) {
+            case ( packedLayout_t::pl332 ): {
+                l_masks = {
+                    0x00000000,
+                    0x000000E0,
+                    0x0000001C,
+                    0x00000003,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl4444 ): {
+                l_masks = {
+                    0x0000F000,
+                    0x00000F00,
+                    0x000000F0,
+                    0x0000000F,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl1555 ): {
+                l_masks = {
+                    0x00008000,
+                    0x00007C00,
+                    0x000003E0,
+                    0x0000001F,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl5551 ): {
+                l_masks = {
+                    0x0000F800,
+                    0x000007C0,
+                    0x0000003E,
+                    0x00000001,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl565 ): {
+                l_masks = {
+                    0x00000000,
+                    0x0000F800,
+                    0x000007E0,
+                    0x0000001F,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl8888 ): {
+                l_masks = {
+                    0xFF000000,
+                    0x00FF0000,
+                    0x0000FF00,
+                    0x000000FF,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl2101010 ): {
+                l_masks = {
+                    0xC0000000,
+                    0x3FF00000,
+                    0x000FFC00,
+                    0x000003FF,
+                };
+
+                break;
+            }
+
+            case ( packedLayout_t::pl1010102 ): {
+                l_masks = {
+                    0xFFC00000,
+                    0x003FF000,
+                    0x00000FFC,
+                    0x00000003,
+                };
+
+                break;
+            }
+
+            default: {
+                // FIX: Remove
+                return ( std::nullopt );
+            }
+        }
+
+        l_returnValue = order( _format ).visit( stdfunc::overloadedVisit{
+            [ & ]( packedOrder_t _packedOrder ) constexpr
+                -> std::optional< mask_t > {
+                switch ( _packedOrder ) {
+                    case ( packedOrder_t::poXRGB ): {
+                        l_mask.red = l_masks[ 1 ];
+                        l_mask.green = l_masks[ 2 ];
+                        l_mask.blue = l_masks[ 3 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poRGBX ): {
+                        l_mask.red = l_masks[ 0 ];
+                        l_mask.green = l_masks[ 1 ];
+                        l_mask.blue = l_masks[ 2 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poARGB ): {
+                        l_mask.alpha = l_masks[ 0 ];
+                        l_mask.red = l_masks[ 1 ];
+                        l_mask.green = l_masks[ 2 ];
+                        l_mask.blue = l_masks[ 3 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poRGBA ): {
+                        l_mask.red = l_masks[ 0 ];
+                        l_mask.green = l_masks[ 1 ];
+                        l_mask.blue = l_masks[ 2 ];
+                        l_mask.alpha = l_masks[ 3 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poXBGR ): {
+                        l_mask.blue = l_masks[ 1 ];
+                        l_mask.green = l_masks[ 2 ];
+                        l_mask.red = l_masks[ 3 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poBGRX ): {
+                        l_mask.blue = l_masks[ 0 ];
+                        l_mask.green = l_masks[ 1 ];
+                        l_mask.red = l_masks[ 2 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poBGRA ): {
+                        l_mask.blue = l_masks[ 0 ];
+                        l_mask.green = l_masks[ 1 ];
+                        l_mask.red = l_masks[ 2 ];
+                        l_mask.alpha = l_masks[ 3 ];
+
+                        break;
+                    }
+
+                    case ( packedOrder_t::poABGR ): {
+                        l_mask.alpha = l_masks[ 0 ];
+                        l_mask.blue = l_masks[ 1 ];
+                        l_mask.green = l_masks[ 2 ];
+                        l_mask.red = l_masks[ 3 ];
+
+                        break;
+                    }
+
+                    default: {
+                        return ( std::nullopt );
+                    }
+                }
+
+                return ( l_mask );
+            },
+            []( auto&& ) constexpr -> std::optional< mask_t > {
+                return ( std::nullopt );
+            },
+        } );
+
+    } while ( false );
+
+    return ( l_returnValue );
 }
 
-/**
- * Convert a bpp value and RGBA masks to an enumerated pixel format.
- *
- * This will return `SDL_PIXELFORMAT_UNKNOWN` if the conversion wasn't
- * possible.
- *
- * \param bpp a bits per pixel value; usually 15, 16, or 32.
- * \param Rmask the red mask for the format.
- * \param Gmask the green mask for the format.
- * \param Bmask the blue mask for the format.
- * \param Amask the alpha mask for the format.
- * \returns the SDL_PixelFormat value corresponding to the format masks, or
- *          SDL_PIXELFORMAT_UNKNOWN if there isn't a match.
- *
- * \threadsafety It is safe to call this function from any thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetMasksForPixelFormat
- */
-SDL_PixelFormat SDL_GetPixelFormatForMasks( int bpp,
-                                            Uint32 Rmask,
-                                            Uint32 Gmask,
-                                            Uint32 Bmask,
-                                            Uint32 Amask );
+// Convert a BPP value and RGBA masks to an enumerated pixel format.
+[[nodiscard]] constexpr auto formatForMasks( mask_t _mask ) -> format_t {
+    switch ( _mask.bitsPerPixel ) {
+        case 1: {
+            // SDL defaults to MSB ordering
+            return ( format_t::index1MSB );
+        }
 
-/**
- * Create an SDL_PixelFormatDetails structure corresponding to a pixel format.
- *
- * Returned structure may come from a shared global cache (i.e. not newly
- * allocated), and hence should not be modified, especially the palette. Weird
- * errors such as `Blit combination not supported` may occur.
- *
- * \param format one of the SDL_PixelFormat values.
- * \returns a pointer to a SDL_PixelFormatDetails structure or NULL on
- *          failure; call SDL_GetError() for more information.
- *
- * \threadsafety It is safe to call this function from any thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-const SDL_PixelFormatDetails* SDL_GetPixelFormatDetails(
-    SDL_PixelFormat format );
+        case 2: {
+            // SDL defaults to MSB ordering
+            return ( format_t::index2MSB );
+        }
 
-/**
- * Create a palette structure with the specified number of color entries.
- *
- * The palette entries are initialized to white.
- *
- * \param ncolors represents the number of color entries in the color palette.
- * \returns a new SDL_Palette structure on success or NULL on failure (e.g. if
- *          there wasn't enough memory); call SDL_GetError() for more
- *          information.
- *
- * \threadsafety It is safe to call this function from any thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_DestroyPalette
- * \sa SDL_SetPaletteColors
- * \sa SDL_SetSurfacePalette
- */
-SDL_Palette* SDL_CreatePalette( int ncolors );
+        case 4: {
+            // SDL defaults to MSB ordering
+            return ( format_t::index4MSB );
+        }
 
-/**
- * Set a range of colors in a palette.
- *
- * \param palette the SDL_Palette structure to modify.
- * \param colors an array of SDL_Color structures to copy into the palette.
- * \param firstcolor the index of the first palette entry to modify.
- * \param ncolors the number of entries to modify.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety It is safe to call this function from any thread, as long as
- *               the palette is not modified or destroyed in another thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_SetPaletteColors( SDL_Palette* palette,
-                           const SDL_Color* colors,
-                           int firstcolor,
-                           int ncolors );
+        case 8: {
+            if ( ( _mask.red == 0xE0 ) && ( _mask.green == 0x1C ) &&
+                 ( _mask.blue == 0x03 ) && ( _mask.alpha == 0x00 ) ) {
+                return ( format_t::fRGB332 );
+            }
 
-/**
- * Free a palette created with SDL_CreatePalette().
- *
- * \param palette the SDL_Palette structure to be freed.
- *
- * \threadsafety It is safe to call this function from any thread, as long as
- *               the palette is not modified or destroyed in another thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreatePalette
- */
-void SDL_DestroyPalette( SDL_Palette* palette );
+            return ( format_t::index8 );
+        }
 
-/**
- * Map an RGB triple to an opaque pixel value for a given pixel format.
- *
- * This function maps the RGB color value to the specified pixel format and
- * returns the pixel value best approximating the given RGB color value for
- * the given pixel format.
- *
- * If the format has a palette (8-bit) the index of the closest matching color
- * in the palette will be returned.
- *
- * If the specified pixel format has an alpha component it will be returned as
- * all 1 bits (fully opaque).
- *
- * If the pixel format bpp (color depth) is less than 32-bpp then the unused
- * upper bits of the return value can safely be ignored (e.g., with a 16-bpp
- * format the return value can be assigned to a Uint16, and similarly a Uint8
- * for an 8-bpp format).
- *
- * \param format a pointer to SDL_PixelFormatDetails describing the pixel
- *               format.
- * \param palette an optional palette for indexed formats, may be NULL.
- * \param r the red component of the pixel in the range 0-255.
- * \param g the green component of the pixel in the range 0-255.
- * \param b the blue component of the pixel in the range 0-255.
- * \returns a pixel value.
- *
- * \threadsafety It is safe to call this function from any thread, as long as
- *               the palette is not modified.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetPixelFormatDetails
- * \sa SDL_GetRGB
- * \sa SDL_MapRGBA
- * \sa SDL_MapSurfaceRGB
- */
-Uint32 SDL_MapRGB( const SDL_PixelFormatDetails* format,
-                   const SDL_Palette* palette,
-                   Uint8 r,
-                   Uint8 g,
-                   Uint8 b );
+        case 12: {
+            if ( _mask.red == 0 ) {
+                return ( format_t::fXRGB4444 );
+            }
 
-/**
- * Map an RGBA quadruple to a pixel value for a given pixel format.
- *
- * This function maps the RGBA color value to the specified pixel format and
- * returns the pixel value best approximating the given RGBA color value for
- * the given pixel format.
- *
- * If the specified pixel format has no alpha component the alpha value will
- * be ignored (as it will be in formats with a palette).
- *
- * If the format has a palette (8-bit) the index of the closest matching color
- * in the palette will be returned.
- *
- * If the pixel format bpp (color depth) is less than 32-bpp then the unused
- * upper bits of the return value can safely be ignored (e.g., with a 16-bpp
- * format the return value can be assigned to a Uint16, and similarly a Uint8
- * for an 8-bpp format).
- *
- * \param format a pointer to SDL_PixelFormatDetails describing the pixel
- *               format.
- * \param palette an optional palette for indexed formats, may be NULL.
- * \param r the red component of the pixel in the range 0-255.
- * \param g the green component of the pixel in the range 0-255.
- * \param b the blue component of the pixel in the range 0-255.
- * \param a the alpha component of the pixel in the range 0-255.
- * \returns a pixel value.
- *
- * \threadsafety It is safe to call this function from any thread, as long as
- *               the palette is not modified.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetPixelFormatDetails
- * \sa SDL_GetRGBA
- * \sa SDL_MapRGB
- * \sa SDL_MapSurfaceRGBA
- */
-Uint32 SDL_MapRGBA( const SDL_PixelFormatDetails* format,
-                    const SDL_Palette* palette,
-                    Uint8 r,
-                    Uint8 g,
-                    Uint8 b,
-                    Uint8 a );
+            if ( ( _mask.red == 0x0F00 ) && ( _mask.green == 0x00F0 ) &&
+                 ( _mask.blue == 0x000F ) && ( _mask.alpha == 0x0000 ) ) {
+                return ( format_t::fXRGB4444 );
+            }
 
-/**
- * Get RGB values from a pixel in the specified format.
- *
- * This function uses the entire 8-bit [0..255] range when converting color
- * components from pixel formats with less than 8-bits per RGB component
- * (e.g., a completely white pixel in 16-bit RGB565 format would return [0xff,
- * 0xff, 0xff] not [0xf8, 0xfc, 0xf8]).
- *
- * \param pixelvalue a pixel value.
- * \param format a pointer to SDL_PixelFormatDetails describing the pixel
- *               format.
- * \param palette an optional palette for indexed formats, may be NULL.
- * \param r a pointer filled in with the red component, may be NULL.
- * \param g a pointer filled in with the green component, may be NULL.
- * \param b a pointer filled in with the blue component, may be NULL.
- *
- * \threadsafety It is safe to call this function from any thread, as long as
- *               the palette is not modified.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetPixelFormatDetails
- * \sa SDL_GetRGBA
- * \sa SDL_MapRGB
- * \sa SDL_MapRGBA
- */
-void SDL_GetRGB( Uint32 pixelvalue,
-                 const SDL_PixelFormatDetails* format,
-                 const SDL_Palette* palette,
-                 Uint8* r,
-                 Uint8* g,
-                 Uint8* b );
+            if ( ( _mask.red == 0x000F ) && ( _mask.green == 0x00F0 ) &&
+                 ( _mask.blue == 0x0F00 ) && ( _mask.alpha == 0x0000 ) ) {
+                return ( format_t::fXBGR4444 );
+            }
 
-/**
- * Get RGBA values from a pixel in the specified format.
- *
- * This function uses the entire 8-bit [0..255] range when converting color
- * components from pixel formats with less than 8-bits per RGB component
- * (e.g., a completely white pixel in 16-bit RGB565 format would return [0xff,
- * 0xff, 0xff] not [0xf8, 0xfc, 0xf8]).
- *
- * If the surface has no alpha component, the alpha will be returned as 0xff
- * (100% opaque).
- *
- * \param pixelvalue a pixel value.
- * \param format a pointer to SDL_PixelFormatDetails describing the pixel
- *               format.
- * \param palette an optional palette for indexed formats, may be NULL.
- * \param r a pointer filled in with the red component, may be NULL.
- * \param g a pointer filled in with the green component, may be NULL.
- * \param b a pointer filled in with the blue component, may be NULL.
- * \param a a pointer filled in with the alpha component, may be NULL.
- *
- * \threadsafety It is safe to call this function from any thread, as long as
- *               the palette is not modified.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetPixelFormatDetails
- * \sa SDL_GetRGB
- * \sa SDL_MapRGB
- * \sa SDL_MapRGBA
- */
-void SDL_GetRGBA( Uint32 pixelvalue,
-                  const SDL_PixelFormatDetails* format,
-                  const SDL_Palette* palette,
-                  Uint8* r,
-                  Uint8* g,
-                  Uint8* b,
-                  Uint8* a );
+            break;
+        }
+
+        case 15: {
+            if ( _mask.red == 0 ) {
+                return ( format_t::fXRGB1555 );
+            }
+
+            // FIX: Maybe reduntant
+            [[fallthrough]];
+        }
+
+        case 16: {
+            if ( _mask.red == 0 ) {
+                return ( format_t::fRGB565 );
+            }
+
+            if ( ( _mask.red == 0x7C00 ) && ( _mask.green == 0x03E0 ) &&
+                 ( _mask.blue == 0x001F ) && ( _mask.alpha == 0x0000 ) ) {
+                return ( format_t::fXRGB1555 );
+            }
+
+            if ( ( _mask.red == 0x001F ) && ( _mask.green == 0x03E0 ) &&
+                 ( _mask.blue == 0x7C00 ) && ( _mask.alpha == 0x0000 ) ) {
+                return ( format_t::fXBGR1555 );
+            }
+
+            if ( ( _mask.red == 0x0F00 ) && ( _mask.green == 0x00F0 ) &&
+                 ( _mask.blue == 0x000F ) && ( _mask.alpha == 0xF000 ) ) {
+                return ( format_t::fARGB4444 );
+            }
+
+            if ( ( _mask.red == 0xF000 ) && ( _mask.green == 0x0F00 ) &&
+                 ( _mask.blue == 0x00F0 ) && ( _mask.alpha == 0x000F ) ) {
+                return ( format_t::fRGBA4444 );
+            }
+
+            if ( ( _mask.red == 0x000F ) && ( _mask.green == 0x00F0 ) &&
+                 ( _mask.blue == 0x0F00 ) && ( _mask.alpha == 0xF000 ) ) {
+                return ( format_t::fABGR4444 );
+            }
+
+            if ( ( _mask.red == 0x00F0 ) && ( _mask.green == 0x0F00 ) &&
+                 ( _mask.blue == 0xF000 ) && ( _mask.alpha == 0x000F ) ) {
+                return ( format_t::fBGRA4444 );
+            }
+
+            if ( ( _mask.red == 0x7C00 ) && ( _mask.green == 0x03E0 ) &&
+                 ( _mask.blue == 0x001F ) && ( _mask.alpha == 0x8000 ) ) {
+                return ( format_t::fARGB1555 );
+            }
+
+            if ( ( _mask.red == 0xF800 ) && ( _mask.green == 0x07C0 ) &&
+                 ( _mask.blue == 0x003E ) && ( _mask.alpha == 0x0001 ) ) {
+                return ( format_t::fRGBA5551 );
+            }
+
+            if ( ( _mask.red == 0x001F ) && ( _mask.green == 0x03E0 ) &&
+                 ( _mask.blue == 0x7C00 ) && ( _mask.alpha == 0x8000 ) ) {
+                return ( format_t::fABGR1555 );
+            }
+
+            if ( ( _mask.red == 0x003E ) && ( _mask.green == 0x07C0 ) &&
+                 ( _mask.blue == 0xF800 ) && ( _mask.alpha == 0x0001 ) ) {
+                return ( format_t::fBGRA5551 );
+            }
+
+            if ( ( _mask.red == 0xF800 ) && ( _mask.green == 0x07E0 ) &&
+                 ( _mask.blue == 0x001F ) && ( _mask.alpha == 0x0000 ) ) {
+                return ( format_t::fRGB565 );
+            }
+
+            if ( ( _mask.red == 0x001F ) && ( _mask.green == 0x07E0 ) &&
+                 ( _mask.blue == 0xF800 ) && ( _mask.alpha == 0x0000 ) ) {
+                return ( format_t::fBGR565 );
+            }
+
+            if ( ( _mask.red == 0x003F ) && ( _mask.green == 0x07C0 ) &&
+                 ( _mask.blue == 0xF800 ) && ( _mask.alpha == 0x0000 ) ) {
+                // Technically this would be BGR556, but Witek says this works
+                // in bug 3158
+                return ( format_t::fRGB565 );
+            }
+
+            break;
+        }
+
+        case 24: {
+            switch ( _mask.red ) {
+                case 0:
+                case 0x00FF0000: {
+#if __BYTE_ORDER == SDL_BIG_ENDIAN
+
+                    return ( format_t::fRGB24 );
+
+#else
+
+                    return ( format_t::fBGR24 );
+
+#endif
+                }
+
+                case 0x000000FF: {
+#if __BYTE_ORDER == SDL_BIG_ENDIAN
+
+                    return ( format_t::fBGR24 );
+
+#else
+
+                    return ( format_t::fRGB24 );
+
+#endif
+                }
+
+                default: {
+                }
+            }
+
+            break;
+        }
+
+        case 30: {
+            if ( ( _mask.red == 0x3FF00000 ) && ( _mask.green == 0x000FFC00 ) &&
+                 ( _mask.blue == 0x000003FF ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fXRGB2101010 );
+            }
+
+            if ( ( _mask.red == 0x000003FF ) && ( _mask.green == 0x000FFC00 ) &&
+                 ( _mask.blue == 0x3FF00000 ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return format_t::fXBGR2101010;
+            }
+
+            break;
+        }
+
+        case 32: {
+            if ( _mask.red == 0 ) {
+                return ( format_t::fXRGB8888 );
+            }
+
+            if ( ( _mask.red == 0x00FF0000 ) && ( _mask.green == 0x0000FF00 ) &&
+                 ( _mask.blue == 0x000000FF ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fXRGB8888 );
+            }
+
+            if ( ( _mask.red == 0xFF000000 ) && ( _mask.green == 0x00FF0000 ) &&
+                 ( _mask.blue == 0x0000FF00 ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fRGBX8888 );
+            }
+
+            if ( ( _mask.red == 0x000000FF ) && ( _mask.green == 0x0000FF00 ) &&
+                 ( _mask.blue == 0x00FF0000 ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fXBGR8888 );
+            }
+
+            if ( ( _mask.red == 0x0000FF00 ) && ( _mask.green == 0x00FF0000 ) &&
+                 ( _mask.blue == 0xFF000000 ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fBGRX8888 );
+            }
+
+            if ( ( _mask.red == 0x00FF0000 ) && ( _mask.green == 0x0000FF00 ) &&
+                 ( _mask.blue == 0x000000FF ) &&
+                 ( _mask.alpha == 0xFF000000 ) ) {
+                return ( format_t::fARGB8888 );
+            }
+
+            if ( ( _mask.red == 0xFF000000 ) && ( _mask.green == 0x00FF0000 ) &&
+                 ( _mask.blue == 0x0000FF00 ) &&
+                 ( _mask.alpha == 0x000000FF ) ) {
+                return ( format_t::fRGBA8888 );
+            }
+
+            if ( ( _mask.red == 0x000000FF ) && ( _mask.green == 0x0000FF00 ) &&
+                 ( _mask.blue == 0x00FF0000 ) &&
+                 ( _mask.alpha == 0xFF000000 ) ) {
+                return ( format_t::fABGR8888 );
+            }
+
+            if ( ( _mask.red == 0x0000FF00 ) && ( _mask.green == 0x00FF0000 ) &&
+                 ( _mask.blue == 0xFF000000 ) &&
+                 ( _mask.alpha == 0x000000FF ) ) {
+                return ( format_t::fBGRA8888 );
+            }
+
+            if ( ( _mask.red == 0x3FF00000 ) && ( _mask.green == 0x000FFC00 ) &&
+                 ( _mask.blue == 0x000003FF ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fXRGB2101010 );
+            }
+
+            if ( ( _mask.red == 0x000003FF ) && ( _mask.green == 0x000FFC00 ) &&
+                 ( _mask.blue == 0x3FF00000 ) &&
+                 ( _mask.alpha == 0x00000000 ) ) {
+                return ( format_t::fXBGR2101010 );
+            }
+
+            if ( ( _mask.red == 0x3FF00000 ) && ( _mask.green == 0x000FFC00 ) &&
+                 ( _mask.blue == 0x000003FF ) &&
+                 ( _mask.alpha == 0xC0000000 ) ) {
+                return ( format_t::fARGB2101010 );
+            }
+
+            if ( ( _mask.red == 0x000003FF ) && ( _mask.green == 0x000FFC00 ) &&
+                 ( _mask.blue == 0x3FF00000 ) &&
+                 ( _mask.alpha == 0xC0000000 ) ) {
+                return ( format_t::fABGR2101010 );
+            }
+
+            break;
+        }
+
+        default: {
+        }
+    }
+
+    return ( format_t::unknown );
+}
+
+// Returned structure may come from a shared global cache (i.e. not newly
+// allocated), and hence should not be modified, especially the palette. Weird
+// errors such as 'Blit combination not supported' may occur.
+[[nodiscard]] auto pixelFormatDetails( format_t _format )
+    -> const pixelFormatDetails_t {
+    return (
+        std::bit_cast< SDL_PixelFormatDetails* >( SDL_GetPixelFormatDetails(
+            static_cast< SDL_PixelFormat >( _format ) ) ) );
+}
 
 } // namespace pixels
 
