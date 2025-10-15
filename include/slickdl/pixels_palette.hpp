@@ -1862,6 +1862,11 @@ using mask_t = struct mask {
             static_cast< SDL_PixelFormat >( _format ) ) ) );
 }
 
+// Legacy
+[[nodiscard]] constexpr auto toLegacy( format_t _format ) -> SDL_PixelFormat {
+    return ( static_cast< SDL_PixelFormat >( _format ) );
+}
+
 } // namespace pixels
 
 } // namespace slickdl

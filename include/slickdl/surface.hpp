@@ -1,8 +1,5 @@
 #pragma once
 
-#include <SDL3/SDL_blendmode.h>
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_surface.h>
 
 #include <gsl/pointers>
@@ -10,6 +7,7 @@
 #include <utility>
 
 #include "clipping_zone.hpp"
+#include "slickdl/blend.hpp"
 #include "slickdl/color.hpp"
 #include "slickdl/pixels_palette.hpp"
 #include "slickdl/point_line_box.hpp"
@@ -78,8 +76,10 @@ using surface_t = struct surface {
     constexpr surface( OtherType&& _other )
         : _data( std::forward< OtherType >( _other ) ) {}
 
-    surface( size_t _width, size_t _height, SDL_PixelFormat _format )
-        : _data( SDL_CreateSurface( _width, _height, _format ) ) {
+    surface( size_t _width, size_t _height, pixels::format_t _format )
+        : _data( SDL_CreateSurface( _width,
+                                    _height,
+                                    pixels::toLegacy( _format ) ) ) {
         stdfunc::assert( _width );
         stdfunc::assert( _height );
 
@@ -98,13 +98,13 @@ using surface_t = struct surface {
     // \param pitch the number of bytes between each row, including padding
     surface( int _width,
              int _height,
-             SDL_PixelFormat _format,
+             pixels::format_t _format,
              std::span< const std::byte > _pixels,
              int _pitch )
         : _data(
               SDL_CreateSurfaceFrom( _width,
                                      _height,
-                                     _format,
+                                     pixels::toLegacy( _format ),
                                      std::bit_cast< void* >( _pixels.data() ),
                                      _pitch ) ) {
         stdfunc::assert( _width );
@@ -423,21 +423,22 @@ using surface_t = struct surface {
     // none.
     //
     // Not thread safe.
-    void blendMode( SDL_BlendMode _blendMode ) {
-        const bool l_result = SDL_SetSurfaceBlendMode( _data, _blendMode );
+    void blendMode( blend_t _blendMode ) {
+        const bool l_result =
+            SDL_SetSurfaceBlendMode( _data, toLegacy( _blendMode ) );
 
         slickdl::assert( l_result );
     }
 
     // Get the blend mode used for blit operations.
-    [[nodiscard]] auto blendMode() const -> SDL_BlendMode {
+    [[nodiscard]] auto blendMode() const -> blend_t {
         SDL_BlendMode l_blendMode = 0;
 
         const bool l_result = SDL_GetSurfaceBlendMode( _data, &l_blendMode );
 
         slickdl::assert( l_result );
 
-        return ( l_blendMode );
+        return ( static_cast< blend_t >( l_blendMode ) );
     }
 
     // Set the clipping rectangle for a surface.
@@ -511,8 +512,8 @@ using surface_t = struct surface {
     // reference to them as well.
     //
     // Not thread safe.
-    [[nodiscard]] auto convert( SDL_PixelFormat _format ) const -> surface {
-        return ( SDL_ConvertSurface( _data, _format ) );
+    [[nodiscard]] auto convert( pixels::format_t _format ) const -> surface {
+        return ( SDL_ConvertSurface( _data, pixels::toLegacy( _format ) ) );
     }
 
     // Copy an existing surface to a new surface of the specified format and
@@ -526,12 +527,13 @@ using surface_t = struct surface {
     // reference to them as well.
     //
     // Not thread safe.
-    [[nodiscard]] auto convert( SDL_PixelFormat _format,
+    [[nodiscard]] auto convert( pixels::format_t _format,
                                 const palette_t& _palette,
                                 SDL_Colorspace _colorspace,
                                 SDL_PropertiesID _props = 0 ) const -> surface {
-        return ( SDL_ConvertSurfaceAndColorspace( _data, _format, _palette,
-                                                  _colorspace, _props ) );
+        return (
+            SDL_ConvertSurfaceAndColorspace( _data, pixels::toLegacy( _format ),
+                                             _palette, _colorspace, _props ) );
     }
 
     // Copy an existing surface to a new surface of the specified format and
@@ -545,11 +547,12 @@ using surface_t = struct surface {
     // reference to them as well.
     //
     // Not thread safe.
-    [[nodiscard]] auto convert( SDL_PixelFormat _format,
+    [[nodiscard]] auto convert( pixels::format_t _format,
                                 SDL_Colorspace _colorspace,
                                 SDL_PropertiesID _props = 0 ) const -> surface {
-        return ( SDL_ConvertSurfaceAndColorspace( _data, _format, nullptr,
-                                                  _colorspace, _props ) );
+        return (
+            SDL_ConvertSurfaceAndColorspace( _data, pixels::toLegacy( _format ),
+                                             nullptr, _colorspace, _props ) );
     }
 
     // Premultiply the alpha in a surface.
