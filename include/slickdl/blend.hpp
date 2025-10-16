@@ -65,6 +65,21 @@ using blendFactor_t = enum class blendFactor : uint8_t {
                                        1-destinationA, 1-destinationA */
 };
 
+// Legacy
+[[nodiscard]] constexpr auto toLegacy( blend_t _blend ) -> SDL_BlendMode {
+    return ( static_cast< SDL_BlendMode >( _blend ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( blendOperation_t _blendOperation )
+    -> SDL_BlendOperation {
+    return ( static_cast< SDL_BlendOperation >( _blendOperation ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( blendFactor_t _blendFactor )
+    -> SDL_BlendFactor {
+    return ( static_cast< SDL_BlendFactor >( _blendFactor ) );
+}
+
 // The functions SDL_SetRenderDrawBlendMode and SDL_SetTextureBlendMode accept
 // the blend_t:: returned by this function if the renderer supports it.
 //
@@ -132,27 +147,9 @@ using blendFactor_t = enum class blendFactor : uint8_t {
     blendFactor_t _destinationAlphaFactor,
     blendOperation_t _alphaOperation ) -> blend_t {
     return ( static_cast< blend_t >( SDL_ComposeCustomBlendMode(
-        static_cast< SDL_BlendFactor >( _sourceColorFactor ),
-        static_cast< SDL_BlendFactor >( _destinationColorFactor ),
-        static_cast< SDL_BlendOperation >( _colorOperation ),
-        static_cast< SDL_BlendFactor >( _sourceAlphaFactor ),
-        static_cast< SDL_BlendFactor >( _destinationAlphaFactor ),
-        static_cast< SDL_BlendOperation >( _alphaOperation ) ) ) );
-}
-
-// Legacy
-[[nodiscard]] constexpr auto toLegacy( blend_t _blend ) -> SDL_BlendMode {
-    return ( static_cast< SDL_BlendMode >( _blend ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( blendOperation_t _blendOperation )
-    -> SDL_BlendOperation {
-    return ( static_cast< SDL_BlendOperation >( _blendOperation ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( blendFactor_t _blendFactor )
-    -> SDL_BlendFactor {
-    return ( static_cast< SDL_BlendFactor >( _blendFactor ) );
+        toLegacy( _sourceColorFactor ), toLegacy( _destinationColorFactor ),
+        toLegacy( _colorOperation ), toLegacy( _sourceAlphaFactor ),
+        toLegacy( _destinationAlphaFactor ), toLegacy( _alphaOperation ) ) ) );
 }
 
 } // namespace slickdl

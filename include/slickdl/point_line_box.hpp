@@ -65,7 +65,7 @@ struct box {
         return ( *this );
     }
 
-    [[nodiscard]] explicit constexpr operator SDL_Rect() const {
+    [[nodiscard]] constexpr operator SDL_Rect() const {
         return ( SDL_Rect{
             x,
             y,

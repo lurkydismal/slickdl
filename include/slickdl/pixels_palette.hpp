@@ -94,11 +94,7 @@ using palette_t = struct palette {
     void colors( std::span< const color_t > _colors,
                  size_t _firstEntryIndex = 0 ) {
         const std::vector< SDL_Color > l_colors =
-            _colors |
-            std::views::transform( []( const color_t& _color ) -> SDL_Color {
-                return ( _color );
-            } ) |
-            std::ranges::to< std::vector >();
+            stdfunc::spanToVector< color_t, SDL_Color >( _colors );
 
         const bool l_result = SDL_SetPaletteColors(
             _data, l_colors.data(), _firstEntryIndex, l_colors.size() );
@@ -124,7 +120,7 @@ using palette_t = struct palette {
     // Uint8 for an 8-bpp format)
     template < std::unsigned_integral U >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
-    auto map( pixelFormatDetails_t _format, color_t _color )
+    [[nodiscard]] auto map( pixelFormatDetails_t _format, color_t _color ) const
         -> pixelValue_t< U > {
         return ( SDL_MapRGBA( _format, _data, _color.red, _color.green,
                               _color.blue, _color.alpha ) );
@@ -141,8 +137,8 @@ using palette_t = struct palette {
     // (100% opaque)
     template < std::unsigned_integral U >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
-    auto color( pixelValue_t< U > _value, pixelFormatDetails_t _format )
-        -> color_t {
+    [[nodiscard]] auto color( pixelValue_t< U > _value,
+                              pixelFormatDetails_t _format ) const -> color_t {
         color_t l_color{};
 
         SDL_GetRGBA( _value, _format, _data, &l_color.red, &l_color.green,
@@ -177,7 +173,7 @@ namespace pixels {
 // Uint8 for an 8-bpp format)
 template < std::unsigned_integral U >
     requires( sizeof( U ) <= sizeof( uint32_t ) )
-auto map( pixelFormatDetails_t _format, color_t _color ) -> U {
+[[nodiscard]] auto map( pixelFormatDetails_t _format, color_t _color ) -> U {
     return ( SDL_MapRGBA( _format, nullptr, _color.red, _color.green,
                           _color.blue, _color.alpha ) );
 }
@@ -193,8 +189,8 @@ auto map( pixelFormatDetails_t _format, color_t _color ) -> U {
 // (100% opaque)
 template < std::unsigned_integral U >
     requires( sizeof( U ) <= sizeof( uint32_t ) )
-auto color( pixelValue_t< U > _value, pixelFormatDetails_t _format )
-    -> color_t {
+[[nodiscard]] auto color( pixelValue_t< U > _value,
+                          pixelFormatDetails_t _format ) -> color_t {
     color_t l_color{};
 
     SDL_GetRGBA( _value, _format, nullptr, &l_color.red, &l_color.green,

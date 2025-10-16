@@ -16,6 +16,30 @@
 
 namespace slickdl {
 
+using scale_t = enum class scale : int8_t {
+    nearest = 0, // Nearest pixel sampling
+    linear,      // Linear filtering
+    pixelArt,    // Nearest pixel sampling with improved scaling
+                 // for pixel art
+};
+
+using flip_t = enum class flip : uint8_t {
+    none,       // Do not flip
+    horizontal, // Flip horizontally
+    vertical,   // Flip vertically
+};
+
+// Legacy
+[[nodiscard]] constexpr auto toLegacy( scale_t _scale ) -> SDL_ScaleMode {
+    return ( static_cast< SDL_ScaleMode >( _scale ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( flip_t _flip ) -> SDL_FlipMode {
+    return ( static_cast< SDL_FlipMode >( _flip ) );
+}
+
+// Surface
+
 // A collection of pixels used in software blitting
 //
 // Pixels are arranged in memory in rows, with the top row first. Each row
@@ -44,19 +68,6 @@ using surface_t = struct surface {
         locked = 0x4U,       // Surface is currently locked
         aligned = 0x8U,      // Surface uses pixel memory allocated with
                              // SDL_aligned_alloc()
-    };
-
-    using scaleMode_t = enum class scaleMode : int8_t {
-        nearest = 0, // Nearest pixel sampling
-        linear,      // Linear filtering
-        pixelArt,    // Nearest pixel sampling with improved scaling
-                     // for pixel art
-    };
-
-    using flipMode_t = enum class flipMode : uint8_t {
-        none,       // Do not flip
-        horizontal, // Flip horizontally
-        vertical,   // Flip vertically
     };
 
     surface() = delete;
@@ -419,26 +430,27 @@ using surface_t = struct surface {
     // Set the blend mode used for blit operations.
     //
     // To copy a surface to another surface (or texture) without blending with
-    // the existing data, the blendmode of the SOURCE surface should be set to
+    // the existing data, the blend_t of the SOURCE surface should be set to
     // none.
     //
     // Not thread safe.
-    void blendMode( blend_t _blendMode ) {
+    void blend( blend_t _blend ) {
         const bool l_result =
-            SDL_SetSurfaceBlendMode( _data, toLegacy( _blendMode ) );
+            SDL_SetSurfaceBlendMode( _data, toLegacy( _blend ) );
 
         slickdl::assert( l_result );
     }
 
     // Get the blend mode used for blit operations.
-    [[nodiscard]] auto blendMode() const -> blend_t {
-        SDL_BlendMode l_blendMode = 0;
+    [[nodiscard]] auto blend() const -> blend_t {
+        blend_t l_blend = blend_t::none;
 
-        const bool l_result = SDL_GetSurfaceBlendMode( _data, &l_blendMode );
+        const bool l_result = SDL_GetSurfaceBlendMode(
+            _data, std::bit_cast< SDL_BlendMode* >( &l_blend ) );
 
         slickdl::assert( l_result );
 
-        return ( static_cast< blend_t >( l_blendMode ) );
+        return ( l_blend );
     }
 
     // Set the clipping rectangle for a surface.
@@ -482,8 +494,8 @@ using surface_t = struct surface {
     // Flip a surface vertically or horizontally.
     //
     // Not thread safe.
-    void flip( SDL_FlipMode _flip ) {
-        const bool l_result = SDL_FlipSurface( _data, _flip );
+    void flip( flip_t _flip ) {
+        const bool l_result = SDL_FlipSurface( _data, toLegacy( _flip ) );
 
         slickdl::assert( l_result );
     }
@@ -492,10 +504,10 @@ using surface_t = struct surface {
     // desired size.
     //
     // Not thread safe.
-    [[nodiscard]] auto scale( int _width,
-                              int _height,
-                              SDL_ScaleMode _scaleMode ) const -> surface {
-        return ( SDL_ScaleSurface( _data, _width, _height, _scaleMode ) );
+    [[nodiscard]] auto scale( int _width, int _height, scale_t _scale ) const
+        -> surface {
+        return (
+            SDL_ScaleSurface( _data, _width, _height, toLegacy( _scale ) ) );
     }
 
     // Copy an existing surface to a new surface of the specified format.
@@ -530,10 +542,11 @@ using surface_t = struct surface {
     [[nodiscard]] auto convert( pixels::format_t _format,
                                 const palette_t& _palette,
                                 SDL_Colorspace _colorspace,
-                                SDL_PropertiesID _props = 0 ) const -> surface {
-        return (
-            SDL_ConvertSurfaceAndColorspace( _data, pixels::toLegacy( _format ),
-                                             _palette, _colorspace, _props ) );
+                                SDL_PropertiesID _properties = 0 ) const
+        -> surface {
+        return ( SDL_ConvertSurfaceAndColorspace(
+            _data, pixels::toLegacy( _format ), _palette, _colorspace,
+            _properties ) );
     }
 
     // Copy an existing surface to a new surface of the specified format and
@@ -549,10 +562,11 @@ using surface_t = struct surface {
     // Not thread safe.
     [[nodiscard]] auto convert( pixels::format_t _format,
                                 SDL_Colorspace _colorspace,
-                                SDL_PropertiesID _props = 0 ) const -> surface {
-        return (
-            SDL_ConvertSurfaceAndColorspace( _data, pixels::toLegacy( _format ),
-                                             nullptr, _colorspace, _props ) );
+                                SDL_PropertiesID _properties = 0 ) const
+        -> surface {
+        return ( SDL_ConvertSurfaceAndColorspace(
+            _data, pixels::toLegacy( _format ), nullptr, _colorspace,
+            _properties ) );
     }
 
     // Premultiply the alpha in a surface.
@@ -649,12 +663,7 @@ using surface_t = struct surface {
     void fill( std::span< const clippingZone_t< int > > _zones,
                uint32_t _color ) {
         const std::vector< SDL_Rect > l_zones =
-            _zones |
-            std::views::transform(
-                []( const clippingZone_t< int >& _zone ) -> SDL_Rect {
-                    return ( _zone );
-                } ) |
-            std::ranges::to< std::vector >();
+            stdfunc::spanToVector< clippingZone_t< int >, SDL_Rect >( _zones );
 
         const bool l_result = SDL_FillSurfaceRects( _data, l_zones.data(),
                                                     l_zones.size(), _color );
@@ -723,11 +732,11 @@ using surface_t = struct surface {
     // Only one thread should be using the source and destination surfaces at
     // any given time.
     // TODO: Implement NULL zones for whole blit
-    void blit(
-        surface& _destination,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void blit( surface& _destination,
+               [[maybe_unused]] std::optional< clippingZone_t< int > >
+                   _sourceZone = std::nullopt,
+               [[maybe_unused]] std::optional< clippingZone_t< int > >
+                   _destinationZone = std::nullopt ) {
         const bool l_result =
             SDL_BlitSurface( _data, nullptr, _destination, nullptr );
 
@@ -739,14 +748,14 @@ using surface_t = struct surface {
     //
     // Only one thread should be using the source and destination surfaces at
     // any given time.
-    void blit(
-        surface& _destination,
-        SDL_ScaleMode _scaleMode,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void blit( surface& _destination,
+               scale_t _scale,
+               [[maybe_unused]] std::optional< clippingZone_t< int > >
+                   _sourceZone = std::nullopt,
+               [[maybe_unused]] std::optional< clippingZone_t< int > >
+                   _destinationZone = std::nullopt ) {
         const bool l_result = SDL_BlitSurfaceScaled(
-            _data, nullptr, _destination, nullptr, _scaleMode );
+            _data, nullptr, _destination, nullptr, toLegacy( _scale ) );
 
         slickdl::assert( l_result );
     }
@@ -755,14 +764,14 @@ using surface_t = struct surface {
     //
     // Only one thread should be using the source and destination surfaces at
     // any given time.
-    void stretch(
-        surface& _destination,
-        SDL_ScaleMode _scaleMode,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void stretch( surface& _destination,
+                  scale_t _scale,
+                  [[maybe_unused]] std::optional< clippingZone_t< int > >
+                      _sourceZone = std::nullopt,
+                  [[maybe_unused]] std::optional< clippingZone_t< int > >
+                      _destinationZone = std::nullopt ) {
         const bool l_result = SDL_StretchSurface( _data, nullptr, _destination,
-                                                  nullptr, _scaleMode );
+                                                  nullptr, toLegacy( _scale ) );
 
         slickdl::assert( l_result );
     }
@@ -775,11 +784,11 @@ using surface_t = struct surface {
     //
     // Only one thread should be using the source and destination surfaces at
     // any given time.
-    void blitTiled(
-        surface& _destination,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void blitTiled( surface& _destination,
+                    [[maybe_unused]] std::optional< clippingZone_t< int > >
+                        _sourceZone = std::nullopt,
+                    [[maybe_unused]] std::optional< clippingZone_t< int > >
+                        _destinationZone = std::nullopt ) {
         const bool l_result =
             SDL_BlitSurfaceTiled( _data, nullptr, _destination, nullptr );
 
@@ -794,15 +803,16 @@ using surface_t = struct surface {
     //
     // Only one thread should be using the source and destination surfaces at
     // any given time.
-    void blitTiled(
-        surface& _destination,
-        float16_t _scale,
-        SDL_ScaleMode _scaleMode,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void blitTiled( surface& _destination,
+                    scale_t _scale,
+                    float16_t _scaleAmount,
+                    [[maybe_unused]] std::optional< clippingZone_t< int > >
+                        _sourceZone = std::nullopt,
+                    [[maybe_unused]] std::optional< clippingZone_t< int > >
+                        _destinationZone = std::nullopt ) {
         const bool l_result = SDL_BlitSurfaceTiledWithScale(
-            _data, nullptr, _scale, _scaleMode, _destination, nullptr );
+            _data, nullptr, _scaleAmount, toLegacy( _scale ), _destination,
+            nullptr );
 
         slickdl::assert( l_result );
     }
@@ -829,17 +839,17 @@ using surface_t = struct surface {
     // Only one thread should be using the source and destination surfaces at
     // any given time.
     // TODO: Maybe not zone
-    void blit9Grid(
-        surface& _destination,
-        clippingZone_t< int > _zone,
-        float16_t _scale,
-        SDL_ScaleMode _scaleMode,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void blit9Grid( surface& _destination,
+                    clippingZone_t< int > _zone,
+                    scale_t _scale,
+                    float16_t _scaleAmount,
+                    [[maybe_unused]] std::optional< clippingZone_t< int > >
+                        _sourceZone = std::nullopt,
+                    [[maybe_unused]] std::optional< clippingZone_t< int > >
+                        _destinationZone = std::nullopt ) {
         const bool l_result = SDL_BlitSurface9Grid(
             _data, nullptr, _zone.minX, _zone.maxX, _zone.minY, _zone.maxY,
-            _scale, _scaleMode, _destination, nullptr );
+            _scaleAmount, toLegacy( _scale ), _destination, nullptr );
 
         slickdl::assert( l_result );
     }
@@ -862,7 +872,7 @@ using surface_t = struct surface {
     // Uint8 for an 8-bpp format).
     template < std::unsigned_integral U >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
-    auto map( color_t _color ) -> U {
+    [[nodiscard]] auto map( color_t _color ) const -> U {
         return ( SDL_MapSurfaceRGBA( _data, _color.red, _color.green,
                                      _color.blue, _color.alpha ) );
     }
@@ -876,7 +886,7 @@ using surface_t = struct surface {
     // components from pixel formats with less than 8 bits per RGB component.
     //
     // Not thread safe.
-    auto read( slickdl::point_t< int > _point ) -> color_t {
+    [[nodiscard]] auto read( slickdl::point_t< int > _point ) const -> color_t {
         color_t l_color{};
 
         const bool l_result = SDL_ReadSurfacePixel(
@@ -965,11 +975,11 @@ private:
     //
     // Only one thread should be using the source and destination surfaces at
     // any given time.
-    void _blit(
-        surface& _destination,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void _blit( surface& _destination,
+                [[maybe_unused]] std::optional< clippingZone_t< int > >
+                    _sourceZone = std::nullopt,
+                [[maybe_unused]] std::optional< clippingZone_t< int > >
+                    _destinationZone = std::nullopt ) {
         const bool l_result =
             SDL_BlitSurface( _data, nullptr, _destination, nullptr );
 
@@ -983,14 +993,14 @@ private:
     //
     // Only one thread should be using the source and destination surfaces at
     // any given time.
-    void _blit(
-        surface& _destination,
-        SDL_ScaleMode _scaleMode,
-        std::optional< clippingZone_t< int > > _sourceZone = std::nullopt,
-        std::optional< clippingZone_t< int > > _destinationZone =
-            std::nullopt ) {
+    void _blit( surface& _destination,
+                scale_t _scale,
+                [[maybe_unused]] std::optional< clippingZone_t< int > >
+                    _sourceZone = std::nullopt,
+                [[maybe_unused]] std::optional< clippingZone_t< int > >
+                    _destinationZone = std::nullopt ) {
         const bool l_result = SDL_BlitSurfaceUncheckedScaled(
-            _data, nullptr, _destination, nullptr, _scaleMode );
+            _data, nullptr, _destination, nullptr, toLegacy( _scale ) );
 
         slickdl::assert( l_result );
     }
