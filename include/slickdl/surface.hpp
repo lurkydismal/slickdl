@@ -10,8 +10,8 @@
 #include <utility>
 
 #include "clipping_zone.hpp"
-#include "slickdl.hpp"
 #include "slickdl/color.hpp"
+#include "slickdl/pixels_palette.hpp"
 #include "slickdl/point_line_box.hpp"
 #include "stddebug.hpp"
 #include "stdfloat16.hpp"
@@ -191,7 +191,7 @@ using surface_t = struct surface {
     // A single palette can be shared with many surfaces
     //
     // Not thread safe
-    void palette( palette_t _palette ) {
+    void palette( const palette_t& _palette ) {
         const bool l_result = SDL_SetSurfacePalette( _data, _palette );
 
         slickdl::assert( l_result );
@@ -527,7 +527,7 @@ using surface_t = struct surface {
     //
     // Not thread safe.
     [[nodiscard]] auto convert( SDL_PixelFormat _format,
-                                palette_t _palette,
+                                const palette_t& _palette,
                                 SDL_Colorspace _colorspace,
                                 SDL_PropertiesID _props = 0 ) const -> surface {
         return ( SDL_ConvertSurfaceAndColorspace( _data, _format, _palette,
@@ -859,7 +859,7 @@ using surface_t = struct surface {
     // Uint8 for an 8-bpp format).
     template < std::unsigned_integral U >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
-    auto mapRGB( color_t _color ) -> U {
+    auto map( color_t _color ) -> U {
         return ( SDL_MapSurfaceRGBA( _data, _color.red, _color.green,
                                      _color.blue, _color.alpha ) );
     }

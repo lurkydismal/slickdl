@@ -41,10 +41,20 @@ using color_t = struct color {
         std::array< uint8_t, 4 > l_bytes{};
 
         if constexpr ( std::endian::native == std::endian::little ) {
-            l_bytes = { alpha, blue, green, red };
+            l_bytes = {
+                alpha,
+                blue,
+                green,
+                red,
+            };
 
         } else {
-            l_bytes = { red, green, blue, alpha };
+            l_bytes = {
+                red,
+                green,
+                blue,
+                alpha,
+            };
         }
 
         return ( std::bit_cast< uint32_t >( l_bytes ) );

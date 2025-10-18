@@ -19,7 +19,6 @@ concept is_byte_or_float =
 
 using renderer_t = gsl::not_null< SDL_Renderer* >;
 using texture_t = gsl::not_null< SDL_Texture* >;
-using palette_t = gsl::not_null< SDL_Palette* >;
 
 // Helpers
 template < typename T >
