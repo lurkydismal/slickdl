@@ -729,6 +729,1013 @@ using packedLayoutUnderlying_t = std::underlying_type_t< packedLayout_t >;
     } ) );
 }
 
+using color_t = enum class color : uint8_t {
+    unknown = 0,
+    cRGB = 1,
+    cYCBCR = 2,
+};
+
+using colorUnderlying_t = std::underlying_type_t< color_t >;
+
+using colorRange_t = enum class colorRange : uint8_t {
+    unknown = 0,
+    limited = 1, /**< Narrow range, e.g. 16-235 for 8-bit RGB
+                                    and luma, and 16-240 for 8-bit chroma */
+    full = 2,    /**< Full range, e.g. 0-255 for 8-bit RGB and luma,
+                                   and 1-255 for 8-bit chroma */
+};
+
+using colorRangeUnderlying_t = std::underlying_type_t< colorRange_t >;
+
+using colorPrimaries_t = enum class colorPrimaries : uint8_t {
+    unknown = 0,
+    cpBT709 = 1, /**< ITU-R BT.709-6 */
+    unspecified = 2,
+    cpBT470M = 4,    /**< ITU-R BT.470-6 System M */
+    cpBT470BG = 5,   /**< ITU-R BT.470-6 System B, G / ITU-R BT.601-7 625 */
+    cpBT601 = 6,     /**< ITU-R BT.601-7 525, SMPTE 170M */
+    cpSMPTE240 = 7,  /**< SMPTE 240M, functionally the same as
+                                          BT601 */
+    genericFilm = 8, /**< Generic film (color filters using Illuminant C) */
+    cpBT2020 = 9,    /**< ITU-R BT.2020-2 / ITU-R BT.2100-0 */
+    cpXYZ = 10,      /**< SMPTE ST 428-1 */
+    cpSMPTE431 = 11, /**< SMPTE RP 431-2 */
+    cpSMPTE432 = 12, /**< SMPTE EG 432-1 / DCI P3 */
+    cpEBU3213 = 22,  /**< EBU Tech. 3213-E */
+    custom = 31,
+};
+
+using colorPrimariesUnderlying_t = std::underlying_type_t< colorPrimaries_t >;
+
+using transferCharacteristics_t = enum class transferCharacteristics : uint8_t {
+    unknown = 0,
+    tcBT709 = 1, /**< Rec. ITU-R BT.709-6 / ITU-R BT1361 */
+    unspecified = 2,
+    gamma22 = 4, /**< ITU-R BT.470-6 System M / ITU-R BT1700 625 PAL & SECAM */
+    gamma28 = 5, /**< ITU-R BT.470-6 System B, G */
+    tcBT601 = 6, /**< SMPTE ST 170M / ITU-R BT.601-7 525 or 625 */
+    tcSMPTE240 = 7, /**< SMPTE ST 240M */
+    linear = 8,
+    log100 = 9,
+    log100Sqrt10 = 10,
+    tcIEC61966 = 11,    /**< IEC 61966-2-4 */
+    tcBT1361 = 12,      /**< ITU-R BT1361 Extended Colour Gamut */
+    tcSRGB = 13,        /**< IEC 61966-2-1 (sRGB or sYCC) */
+    tcBT2020Bit10 = 14, /**< ITU-R BT2020 for 10-bit system */
+    tcBT2020Bit12 = 15, /**< ITU-R BT2020 for 12-bit system */
+    tcPQ = 16,       /**< SMPTE ST 2084 for 10-, 12-, 14- and 16-bit systems */
+    tcSMPTE428 = 17, /**< SMPTE ST 428-1 */
+    tcHLG = 18,      /**< ARIB STD-B67, known as "hybrid log-gamma" (HLG) */
+    custom = 31,
+};
+
+using transferCharacteristicsUnderlying_t =
+    std::underlying_type_t< transferCharacteristics_t >;
+
+using matrixCoefficients_t = enum class matrixCoefficients : uint8_t {
+    identity = 0,
+    mcBT709 = 1, /**< ITU-R BT.709-6 */
+    unspecified = 2,
+    mcFCC = 4,      /**< US FCC Title 47 */
+    mcBT470BG = 5,  /**< ITU-R BT.470-6 System B, G / ITU-R BT.601-7 625,
+                       functionally  the same as BT601 */
+    mcBT601 = 6,    /**< ITU-R BT.601-7 525 */
+    mcSMPTE240 = 7, /**< SMPTE 240M */
+    mcYCGCO = 8,
+    mcBT2020NCL = 9,  /**< ITU-R BT.2020-2 non-constant luminance */
+    mcBT2020CL = 10,  /**< ITU-R BT.2020-2 constant luminance */
+    mcSMPTE2085 = 11, /**< SMPTE ST 2085 */
+    chromaDerivedNCL = 12,
+    chromaDerivedCL = 13,
+    mcICTCP = 14, /**< ITU-R BT.2100-0 ICTCP */
+    custom = 31,
+};
+
+using matrixCoefficientsUnderlying_t =
+    std::underlying_type_t< matrixCoefficients_t >;
+
+using chromaLocation_t = enum class chromaLocation : uint8_t {
+    none = 0,   /**< RGB, no chroma sampling */
+    left = 1,   /**< In MPEG-2, MPEG-4, and AVC, Cb and Cr are taken on midpoint
+                   of the left-edge of the 2x2 square. In other words, they have
+                   the same horizontal location as the top-left pixel, but is
+                   shifted one-half pixel down vertically. */
+    center = 2, /**< In JPEG/JFIF, H.261, and MPEG-1, Cb and Cr are taken at the
+                   center of the 2x2 square. In other words, they are offset
+                   one-half pixel to the right and one-half pixel down compared
+                   to the top-left pixel. */
+    topLeft = 3, /**< In HEVC for BT.2020 and BT.2100 content (in particular on
+                    Blu-rays), Cb and Cr are sampled at the same location as the
+                    group's top-left Y pixel ("co-sited", "co-located"). */
+};
+
+using chromaLocationUnderlying_t = std::underlying_type_t< chromaLocation_t >;
+
+// Since similar colorspaces may vary in their details (matrix, transfer
+// function, etc.), this is not an exhaustive list, but rather a
+// representative sample of the kinds of colorspaces supported in SDL.
+using colorspace_t = enum class colorspace : uint32_t {
+    unknown = 0,
+
+    /* sRGB is a gamma corrected colorspace, and the default colorspace for SDL
+       rendering and 8-bit RGB surfaces */
+    csSRGB = 0x120005a0u, /**< Equivalent to
+                             DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709 */
+    /* colorspace(color_t::cRGB,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT709,
+                             transferCharacteristics_t::tcSRGB,
+                             matrixCoefficients_t::mcIDENTITY,
+                             chromaLocation_t::none), */
+
+    /* This is a linear colorspace and the default colorspace for floating point
+       surfaces. On Windows this is the scRGB colorspace, and on Apple platforms
+       this is kCGColorSpaceExtendedLinearSRGB for EDR content */
+    csSRGBLinear = 0x12000500u, /**< Equivalent to
+                                   DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709  */
+    /* colorspace(color_t::cRGB,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT709,
+                             transferCharacteristics_t::tcLINEAR,
+                             matrixCoefficients_t::mcIDENTITY,
+                             chromaLocation_t::none), */
+
+    /* HDR10 is a non-linear HDR colorspace and the default colorspace for
+       10-bit surfaces */
+    csHDR10 = 0x12002600u, /**< Equivalent to
+                              DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020  */
+    /* colorspace(color_t::cRGB,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT2020,
+                             transferCharacteristics_t::tcPQ,
+                             matrixCoefficients_t::mcIDENTITY,
+                             chromaLocation_t::none), */
+
+    csJPEG = 0x220004c6u, /**< Equivalent to
+                             DXGI_COLOR_SPACE_YCBCR_FULL_G22_NONE_P709_X601 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT709,
+                             transferCharacteristics_t::tcBT601,
+                             matrixCoefficients_t::mcBT601,
+                             chromaLocation_t::none), */
+
+    csBT601Limited =
+        0x211018c6u, /**< Equivalent to
+                        DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::LIMITED,
+                             colorPrimaries_t::cpBT601,
+                             transferCharacteristics_t::tcBT601,
+                             matrixCoefficients_t::mcBT601,
+                             chromaLocation_t::left), */
+
+    csBT601Full = 0x221018c6u, /**< Equivalent to
+                                  DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P601 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT601,
+                             transferCharacteristics_t::tcBT601,
+                             matrixCoefficients_t::mcBT601,
+                             chromaLocation_t::left), */
+
+    csBT709Limited =
+        0x21100421u, /**< Equivalent to
+                        DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::LIMITED,
+                             colorPrimaries_t::cpBT709,
+                             transferCharacteristics_t::tcBT709,
+                             matrixCoefficients_t::mcBT709,
+                             chromaLocation_t::left), */
+
+    csBT709Full = 0x22100421u, /**< Equivalent to
+                                  DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P709 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT709,
+                             transferCharacteristics_t::tcBT709,
+                             matrixCoefficients_t::mcBT709,
+                             chromaLocation_t::left), */
+
+    csBT2020Limited =
+        0x21102609u, /**< Equivalent to
+                        DXGI_COLOR_SPACE_YCBCR_STUDIO_G22_LEFT_P2020 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::LIMITED,
+                             colorPrimaries_t::cpBT2020,
+                             transferCharacteristics_t::tcPQ,
+                             matrixCoefficients_t::mcBT2020_NCL,
+                             chromaLocation_t::left), */
+
+    csBT2020Full = 0x22102609u, /**< Equivalent to
+                                   DXGI_COLOR_SPACE_YCBCR_FULL_G22_LEFT_P2020 */
+    /* colorspace(color_t::cYCBCR,
+                             colorRange_t::full,
+                             colorPrimaries_t::cpBT2020,
+                             transferCharacteristics_t::tcPQ,
+                             matrixCoefficients_t::mcBT2020_NCL,
+                             chromaLocation_t::left), */
+
+    csRGBDefault = csSRGB, /**< The default colorspace for RGB surfaces if no
+                              colorspace is specified */
+    csYUVDefault = csJPEG, /**< The default colorspace for YUV surfaces if no
+                             colorspace is specified */
+};
+
+using colorspaceUnderlying_t = std::underlying_type_t< colorspace_t >;
+
+// For example, defining colorspace_t::csSRGB looks like this:
+// colorspace(color_t::cRGB, colorRange_t::full, colorPrimaries_t::cpBT709,
+// transferCharacteristics_t::tcSRGB, matrixCoefficients_t::mcIDENTITY,
+// chromaLocation_t::none)
+[[nodiscard]] constexpr auto colorspace( color_t _type,
+                                         colorRange_t _range,
+                                         colorPrimaries_t _primaries,
+                                         transferCharacteristics_t _transfer,
+                                         matrixCoefficients_t _matrix,
+                                         chromaLocation_t _chroma )
+    -> colorspace_t {
+    // TODO: Improve
+    return ( static_cast< colorspace_t >(
+        ( static_cast< uint32_t >( _type ) << 28 ) |
+        ( static_cast< uint32_t >( _range ) << 24 ) |
+        ( static_cast< uint32_t >( _chroma ) << 20 ) |
+        ( static_cast< uint32_t >( _primaries ) << 10 ) |
+        ( static_cast< uint32_t >( _transfer ) << 5 ) |
+        ( static_cast< uint32_t >( _matrix ) << 0 ) ) );
+}
+
+[[nodiscard]] constexpr auto type( colorspace_t _colorspace ) -> color_t {
+    return ( static_cast< color_t >(
+        ( static_cast< colorspaceUnderlying_t >( _colorspace ) >> 28 ) &
+        0x0F ) );
+}
+
+[[nodiscard]] constexpr auto range( colorspace_t _colorspace ) -> colorRange_t {
+    return ( static_cast< colorRange_t >(
+        ( static_cast< colorspaceUnderlying_t >( _colorspace ) >> 24 ) &
+        0x0F ) );
+}
+
+[[nodiscard]] constexpr auto chroma( colorspace_t _colorspace )
+    -> chromaLocation_t {
+    return ( static_cast< chromaLocation_t >(
+        ( static_cast< colorspaceUnderlying_t >( _colorspace ) >> 20 ) &
+        0x0F ) );
+}
+
+[[nodiscard]] constexpr auto primaries( colorspace_t _colorspace )
+    -> colorPrimaries_t {
+    return ( static_cast< colorPrimaries_t >(
+        ( static_cast< colorspaceUnderlying_t >( _colorspace ) >> 10 ) &
+        0x1F ) );
+}
+
+[[nodiscard]] constexpr auto transfer( colorspace_t _colorspace )
+    -> transferCharacteristics_t {
+    return ( static_cast< transferCharacteristics_t >(
+        ( static_cast< colorspaceUnderlying_t >( _colorspace ) >> 5 ) &
+        0x1F ) );
+}
+
+[[nodiscard]] constexpr auto matrix( colorspace_t _colorspace )
+    -> matrixCoefficients_t {
+    return ( static_cast< matrixCoefficients_t >(
+        static_cast< colorspaceUnderlying_t >( _colorspace ) & 0x1F ) );
+}
+
+// Returns true if BT601 or BT470BG, false otherwise.
+[[nodiscard]] constexpr auto isMatrixBT601( colorspace_t _colorspace ) -> bool {
+    matrixCoefficients_t l_matrix = matrix( _colorspace );
+
+    return ( l_matrix == matrixCoefficients_t::mcBT601 ||
+             l_matrix == matrixCoefficients_t::mcBT470BG );
+}
+
+// Returns true if BT709, false otherwise.
+[[nodiscard]] constexpr auto isMatrixBT709( colorspace_t _colorspace ) -> bool {
+    return ( matrix( _colorspace ) == matrixCoefficients_t::mcBT709 );
+}
+
+// Returns true if BT2020_NCL, false otherwise.
+[[nodiscard]] constexpr auto isMatrixBT2020NCL( colorspace_t _colorspace )
+    -> bool {
+    return ( matrix( _colorspace ) == matrixCoefficients_t::mcBT2020NCL );
+}
+
+// Returns true if limited range, false otherwise.
+[[nodiscard]] constexpr auto isLimitedRange( colorspace_t _colorspace )
+    -> bool {
+    return ( range( _colorspace ) != colorRange_t::full );
+}
+
+// Returns true if full range, false otherwise.
+[[nodiscard]] constexpr auto isFullRange( colorspace_t _colorspace ) -> bool {
+    return ( range( _colorspace ) == colorRange_t::full );
+}
+
+// Get the human readable name of a pixel format.
+[[nodiscard]] constexpr auto getName( format_t _format ) -> std::string_view {
+    std::string_view l_returnValue;
+
+    switch ( _format ) {
+        case ( format_t::index1LSB ): {
+            l_returnValue = ( "index1LSB" );
+        }
+
+        case ( format_t::index1MSB ): {
+            l_returnValue = ( "index1MSB" );
+        }
+
+        case ( format_t::index2LSB ): {
+            l_returnValue = ( "index2LSB" );
+        }
+
+        case ( format_t::index2MSB ): {
+            l_returnValue = ( "index2MSB" );
+        }
+
+        case ( format_t::index4LSB ): {
+            l_returnValue = ( "index4LSB" );
+        }
+
+        case ( format_t::index4MSB ): {
+            l_returnValue = ( "index4MSB" );
+        }
+
+        case ( format_t::index8 ): {
+            l_returnValue = ( "index8" );
+        }
+
+        case ( format_t::fRGB332 ): {
+            l_returnValue = ( "fRGB332" );
+        }
+
+        case ( format_t::fXRGB4444 ): {
+            l_returnValue = ( "fXRGB4444" );
+        }
+
+        case ( format_t::fXBGR4444 ): {
+            l_returnValue = ( "fXBGR4444" );
+        }
+
+        case ( format_t::fXRGB1555 ): {
+            l_returnValue = ( "fXRGB1555" );
+        }
+
+        case ( format_t::fXBGR1555 ): {
+            l_returnValue = ( "fXBGR1555" );
+        }
+
+        case ( format_t::fARGB4444 ): {
+            l_returnValue = ( "fARGB4444" );
+        }
+
+        case ( format_t::fRGBA4444 ): {
+            l_returnValue = ( "fRGBA4444" );
+        }
+
+        case ( format_t::fABGR4444 ): {
+            l_returnValue = ( "fABGR4444" );
+        }
+
+        case ( format_t::fBGRA4444 ): {
+            l_returnValue = ( "fBGRA4444" );
+        }
+
+        case ( format_t::fARGB1555 ): {
+            l_returnValue = ( "fARGB1555" );
+        }
+
+        case ( format_t::fRGBA5551 ): {
+            l_returnValue = ( "fRGBA5551" );
+        }
+
+        case ( format_t::fABGR1555 ): {
+            l_returnValue = ( "fABGR1555" );
+        }
+
+        case ( format_t::fBGRA5551 ): {
+            l_returnValue = ( "fBGRA5551" );
+        }
+
+        case ( format_t::fRGB565 ): {
+            l_returnValue = ( "fRGB565" );
+        }
+
+        case ( format_t::fBGR565 ): {
+            l_returnValue = ( "fBGR565" );
+        }
+
+        case ( format_t::fRGB24 ): {
+            l_returnValue = ( "fRGB24" );
+        }
+
+        case ( format_t::fBGR24 ): {
+            l_returnValue = ( "fBGR24" );
+        }
+
+        case ( format_t::fXRGB8888 ): {
+            l_returnValue = ( "fXRGB8888" );
+        }
+
+        case ( format_t::fRGBX8888 ): {
+            l_returnValue = ( "fRGBX8888" );
+        }
+
+        case ( format_t::fXBGR8888 ): {
+            l_returnValue = ( "fXBGR8888" );
+        }
+
+        case ( format_t::fBGRX8888 ): {
+            l_returnValue = ( "fBGRX8888" );
+        }
+
+        case ( format_t::fARGB8888 ): {
+            l_returnValue = ( "fARGB8888" );
+        }
+
+        case ( format_t::fRGBA8888 ): {
+            l_returnValue = ( "fRGBA8888" );
+        }
+
+        case ( format_t::fABGR8888 ): {
+            l_returnValue = ( "fABGR8888" );
+        }
+
+        case ( format_t::fBGRA8888 ): {
+            l_returnValue = ( "fBGRA8888" );
+        }
+
+        case ( format_t::fXRGB2101010 ): {
+            l_returnValue = ( "fXRGB2101010" );
+        }
+
+        case ( format_t::fXBGR2101010 ): {
+            l_returnValue = ( "fXBGR2101010" );
+        }
+
+        case ( format_t::fARGB2101010 ): {
+            l_returnValue = ( "fARGB2101010" );
+        }
+
+        case ( format_t::fABGR2101010 ): {
+            l_returnValue = ( "fABGR2101010" );
+        }
+
+        case ( format_t::fRGB48 ): {
+            l_returnValue = ( "fRGB48" );
+        }
+
+        case ( format_t::fBGR48 ): {
+            l_returnValue = ( "fBGR48" );
+        }
+
+        case ( format_t::fRGBA64 ): {
+            l_returnValue = ( "fRGBA64" );
+        }
+
+        case ( format_t::fARGB64 ): {
+            l_returnValue = ( "fARGB64" );
+        }
+
+        case ( format_t::fBGRA64 ): {
+            l_returnValue = ( "fBGRA64" );
+        }
+
+        case ( format_t::fABGR64 ): {
+            l_returnValue = ( "fABGR64" );
+        }
+
+        case ( format_t::fRGB48Float ): {
+            l_returnValue = ( "fRGB48Float" );
+        }
+
+        case ( format_t::fBGR48Float ): {
+            l_returnValue = ( "fBGR48Float" );
+        }
+
+        case ( format_t::fRGBA64Float ): {
+            l_returnValue = ( "fRGBA64Float" );
+        }
+
+        case ( format_t::fARGB64Float ): {
+            l_returnValue = ( "fARGB64Float" );
+        }
+
+        case ( format_t::fBGRA64Float ): {
+            l_returnValue = ( "fBGRA64Float" );
+        }
+
+        case ( format_t::fABGR64Float ): {
+            l_returnValue = ( "fABGR64Float" );
+        }
+
+        case ( format_t::fRGB96Float ): {
+            l_returnValue = ( "fRGB96Float" );
+        }
+
+        case ( format_t::fBGR96Float ): {
+            l_returnValue = ( "fBGR96Float" );
+        }
+
+        case ( format_t::fRGBA128Float ): {
+            l_returnValue = ( "fRGBA128Float" );
+        }
+
+        case ( format_t::fARGB128Float ): {
+            l_returnValue = ( "fARGB128Float" );
+        }
+
+        case ( format_t::fBGRA128Float ): {
+            l_returnValue = ( "fBGRA128Float" );
+        }
+
+        case ( format_t::fABGR128Float ): {
+            l_returnValue = ( "fABGR128Float" );
+        }
+
+        case ( format_t::fYV12 ): {
+            l_returnValue = ( "fYV12" );
+        }
+
+        case ( format_t::fIYUV ): {
+            l_returnValue = ( "fIYUV" );
+        }
+
+        case ( format_t::fYUY2 ): {
+            l_returnValue = ( "fYUY2" );
+        }
+
+        case ( format_t::fUYVY ): {
+            l_returnValue = ( "fUYVY" );
+        }
+
+        case ( format_t::fYVYU ): {
+            l_returnValue = ( "fYVYU" );
+        }
+
+        case ( format_t::fNV12 ): {
+            l_returnValue = ( "fNV12" );
+        }
+
+        case ( format_t::fNV21 ): {
+            l_returnValue = ( "fNV21" );
+        }
+
+        case ( format_t::fP010 ): {
+            l_returnValue = ( "fP010" );
+        }
+
+        case ( format_t::externalOES ): {
+            l_returnValue = ( "externalOES" );
+        }
+
+        case ( format_t::fMJPG ): {
+            l_returnValue = ( "fMJPG" );
+        }
+
+        default: {
+            l_returnValue = ( "unknown" );
+        }
+    }
+
+    return ( l_returnValue );
+}
+
+/**
+ * Convert one of the enumerated pixel formats to a BPP value and RGBA masks.
+ *
+ * \param bpp a bits per pixel value; usually 15, 16, or 32.
+ */
+auto getMasks( format_t _format, int* _BPP ) -> ::slickdl::color_t {
+    Uint32 masks[ 4 ];
+
+#ifdef SDL_HAVE_YUV
+    // Partial support for SDL_Surface with FOURCC
+    if ( SDL_ISPIXELFORMAT_FOURCC( format ) ) {
+        // Not a format that uses masks
+        *Rmask = *Gmask = *Bmask = *Amask = 0;
+        // however, some of these are packed formats, and can legit declare
+        // bits-per-pixel!
+        switch ( format ) {
+            case SDL_PIXELFORMAT_YUY2:
+            case SDL_PIXELFORMAT_UYVY:
+            case SDL_PIXELFORMAT_YVYU:
+                *bpp = 32;
+                break;
+            default:
+                *bpp = 0; // oh well.
+        }
+        return true;
+    }
+#else
+    if ( SDL_ISPIXELFORMAT_FOURCC( format ) ) {
+        return SDL_SetError( "SDL not built with YUV support" );
+    }
+#endif
+
+    // Initialize the values here
+    if ( SDL_BYTESPERPIXEL( format ) <= 2 ) {
+        *bpp = SDL_BITSPERPIXEL( format );
+    } else {
+        *bpp = SDL_BYTESPERPIXEL( format ) * 8;
+    }
+    *Rmask = *Gmask = *Bmask = *Amask = 0;
+
+    if ( format == SDL_PIXELFORMAT_RGB24 ) {
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+        *Rmask = 0x00FF0000;
+        *Gmask = 0x0000FF00;
+        *Bmask = 0x000000FF;
+#else
+        *Rmask = 0x000000FF;
+        *Gmask = 0x0000FF00;
+        *Bmask = 0x00FF0000;
+#endif
+        return true;
+    }
+
+    if ( format == SDL_PIXELFORMAT_BGR24 ) {
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+        *Rmask = 0x000000FF;
+        *Gmask = 0x0000FF00;
+        *Bmask = 0x00FF0000;
+#else
+        *Rmask = 0x00FF0000;
+        *Gmask = 0x0000FF00;
+        *Bmask = 0x000000FF;
+#endif
+        return true;
+    }
+
+    if ( SDL_PIXELTYPE( format ) != SDL_PIXELTYPE_PACKED8 &&
+         SDL_PIXELTYPE( format ) != SDL_PIXELTYPE_PACKED16 &&
+         SDL_PIXELTYPE( format ) != SDL_PIXELTYPE_PACKED32 ) {
+        // Not a format that uses masks
+        return true;
+    }
+
+    switch ( SDL_PIXELLAYOUT( format ) ) {
+        case SDL_PACKEDLAYOUT_332:
+            masks[ 0 ] = 0x00000000;
+            masks[ 1 ] = 0x000000E0;
+            masks[ 2 ] = 0x0000001C;
+            masks[ 3 ] = 0x00000003;
+            break;
+        case SDL_PACKEDLAYOUT_4444:
+            masks[ 0 ] = 0x0000F000;
+            masks[ 1 ] = 0x00000F00;
+            masks[ 2 ] = 0x000000F0;
+            masks[ 3 ] = 0x0000000F;
+            break;
+        case SDL_PACKEDLAYOUT_1555:
+            masks[ 0 ] = 0x00008000;
+            masks[ 1 ] = 0x00007C00;
+            masks[ 2 ] = 0x000003E0;
+            masks[ 3 ] = 0x0000001F;
+            break;
+        case SDL_PACKEDLAYOUT_5551:
+            masks[ 0 ] = 0x0000F800;
+            masks[ 1 ] = 0x000007C0;
+            masks[ 2 ] = 0x0000003E;
+            masks[ 3 ] = 0x00000001;
+            break;
+        case SDL_PACKEDLAYOUT_565:
+            masks[ 0 ] = 0x00000000;
+            masks[ 1 ] = 0x0000F800;
+            masks[ 2 ] = 0x000007E0;
+            masks[ 3 ] = 0x0000001F;
+            break;
+        case SDL_PACKEDLAYOUT_8888:
+            masks[ 0 ] = 0xFF000000;
+            masks[ 1 ] = 0x00FF0000;
+            masks[ 2 ] = 0x0000FF00;
+            masks[ 3 ] = 0x000000FF;
+            break;
+        case SDL_PACKEDLAYOUT_2101010:
+            masks[ 0 ] = 0xC0000000;
+            masks[ 1 ] = 0x3FF00000;
+            masks[ 2 ] = 0x000FFC00;
+            masks[ 3 ] = 0x000003FF;
+            break;
+        case SDL_PACKEDLAYOUT_1010102:
+            masks[ 0 ] = 0xFFC00000;
+            masks[ 1 ] = 0x003FF000;
+            masks[ 2 ] = 0x00000FFC;
+            masks[ 3 ] = 0x00000003;
+            break;
+        default:
+            return SDL_SetError( "Unknown pixel format" );
+    }
+
+    switch ( SDL_PIXELORDER( format ) ) {
+        case SDL_PACKEDORDER_XRGB:
+            *Rmask = masks[ 1 ];
+            *Gmask = masks[ 2 ];
+            *Bmask = masks[ 3 ];
+            break;
+        case SDL_PACKEDORDER_RGBX:
+            *Rmask = masks[ 0 ];
+            *Gmask = masks[ 1 ];
+            *Bmask = masks[ 2 ];
+            break;
+        case SDL_PACKEDORDER_ARGB:
+            *Amask = masks[ 0 ];
+            *Rmask = masks[ 1 ];
+            *Gmask = masks[ 2 ];
+            *Bmask = masks[ 3 ];
+            break;
+        case SDL_PACKEDORDER_RGBA:
+            *Rmask = masks[ 0 ];
+            *Gmask = masks[ 1 ];
+            *Bmask = masks[ 2 ];
+            *Amask = masks[ 3 ];
+            break;
+        case SDL_PACKEDORDER_XBGR:
+            *Bmask = masks[ 1 ];
+            *Gmask = masks[ 2 ];
+            *Rmask = masks[ 3 ];
+            break;
+        case SDL_PACKEDORDER_BGRX:
+            *Bmask = masks[ 0 ];
+            *Gmask = masks[ 1 ];
+            *Rmask = masks[ 2 ];
+            break;
+        case SDL_PACKEDORDER_BGRA:
+            *Bmask = masks[ 0 ];
+            *Gmask = masks[ 1 ];
+            *Rmask = masks[ 2 ];
+            *Amask = masks[ 3 ];
+            break;
+        case SDL_PACKEDORDER_ABGR:
+            *Amask = masks[ 0 ];
+            *Bmask = masks[ 1 ];
+            *Gmask = masks[ 2 ];
+            *Rmask = masks[ 3 ];
+            break;
+        default:
+            return SDL_SetError( "Unknown pixel format" );
+    }
+    return true;
+}
+
+/**
+ * Convert a bpp value and RGBA masks to an enumerated pixel format.
+ *
+ * This will return `SDL_PIXELFORMAT_UNKNOWN` if the conversion wasn't
+ * possible.
+ *
+ * \param bpp a bits per pixel value; usually 15, 16, or 32.
+ * \param Rmask the red mask for the format.
+ * \param Gmask the green mask for the format.
+ * \param Bmask the blue mask for the format.
+ * \param Amask the alpha mask for the format.
+ * \returns the SDL_PixelFormat value corresponding to the format masks, or
+ *          SDL_PIXELFORMAT_UNKNOWN if there isn't a match.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_GetMasksForPixelFormat
+ */
+SDL_PixelFormat SDL_GetPixelFormatForMasks( int bpp,
+                                            Uint32 Rmask,
+                                            Uint32 Gmask,
+                                            Uint32 Bmask,
+                                            Uint32 Amask );
+
+/**
+ * Create an SDL_PixelFormatDetails structure corresponding to a pixel format.
+ *
+ * Returned structure may come from a shared global cache (i.e. not newly
+ * allocated), and hence should not be modified, especially the palette. Weird
+ * errors such as `Blit combination not supported` may occur.
+ *
+ * \param format one of the SDL_PixelFormat values.
+ * \returns a pointer to a SDL_PixelFormatDetails structure or NULL on
+ *          failure; call SDL_GetError() for more information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ */
+const SDL_PixelFormatDetails* SDL_GetPixelFormatDetails(
+    SDL_PixelFormat format );
+
+/**
+ * Create a palette structure with the specified number of color entries.
+ *
+ * The palette entries are initialized to white.
+ *
+ * \param ncolors represents the number of color entries in the color palette.
+ * \returns a new SDL_Palette structure on success or NULL on failure (e.g. if
+ *          there wasn't enough memory); call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety It is safe to call this function from any thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_DestroyPalette
+ * \sa SDL_SetPaletteColors
+ * \sa SDL_SetSurfacePalette
+ */
+SDL_Palette* SDL_CreatePalette( int ncolors );
+
+/**
+ * Set a range of colors in a palette.
+ *
+ * \param palette the SDL_Palette structure to modify.
+ * \param colors an array of SDL_Color structures to copy into the palette.
+ * \param firstcolor the index of the first palette entry to modify.
+ * \param ncolors the number of entries to modify.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \threadsafety It is safe to call this function from any thread, as long as
+ *               the palette is not modified or destroyed in another thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ */
+bool SDL_SetPaletteColors( SDL_Palette* palette,
+                           const SDL_Color* colors,
+                           int firstcolor,
+                           int ncolors );
+
+/**
+ * Free a palette created with SDL_CreatePalette().
+ *
+ * \param palette the SDL_Palette structure to be freed.
+ *
+ * \threadsafety It is safe to call this function from any thread, as long as
+ *               the palette is not modified or destroyed in another thread.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_CreatePalette
+ */
+void SDL_DestroyPalette( SDL_Palette* palette );
+
+/**
+ * Map an RGB triple to an opaque pixel value for a given pixel format.
+ *
+ * This function maps the RGB color value to the specified pixel format and
+ * returns the pixel value best approximating the given RGB color value for
+ * the given pixel format.
+ *
+ * If the format has a palette (8-bit) the index of the closest matching color
+ * in the palette will be returned.
+ *
+ * If the specified pixel format has an alpha component it will be returned as
+ * all 1 bits (fully opaque).
+ *
+ * If the pixel format bpp (color depth) is less than 32-bpp then the unused
+ * upper bits of the return value can safely be ignored (e.g., with a 16-bpp
+ * format the return value can be assigned to a Uint16, and similarly a Uint8
+ * for an 8-bpp format).
+ *
+ * \param format a pointer to SDL_PixelFormatDetails describing the pixel
+ *               format.
+ * \param palette an optional palette for indexed formats, may be NULL.
+ * \param r the red component of the pixel in the range 0-255.
+ * \param g the green component of the pixel in the range 0-255.
+ * \param b the blue component of the pixel in the range 0-255.
+ * \returns a pixel value.
+ *
+ * \threadsafety It is safe to call this function from any thread, as long as
+ *               the palette is not modified.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_GetPixelFormatDetails
+ * \sa SDL_GetRGB
+ * \sa SDL_MapRGBA
+ * \sa SDL_MapSurfaceRGB
+ */
+Uint32 SDL_MapRGB( const SDL_PixelFormatDetails* format,
+                   const SDL_Palette* palette,
+                   Uint8 r,
+                   Uint8 g,
+                   Uint8 b );
+
+/**
+ * Map an RGBA quadruple to a pixel value for a given pixel format.
+ *
+ * This function maps the RGBA color value to the specified pixel format and
+ * returns the pixel value best approximating the given RGBA color value for
+ * the given pixel format.
+ *
+ * If the specified pixel format has no alpha component the alpha value will
+ * be ignored (as it will be in formats with a palette).
+ *
+ * If the format has a palette (8-bit) the index of the closest matching color
+ * in the palette will be returned.
+ *
+ * If the pixel format bpp (color depth) is less than 32-bpp then the unused
+ * upper bits of the return value can safely be ignored (e.g., with a 16-bpp
+ * format the return value can be assigned to a Uint16, and similarly a Uint8
+ * for an 8-bpp format).
+ *
+ * \param format a pointer to SDL_PixelFormatDetails describing the pixel
+ *               format.
+ * \param palette an optional palette for indexed formats, may be NULL.
+ * \param r the red component of the pixel in the range 0-255.
+ * \param g the green component of the pixel in the range 0-255.
+ * \param b the blue component of the pixel in the range 0-255.
+ * \param a the alpha component of the pixel in the range 0-255.
+ * \returns a pixel value.
+ *
+ * \threadsafety It is safe to call this function from any thread, as long as
+ *               the palette is not modified.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_GetPixelFormatDetails
+ * \sa SDL_GetRGBA
+ * \sa SDL_MapRGB
+ * \sa SDL_MapSurfaceRGBA
+ */
+Uint32 SDL_MapRGBA( const SDL_PixelFormatDetails* format,
+                    const SDL_Palette* palette,
+                    Uint8 r,
+                    Uint8 g,
+                    Uint8 b,
+                    Uint8 a );
+
+/**
+ * Get RGB values from a pixel in the specified format.
+ *
+ * This function uses the entire 8-bit [0..255] range when converting color
+ * components from pixel formats with less than 8-bits per RGB component
+ * (e.g., a completely white pixel in 16-bit RGB565 format would return [0xff,
+ * 0xff, 0xff] not [0xf8, 0xfc, 0xf8]).
+ *
+ * \param pixelvalue a pixel value.
+ * \param format a pointer to SDL_PixelFormatDetails describing the pixel
+ *               format.
+ * \param palette an optional palette for indexed formats, may be NULL.
+ * \param r a pointer filled in with the red component, may be NULL.
+ * \param g a pointer filled in with the green component, may be NULL.
+ * \param b a pointer filled in with the blue component, may be NULL.
+ *
+ * \threadsafety It is safe to call this function from any thread, as long as
+ *               the palette is not modified.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_GetPixelFormatDetails
+ * \sa SDL_GetRGBA
+ * \sa SDL_MapRGB
+ * \sa SDL_MapRGBA
+ */
+void SDL_GetRGB( Uint32 pixelvalue,
+                 const SDL_PixelFormatDetails* format,
+                 const SDL_Palette* palette,
+                 Uint8* r,
+                 Uint8* g,
+                 Uint8* b );
+
+/**
+ * Get RGBA values from a pixel in the specified format.
+ *
+ * This function uses the entire 8-bit [0..255] range when converting color
+ * components from pixel formats with less than 8-bits per RGB component
+ * (e.g., a completely white pixel in 16-bit RGB565 format would return [0xff,
+ * 0xff, 0xff] not [0xf8, 0xfc, 0xf8]).
+ *
+ * If the surface has no alpha component, the alpha will be returned as 0xff
+ * (100% opaque).
+ *
+ * \param pixelvalue a pixel value.
+ * \param format a pointer to SDL_PixelFormatDetails describing the pixel
+ *               format.
+ * \param palette an optional palette for indexed formats, may be NULL.
+ * \param r a pointer filled in with the red component, may be NULL.
+ * \param g a pointer filled in with the green component, may be NULL.
+ * \param b a pointer filled in with the blue component, may be NULL.
+ * \param a a pointer filled in with the alpha component, may be NULL.
+ *
+ * \threadsafety It is safe to call this function from any thread, as long as
+ *               the palette is not modified.
+ *
+ * \since This function is available since SDL 3.2.0.
+ *
+ * \sa SDL_GetPixelFormatDetails
+ * \sa SDL_GetRGB
+ * \sa SDL_MapRGB
+ * \sa SDL_MapRGBA
+ */
+void SDL_GetRGBA( Uint32 pixelvalue,
+                  const SDL_PixelFormatDetails* format,
+                  const SDL_Palette* palette,
+                  Uint8* r,
+                  Uint8* g,
+                  Uint8* b,
+                  Uint8* a );
+
 } // namespace pixels
 
 } // namespace slickdl
