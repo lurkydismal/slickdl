@@ -37,6 +37,15 @@ using color_t = struct color {
         } );
     }
 
+    constexpr operator SDL_FColor() const {
+        return ( SDL_FColor{
+            .r = ( static_cast< float >( red ) / 0xFF ),
+            .g = ( static_cast< float >( green ) / 0xFF ),
+            .b = ( static_cast< float >( blue ) / 0xFF ),
+            .a = ( static_cast< float >( alpha ) / 0xFF ),
+        } );
+    }
+
     [[nodiscard]] constexpr auto pack() const -> uint32_t {
         std::array< uint8_t, 4 > l_bytes{};
 

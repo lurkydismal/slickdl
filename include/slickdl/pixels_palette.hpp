@@ -109,7 +109,6 @@ using palette_t = struct palette {
     // format the return value can be assigned to a Uint16, and similarly a
     // Uint8 for an 8-bpp format)
     template < std::unsigned_integral U >
-        requires( sizeof( U ) <= sizeof( uint32_t ) )
     [[nodiscard]] auto map( pixelFormatDetails_t _format, color_t _color ) const
         -> pixelValue_t< U > {
         return ( SDL_MapRGBA( _format, _data, _color.red, _color.green,
@@ -126,7 +125,6 @@ using palette_t = struct palette {
     // If the surface has no alpha component, the alpha will be returned as 0xff
     // (100% opaque)
     template < std::unsigned_integral U >
-        requires( sizeof( U ) <= sizeof( uint32_t ) )
     [[nodiscard]] auto color( pixelValue_t< U > _value,
                               pixelFormatDetails_t _format ) const -> color_t {
         color_t l_color{};
@@ -179,7 +177,6 @@ template < std::unsigned_integral U >
 // If the surface has no alpha component, the alpha will be returned as 0xff
 // (100% opaque)
 template < std::unsigned_integral U >
-    requires( sizeof( U ) <= sizeof( uint32_t ) )
 [[nodiscard]] inline auto color( pixelValue_t< U > _value,
                                  pixelFormatDetails_t _format ) -> color_t {
     color_t l_color{};
@@ -1582,6 +1579,10 @@ using mask_t = struct mask {
 // Legacy
 [[nodiscard]] constexpr auto toLegacy( format_t _format ) -> SDL_PixelFormat {
     return ( static_cast< SDL_PixelFormat >( _format ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( format_t* _format ) -> SDL_PixelFormat* {
+    return ( std::bit_cast< SDL_PixelFormat* >( _format ) );
 }
 
 } // namespace pixels

@@ -15,6 +15,22 @@
 
 namespace slickdl {
 
+using vertex_t = struct vertex {
+    [[nodiscard]] constexpr operator SDL_Vertex() const {
+        return ( SDL_Vertex{
+            position,
+            color,
+            textureCoordinate,
+        } );
+    }
+
+    point_t< float >
+        position; /**< Vertex position, in SDL_Renderer coordinates  */
+    color_t color;
+    point_t< float >
+        textureCoordinate{}; /**< Normalized texture coordinates, if needed */
+};
+
 using access_t = enum class access : uint8_t {
     aStatic,   /**< Changes rarely, not lockable */
     streaming, /**< Changes frequently, lockable */
@@ -42,9 +58,20 @@ using logicalPresentation_t = enum class rendererLogicalPresentation : uint8_t {
                      fit the output resolution */
 };
 
+using vsync_t = enum class vsync : int8_t {
+    adaptive = -1,
+    disabled = 0,
+    enabled = 1,
+};
+
 // Legacy
 [[nodiscard]] constexpr auto toLegacy( access_t _access ) -> SDL_TextureAccess {
     return ( static_cast< SDL_TextureAccess >( _access ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( access_t* _access )
+    -> SDL_TextureAccess* {
+    return ( std::bit_cast< SDL_TextureAccess* >( _access ) );
 }
 
 [[nodiscard]] constexpr auto toLegacy( addressMode_t _addressMode )
@@ -52,11 +79,31 @@ using logicalPresentation_t = enum class rendererLogicalPresentation : uint8_t {
     return ( static_cast< SDL_TextureAddressMode >( _addressMode ) );
 }
 
+[[nodiscard]] constexpr auto toLegacy( addressMode_t* _addressMode )
+    -> SDL_TextureAddressMode* {
+    return ( std::bit_cast< SDL_TextureAddressMode* >( _addressMode ) );
+}
+
 [[nodiscard]] constexpr auto toLegacy(
     logicalPresentation_t _logicalPresentation )
     -> SDL_RendererLogicalPresentation {
     return ( static_cast< SDL_RendererLogicalPresentation >(
         _logicalPresentation ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy(
+    logicalPresentation_t* _logicalPresentation )
+    -> SDL_RendererLogicalPresentation* {
+    return ( std::bit_cast< SDL_RendererLogicalPresentation* >(
+        _logicalPresentation ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( vsync_t _vsync ) -> int {
+    return ( static_cast< int >( _vsync ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( vsync_t* _vsync ) -> int* {
+    return ( std::bit_cast< int* >( _vsync ) );
 }
 
 // Renderer
@@ -130,7 +177,7 @@ using renderer_t = struct renderer {
     //
     // If you want a specific renderer, you can specify its name here. A list of
     // available renderers can be obtained by calling SDL_GetRenderDriver()
-    // multiple times, with indices from 0 to SDL_GetNumRenderDrivers()-1. If
+    // multiple times, with indexes from 0 to SDL_GetNumRenderDrivers()-1. If
     // you don't need a specific renderer, specify NULL and SDL will attempt to
     // choose the best option for you, based on what is available on the user's
     // system.
@@ -218,8 +265,6 @@ using renderer_t = struct renderer {
     //
     // \param device a pointer filled with the associated GPU device, or NULL on
     //               error.
-    // \returns a valid rendering context or NULL if there was an error; call
-    //          SDL_GetError() for more information.
     //
     // Should only be called on the main thread.
     renderer( window_t _window, SDL_GPUShaderFormat _formatFlags ) {
@@ -241,8 +286,7 @@ using renderer_t = struct renderer {
     // create a software renderer, but they are intended to be used with an
     // SDL_Window as the final destination and not an SDL_Surface.
     //
-    // \param surface the SDL_Surface structure representing the surface where
-    //                rendering is done.
+    // A surface where rendering is done.
     //
     // Should only be called on the main thread.
     renderer( surface_t& _surface )
@@ -521,8 +565,7 @@ using renderer_t = struct renderer {
         const bool l_result = SDL_GetRenderLogicalPresentation(
             _data, std::bit_cast< int* >( &l_volume.width ),
             std::bit_cast< int* >( &l_volume.height ),
-            std::bit_cast< SDL_RendererLogicalPresentation* >(
-                &l_logicalPresentation ) );
+            toLegacy( &l_logicalPresentation ) );
 
         assert( l_result );
 
@@ -733,8 +776,7 @@ using renderer_t = struct renderer {
     // Each render target has its own clip rectangle. This function gets the
     // cliprect for the current render target.
     //
-    // \param rect an SDL_Rect structure filled in with the current clipping
-    // area or an empty rectangle if clipping is disabled.
+    // Empty if no clipping is done.
     //
     // Should only be called on the main thread.
     [[nodiscard]] auto clip() const -> clippingZone_t< int > {
@@ -869,7 +911,7 @@ using renderer_t = struct renderer {
     // The color scale does not affect the alpha channel, only the color
     // brightness.
     //
-    // \param scale the color scale value.
+    // The color scale value.
     //
     // Should only be called on the main thread.
     void colorScale( float _scale ) {
@@ -880,7 +922,7 @@ using renderer_t = struct renderer {
 
     // Get the color scale used for render operations.
     //
-    // \param scale a pointer filled in with the current color scale value.
+    // The current color scale value.
     //
     // Should only be called on the main thread.
     [[nodiscard]] auto colorScale() const -> float {
@@ -911,8 +953,8 @@ using renderer_t = struct renderer {
     [[nodiscard]] auto drawBlendMode() const -> blend_t {
         blend_t l_blend = blend_t::none;
 
-        const bool l_result = SDL_GetRenderDrawBlendMode(
-            _data, std::bit_cast< SDL_BlendMode* >( &l_blend ) );
+        const bool l_result =
+            SDL_GetRenderDrawBlendMode( _data, toLegacy( &l_blend ) );
 
         assert( l_result );
 
@@ -1037,6 +1079,406 @@ using renderer_t = struct renderer {
 
         assert( l_result );
     }
+
+    // Set the texture addressing mode used in SDL_RenderGeometry().
+    //
+    // addressMode_t to use for vertical texture coordinates in
+    // SDL_RenderGeometry().
+    void textureAddressMode( addressMode_t _u, addressMode_t _v ) {
+        const bool l_result = SDL_SetRenderTextureAddressMode(
+            _data, toLegacy( _u ), toLegacy( _v ) );
+
+        assert( l_result );
+    }
+
+    // Get the texture addressing mode used in SDL_RenderGeometry().
+    [[nodiscard]] auto textureAddressMode() const
+        -> std::pair< addressMode_t, addressMode_t > {
+        addressMode_t l_u = addressMode_t::amAuto;
+        addressMode_t l_v = addressMode_t::amAuto;
+
+        const bool l_result = SDL_GetRenderTextureAddressMode(
+            _data, toLegacy( &l_u ), toLegacy( &l_v ) );
+
+        assert( l_result );
+
+        return { l_u, l_v };
+    }
+
+    // Read pixels from the current rendering target.
+    //
+    // The returned surface contains pixels inside the desired area clipped to
+    // the current viewport, and should be freed with SDL_DestroySurface().
+    //
+    // Note that this returns the actual pixels on the screen, so if you are
+    // using logical presentation you should use
+    // SDL_GetRenderLogicalPresentationRect() to get the area containing your
+    // content.
+    //
+    // **WARNING**: This is a very slow operation, and should not be used
+    // frequently. If you're using this on the main rendering target, it should
+    // be called after rendering and before SDL_RenderPresent().
+    //
+    // Area to read, which will be clipped to the current viewport, or NULL for
+    // the entire viewport.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] auto readPixels( const std::optional< box_t< int > >& _box =
+                                       std::nullopt ) const -> surface_t {
+        if ( _box ) {
+            const SDL_Rect l_box = _box.value();
+
+            return ( SDL_RenderReadPixels( _data, &l_box ) );
+
+        } else {
+            return ( SDL_RenderReadPixels( _data, nullptr ) );
+        }
+    }
+
+    // Update the screen with any rendering performed since the previous call.
+    //
+    // SDL's rendering functions operate on a backbuffer; that is, calling a
+    // rendering function such as SDL_RenderLine() does not directly put a line
+    // on the screen, but rather updates the backbuffer. As such, you compose
+    // your entire scene and *present* the composed backbuffer to the screen as
+    // a complete picture.
+    //
+    // Therefore, when using SDL's rendering API, one does all drawing intended
+    // for the frame, and then calls this function once per frame to present the
+    // final drawing to the user.
+    //
+    // The backbuffer should be considered invalidated after each present; do
+    // not assume that previous contents will exist between frames. You are
+    // strongly encouraged to call SDL_RenderClear() to initialize the
+    // backbuffer before starting each new frame's drawing, even if you plan to
+    // overwrite every pixel.
+    //
+    // Please note, that in case of rendering to a texture - there is **no
+    // need** to call `SDL_RenderPresent` after drawing needed objects to a
+    // texture, and should not be done; you are only required to change back the
+    // rendering target to default via `SDL_SetRenderTarget(renderer, NULL)`
+    // afterwards, as textures by themselves do not have a concept of
+    // backbuffers. Calling SDL_RenderPresent while rendering to a texture will
+    // fail.
+    //
+    // \param renderer the rendering context.
+    //
+    // Should only be called on the main thread.
+    void present() {
+        const bool l_result = SDL_RenderPresent( _data );
+
+        assert( l_result );
+    }
+
+    // Force the rendering context to flush any pending commands and state.
+    //
+    // You do not need to (and in fact, shouldn't) call this function unless you
+    // are planning to call into OpenGL/Direct3D/Metal/whatever directly, in
+    // addition to using an SDL_Renderer.
+    //
+    // This is for a very-specific case: if you are using SDL's render API, and
+    // you plan to make OpenGL/D3D/whatever calls in addition to SDL render API
+    // calls. If this applies, you should call this function between calls to
+    // SDL's render API and the low-level API you're using in cooperation.
+    //
+    // In all other cases, you can ignore this function.
+    //
+    // This call makes SDL flush any pending rendering work it was queueing up
+    // to do later in a single batch, and marks any internal cached state as
+    // invalid, so it'll prepare all its state again later, from scratch.
+    //
+    // This means you do not need to save state in your rendering code to
+    // protect the SDL renderer. However, there lots of arbitrary pieces of
+    // Direct3D and OpenGL state that can confuse things; you should use your
+    // best judgment and be prepared to make changes if specific state needs to
+    // be protected.
+    //
+    // Should only be called on the main thread.
+    void flush() {
+        const bool l_result = SDL_FlushRenderer( _data );
+
+        assert( l_result );
+    }
+
+#if 0
+    // TODO: Decide
+    // Get the CAMetalLayer associated with the given Metal renderer.
+    //
+    // This function returns `void *`, so SDL doesn't have to include Metal's
+    // headers, but it can be safely cast to a `CAMetalLayer *`.
+    //
+    // `CAMetalLayer *` on success, or NULL if the renderer isn't a Metal
+    // renderer.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] auto metalLayer() const -> void* {
+        return ( SDL_GetRenderMetalLayer( _data ) );
+    }
+#endif
+
+#if 0
+    // Get the Metal command encoder for the current frame.
+    //
+    // This function returns `void *`, so SDL doesn't have to include Metal's
+    // headers, but it can be safely cast to an `id<MTLRenderCommandEncoder>`.
+    //
+    // This will return NULL if Metal refuses to give SDL a drawable to render
+    // to, which might happen if the window is hidden/minimized/offscreen. This
+    // doesn't apply to command encoders for render targets, just the window's
+    // backbuffer. Check your return values!
+    //
+    // `id<MTLRenderCommandEncoder>` on success, or NULL if the renderer isn't a
+    // Metal renderer or there was an error.
+    [[nodiscard]] auto metalCommandEncoder() const -> void* {
+        return ( SDL_GetRenderMetalCommandEncoder( _data ) );
+    }
+#endif
+
+    // Add a set of synchronization semaphores for the current frame.
+    //
+    // The Vulkan renderer will wait for `wait_semaphore` before submitting
+    // rendering commands and signal `signal_semaphore` after rendering commands
+    // are complete for this frame.
+    //
+    // This should be called each frame that you want semaphore synchronization.
+    // The Vulkan renderer may have multiple frames in flight on the GPU, so you
+    // should have multiple semaphores that are used for synchronization.
+    // Querying SDL_PROP_RENDERER_VULKAN_SWAPCHAIN_IMAGE_COUNT_NUMBER will give
+    // you the maximum number of semaphores you'll need.
+    //
+    // VkPipelineStageFlags for the wait.
+    //
+    // VkSempahore to wait on before rendering the current frame, or 0 if not
+    // needed.
+    //
+    // VkSempahore that SDL will signal when rendering for the current frame is
+    // complete, or 0 if not needed.
+    //
+    // **NOT** safe to call this function from two threads at once.
+    void vulkanSemaphores( uint32_t _waitStageMask,
+                           int64_t _waitSemaphore = 0,
+                           int64_t _signalSemaphore = 0 ) {
+        const bool l_result = SDL_AddVulkanRenderSemaphores(
+            _data, _waitStageMask, _waitSemaphore, _signalSemaphore );
+
+        assert( l_result );
+    }
+
+    // Toggle vsync of the given renderer.
+    //
+    // When a renderer is created, vsync defaults to
+    // SDL_RENDERER_VSYNC_DISABLED.
+    //
+    // The `vsync` parameter can be 1 to synchronize present with every vertical
+    // refresh, 2 to synchronize present with every second vertical refresh,
+    // etc., SDL_RENDERER_VSYNC_ADAPTIVE for late swap tearing (adaptive vsync),
+    // or SDL_RENDERER_VSYNC_DISABLED to disable. Not every value is supported
+    // by every driver, so you should check the return value to see whether the
+    // requested setting is supported.
+    //
+    // Should only be called on the main thread.
+    void vsync( vsync_t _vsync ) {
+        const bool l_result = SDL_SetRenderVSync( _data, toLegacy( _vsync ) );
+
+        assert( l_result );
+    }
+
+    // Get vsync of the given renderer.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] auto vsync() const -> vsync_t {
+        vsync_t l_vsync = vsync_t::adaptive;
+
+        const bool l_result = SDL_GetRenderVSync( _data, toLegacy( &l_vsync ) );
+
+        assert( l_result );
+
+        return ( l_vsync );
+    }
+
+    // The size, in pixels, of a single SDL_RenderDebugText() character.
+    //
+    // The font is monospaced and square, so this applies to all characters.
+    static constexpr size_t g_debugTextFontSize = 8;
+
+    // Draw debug text to an SDL_Renderer.
+    //
+    // This function will render a string of text to an SDL_Renderer. Note that
+    // this is a convenience function for debugging, with severe limitations,
+    // and not intended to be used for production apps and games.
+    //
+    // Among these limitations:
+    //
+    // - It accepts UTF-8 strings, but will only renders ASCII characters.
+    // - It has a single, tiny size (8x8 pixels). One can use logical
+    // presentation or scaling to adjust it, but it will be blurry.
+    // - It uses a simple, hardcoded bitmap font. It does not allow different
+    // font selections and it does not support truetype, for proper scaling.
+    // - It does no word-wrapping and does not treat newline characters as a
+    // line break. If the text goes out of the window, it's gone.
+    //
+    // For serious text rendering, there are several good options, such as
+    // SDL_ttf, stb_truetype, or other external libraries.
+    //
+    // On first use, this will create an internal texture for rendering glyphs.
+    // This texture will live until the renderer is destroyed.
+    //
+    // The text is drawn in the color specified by SDL_SetRenderDrawColor().
+    //
+    // Should only be called on the main thread.
+    void debugText( point_t< float > _position, std::string_view _text ) {
+        const bool l_result = SDL_RenderDebugText(
+            _data, _position.x, _position.y, std::string( _text ).c_str() );
+
+        assert( l_result );
+    }
+
+    // Draw debug text to an SDL_Renderer.
+    //
+    // This function will render a string of text to an SDL_Renderer. Note that
+    // this is a convenience function for debugging, with severe limitations,
+    // and not intended to be used for production apps and games.
+    //
+    // Among these limitations:
+    //
+    // - It accepts UTF-8 strings, but will only renders ASCII characters.
+    // - It has a single, tiny size (8x8 pixels). One can use logical
+    // presentation or scaling to adjust it, but it will be blurry.
+    // - It uses a simple, hardcoded bitmap font. It does not allow different
+    // font selections and it does not support truetype, for proper scaling.
+    // - It does no word-wrapping and does not treat newline characters as a
+    // line break. If the text goes out of the window, it's gone.
+    //
+    // For serious text rendering, there are several good options, such as
+    // SDL_ttf, stb_truetype, or other external libraries.
+    //
+    // On first use, this will create an internal texture for rendering glyphs.
+    // This texture will live until the renderer is destroyed.
+    //
+    // The text is drawn in the color specified by SDL_SetRenderDrawColor().
+    //
+    // Should only be called on the main thread.
+    template < stdfunc::is_formattable... Arguments >
+    void debugText( point_t< float > _position,
+                    std::format_string< Arguments... > _format = "",
+                    Arguments&&... _arguments ) {
+        const std::string l_text =
+            std::format( _format, std::forward< Arguments >( _arguments )... );
+
+        const bool l_result = SDL_RenderDebugText(
+            _data, _position.x, _position.y, l_text.c_str() );
+
+        assert( l_result );
+    }
+
+    // Set default scale mode for new textures for given renderer.
+    //
+    // When a renderer is created, scale_mode defaults to SDL_SCALEMODE_LINEAR.
+    //
+    // Scale mode to change to for new textures.
+    //
+    // Should only be called on the main thread.
+    void defaultTextureScaleMode( scale_t _scaleMode ) {
+        const bool l_result =
+            SDL_SetDefaultTextureScaleMode( _data, toLegacy( _scaleMode ) );
+
+        assert( l_result );
+    }
+
+    // Get default texture scale mode of the given renderer.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] auto defaultTextureScaleMode() const -> scale_t {
+        scale_t l_scale = scale_t::linear;
+
+        const bool l_result =
+            SDL_GetDefaultTextureScaleMode( _data, toLegacy( &l_scale ) );
+
+        assert( l_result );
+
+        return ( l_scale );
+    }
+
+#if 0
+    // TODO: Implement
+    // GPU render state description.
+    //
+    // This structure should be initialized using SDL_INIT_INTERFACE().
+    using GPURenderStateDesc_t = struct GPURenderStateDesc {
+        Uint32 version; /**< the version of this interface */
+
+        SDL_GPUShader* fragment_shader; /**< The fragment shader to use when
+                                           this render state is active */
+
+        Sint32 num_sampler_bindings; /**< The number of additional fragment
+                                        samplers to bind when this render state
+                                        is active */
+        const SDL_GPUTextureSamplerBinding*
+            sampler_bindings; /**< Additional fragment samplers to bind when
+                                 this render state is active */
+
+        Sint32 num_storage_textures; /**< The number of storage textures to bind
+                                        when this render state is active */
+        SDL_GPUTexture* const*
+            storage_textures; /**< Storage textures to bind when this render
+                                 state is active */
+
+        Sint32 num_storage_buffers; /**< The number of storage buffers to bind
+                                       when this render state is active */
+        SDL_GPUBuffer* const* storage_buffers; /**< Storage buffers to bind when
+                                                  this render state is active */
+    };
+
+    // A custom GPU render state.
+    using SDL_GPURenderState = struct SDL_GPURenderState;
+
+    // Create custom GPU render state.
+    //
+    // \param desc GPU render state description, initialized using
+    //             SDL_INIT_INTERFACE().
+    // \returns a custom GPU render state or NULL on failure; call
+    // SDL_GetError()
+    //          for more information.
+    //
+    // Should be called on the thread that created the renderer.
+    SDL_GPURenderState* SDL_CreateGPURenderState(
+        SDL_Renderer* renderer,
+        SDL_GPURenderStateDesc* desc );
+
+    // Set fragment shader uniform variables in a custom GPU render state.
+    //
+    // The data is copied and will be pushed using
+    // SDL_PushGPUFragmentUniformData() during draw call execution.
+    //
+    // \param slot_index the fragment uniform slot to push data to.
+    // \param data client data to write.
+    // \param length the length of the data to write.
+    //
+    // Should be called on the thread that created the renderer.
+    bool SDL_SetGPURenderStateFragmentUniforms( SDL_GPURenderState* state,
+                                                Uint32 slot_index,
+                                                const void* data,
+                                                Uint32 length );
+
+    // Set custom GPU render state.
+    //
+    // This function sets custom GPU render state for subsequent draw calls.
+    // This allows using custom shaders with the GPU renderer.
+    //
+    // \param state the state to to use, or NULL to clear custom GPU render
+    // state.
+    //
+    // Should be called on the thread that created the renderer.
+    void SDL_SetRenderGPUState( SDL_Renderer* renderer,
+                                SDL_GPURenderState* state );
+
+    // Destroy custom GPU render state.
+    //
+    // \param state the state to destroy.
+    //
+    // Should be called on the thread that created the renderer.
+    void SDL_DestroyGPURenderState( SDL_GPURenderState* state );
+#endif
 
     // Variables
 private:
@@ -1415,8 +1857,8 @@ using texture_t = struct texture {
     [[nodiscard]] auto blend() const -> blend_t {
         blend_t l_blend = blend_t::none;
 
-        const bool l_result = SDL_GetTextureBlendMode(
-            _data, std::bit_cast< SDL_BlendMode* >( &l_blend ) );
+        const bool l_result =
+            SDL_GetTextureBlendMode( _data, toLegacy( &l_blend ) );
 
         assert( l_result );
 
@@ -1437,8 +1879,8 @@ using texture_t = struct texture {
     [[nodiscard]] auto scale() const -> scale_t {
         scale_t l_scale = scale_t::linear;
 
-        const bool l_result = SDL_GetTextureScaleMode(
-            _data, std::bit_cast< SDL_ScaleMode* >( &l_scale ) );
+        const bool l_result =
+            SDL_GetTextureScaleMode( _data, toLegacy( &l_scale ) );
 
         assert( l_result );
 
@@ -1599,7 +2041,7 @@ using texture_t = struct texture {
     // Source box, or NULL for the entire texture.
     // Destination box, or NULL for the entire rendering target.
     //
-    // Rotation will be applied to dstrect, rotating it in a clockwise
+    // Rotation will be applied to _destination, rotating it in a clockwise
     // direction.
     //
     // If center is NULL, rotation will be done around 50% / 50%
@@ -1627,18 +2069,14 @@ using texture_t = struct texture {
     // Copy a portion of the source texture to the current rendering target,
     // with affine transform, at subpixel precision.
     //
-    // \param renderer the renderer which should copy parts of a texture.
-    // \param texture the source texture.
-    // \param srcrect a pointer to the source rectangle, or NULL for the entire
-    // texture.
-    // \param origin a pointer to a point indicating where the top-left corner
-    // of srcrect should be mapped to, or NULL for the rendering target's
+    // origin a pointer to a point indicating where the top-left corner
+    // of _source should be mapped to, or NULL for the rendering target's
     // origin.
-    // \param right a pointer to a point indicating where the top-right corner
-    // of srcrect should be mapped to, or NULL for the rendering target's
+    // right a pointer to a point indicating where the top-right corner
+    // of _source should be mapped to, or NULL for the rendering target's
     // top-right corner.
-    // \param down a pointer to a point indicating where the bottom-left corner
-    // of srcrect should be mapped to, or NULL for the rendering target's
+    // down a pointer to a point indicating where the bottom-left corner
+    // of _source should be mapped to, or NULL for the rendering target's
     // bottom-left corner.
     //
     // You may only call this function from the main thread.
@@ -1656,6 +2094,190 @@ using texture_t = struct texture {
 
         const bool l_result = SDL_RenderTextureAffine(
             _renderer, _data, &l_source, &l_origin, &l_right, &l_down );
+
+        assert( l_result );
+    }
+
+    // Tile a portion of the texture to the current rendering target at subpixel
+    // precision.
+    //
+    // The pixels in `_source` will be repeated as many times as needed to
+    // completely fill `_destination`.
+    //
+    // A source box or NULL for the entire texture.
+    //
+    // A destination box or NULL for the entire rendering target.
+    //
+    // Should only be called on the main thread.
+    void renderTiled(
+        renderer_t& _renderer,
+        const std::optional< box_t< float > >& _destination = std::nullopt,
+        const std::optional< box_t< float > >& _source = std::nullopt,
+        float _scale = 0 ) {
+        const SDL_FRect l_source = _source.value();
+        const SDL_FRect l_destination = _destination.value();
+
+        const bool l_result = SDL_RenderTextureTiled(
+            _renderer, _data, &l_source, _scale, &l_destination );
+
+        assert( l_result );
+    }
+
+    // Perform a scaled copy using the 9-grid algorithm to the current rendering
+    // target at subpixel precision.
+    //
+    // The pixels in the texture are split into a 3x3 grid, using the different
+    // corner sizes for each corner, and the sides and center making up the
+    // remaining pixels. The corners are then scaled using `scale` and fit into
+    // the corners of the destination rectangle. The sides and center are then
+    // stretched into place to cover the remaining destination rectangle.
+    //
+    // left_width the width, in pixels, of the left corners in `srcrect`.
+    // right_width the width, in pixels, of the right corners in
+    // `srcrect`.
+    // top_height the height, in pixels, of the top corners in `srcrect`.
+    // bottom_height the height, in pixels, of the bottom corners in `srcrect`.
+    //
+    // Should only be called on the main thread.
+    void render9Grid(
+        renderer_t& _renderer,
+        float _leftWidth,
+        float _rightWidth,
+        float _topHeight,
+        float _bottomHeight,
+        const std::optional< box_t< float > >& _destination = std::nullopt,
+        const std::optional< box_t< float > >& _source = std::nullopt,
+        float _scale = 0 ) {
+        const SDL_FRect l_source = _source.value();
+        const SDL_FRect l_destination = _destination.value();
+
+        const bool l_result = SDL_RenderTexture9Grid(
+            _renderer, _data, &l_source, _leftWidth, _rightWidth, _topHeight,
+            _bottomHeight, _scale, &l_destination );
+
+        assert( l_result );
+    }
+
+    // Perform a scaled copy using the 9-grid algorithm to the current rendering
+    // target at subpixel precision.
+    //
+    // The pixels in the texture are split into a 3x3 grid, using the different
+    // corner sizes for each corner, and the sides and center making up the
+    // remaining pixels. The corners are then scaled using `scale` and fit into
+    // the corners of the destination rectangle. The sides and center are then
+    // tiled into place to cover the remaining destination rectangle.
+    //
+    // left_width the width, in pixels, of the left corners in `srcrect`.
+    // right_width the width, in pixels, of the right corners in
+    // `srcrect`.
+    // top_height the height, in pixels, of the top corners in `srcrect`.
+    // bottom_height the height, in pixels, of the bottom corners in `srcrect`.
+    //
+    // tileScale the scale used to transform the borders and center of `srcrect`
+    // into the borders and middle of `dstrect`, or 1.0f for an unscaled copy.
+    //
+    // Should only be called on the main thread.
+    void render9GridTiled(
+        renderer_t& _renderer,
+        float _leftWidth,
+        float _rightWidth,
+        float _topHeight,
+        float _bottomHeight,
+        float _tileScale = 1,
+        const std::optional< box_t< float > >& _destination = std::nullopt,
+        const std::optional< box_t< float > >& _source = std::nullopt,
+        float _scale = 0 ) {
+        const SDL_FRect l_source = _source.value();
+        const SDL_FRect l_destination = _destination.value();
+
+        const bool l_result = SDL_RenderTexture9GridTiled(
+            _renderer, _data, &l_source, _leftWidth, _rightWidth, _topHeight,
+            _bottomHeight, _scale, &l_destination, _tileScale );
+
+        assert( l_result );
+    }
+
+    // Render a list of triangles, optionally using a texture and indexes into
+    // the vertex array Color and alpha modulation is done per vertex
+    // (SDL_SetTextureColorMod and SDL_SetTextureAlphaMod are ignored).
+    //
+    // An array of integer indexes into the 'vertices' array, if NULL all
+    // vertices will be rendered in sequential order.
+    //
+    // Should only be called on the main thread.
+    void renderGeometry( renderer_t& _renderer,
+                         std::span< const vertex_t > _vertexes,
+                         const std::optional< std::span< const size_t > >&
+                             _indexes = std::nullopt ) {
+        const auto l_vertexes =
+            stdfunc::spanToVector< vertex_t, SDL_Vertex >( _vertexes );
+
+        bool l_result = false;
+
+        if ( _indexes ) {
+            const auto l_indexes =
+                stdfunc::spanToVector< size_t, int >( _indexes.value() );
+
+            l_result = SDL_RenderGeometry( _renderer, _data, l_vertexes.data(),
+                                           _vertexes.size(), l_indexes.data(),
+                                           l_indexes.size() );
+
+        } else {
+            l_result = SDL_RenderGeometry( _renderer, _data, l_vertexes.data(),
+                                           _vertexes.size(), nullptr, 0 );
+        }
+
+        assert( l_result );
+    }
+
+    // Render a list of triangles, optionally using a texture and indices into
+    // the vertex arrays Color and alpha modulation is done per vertex
+    // (SDL_SetTextureColorMod and SDL_SetTextureAlphaMod are ignored).
+    //
+    // xy vertex positions.
+    // xy_stride byte size to move from one element to the next element.
+    // color vertex colors (as SDL_FColor).
+    // color_stride byte size to move from one element to the next
+    // element.
+    // uv vertex normalized texture coordinates.
+    // uv_stride byte size to move from one element to the next element.
+    // An array of indices into the 'vertices' arrays, if NULL all vertices will
+    // be rendered in sequential order.
+    //
+    // Should only be called on the main thread.
+    template < std::unsigned_integral U = size_t >
+        requires( sizeof( U ) <= sizeof( uint32_t ) )
+    void renderGeometry(
+        renderer_t& _renderer,
+        point_t< float > _position,
+        color_t _color,
+        point_t< float > _uv,
+        size_t _vertexesAmount,
+        size_t _positionStride = sizeof( _position ),
+        size_t _colorStride = sizeof( _color ),
+        size_t _uvStride = sizeof( _uv ),
+        const std::optional< std::span< const U > >& _indexes = std::nullopt ) {
+        const std::array l_position = { _position.x, _position.y };
+        const SDL_FColor l_color = _color;
+        const std::array l_uv = { _uv.x, _uv.y };
+
+        bool l_result = false;
+
+        if ( _indexes ) {
+            const std::vector l_indexes =
+                stdfunc::spanToVector( _indexes.value() );
+
+            l_result = SDL_RenderGeometryRaw(
+                _renderer, _data, l_position.data(), _positionStride, &l_color,
+                _colorStride, l_uv.data(), _uvStride, _vertexesAmount,
+                l_indexes.data(), l_indexes.size(), sizeof( U ) );
+
+        } else {
+            l_result = SDL_RenderGeometryRaw(
+                _renderer, _data, l_position.data(), _positionStride, &l_color,
+                _colorStride, l_uv.data(), _uvStride, _vertexesAmount, nullptr,
+                U{}, sizeof( U ) );
+        }
 
         assert( l_result );
     }
@@ -1728,6 +2350,90 @@ inline void renderTarget(
 [[nodiscard]] inline auto renderTarget( const renderer_t& _renderer )
     -> texture_t {
     return ( SDL_GetRenderTarget( _renderer ) );
+}
+
+// Render a list of triangles, optionally using a texture and indexes into
+// the vertex array Color and alpha modulation is done per vertex
+// (SDL_SetTextureColorMod and SDL_SetTextureAlphaMod are ignored).
+//
+// An array of integer indexes into the 'vertices' array, if NULL all
+// vertices will be rendered in sequential order.
+//
+// Should only be called on the main thread.
+inline void renderGeometry( renderer_t& _renderer,
+                            std::span< const vertex_t > _vertexes,
+                            const std::optional< std::span< const size_t > >&
+                                _indexes = std::nullopt ) {
+    const auto l_vertexes =
+        stdfunc::spanToVector< vertex_t, SDL_Vertex >( _vertexes );
+
+    bool l_result = false;
+
+    if ( _indexes ) {
+        const auto l_indexes =
+            stdfunc::spanToVector< size_t, int >( _indexes.value() );
+
+        l_result = SDL_RenderGeometry( _renderer, nullptr, l_vertexes.data(),
+                                       _vertexes.size(), l_indexes.data(),
+                                       l_indexes.size() );
+
+    } else {
+        l_result = SDL_RenderGeometry( _renderer, nullptr, l_vertexes.data(),
+                                       _vertexes.size(), nullptr, 0 );
+    }
+
+    assert( l_result );
+}
+
+// Render a list of triangles, optionally using a texture and indices into
+// the vertex arrays Color and alpha modulation is done per vertex
+// (SDL_SetTextureColorMod and SDL_SetTextureAlphaMod are ignored).
+//
+// xy vertex positions.
+// xy_stride byte size to move from one element to the next element.
+// color vertex colors (as SDL_FColor).
+// color_stride byte size to move from one element to the next
+// element.
+// uv vertex normalized texture coordinates.
+// uv_stride byte size to move from one element to the next element.
+// An array of indices into the 'vertices' arrays, if NULL all vertices will
+// be rendered in sequential order.
+//
+// Should only be called on the main thread.
+template < std::unsigned_integral U = size_t >
+    requires( sizeof( U ) <= sizeof( uint32_t ) )
+void renderGeometry(
+    renderer_t& _renderer,
+    point_t< float > _position,
+    color_t _color,
+    point_t< float > _uv,
+    size_t _vertexesAmount,
+    size_t _positionStride = sizeof( _position ),
+    size_t _colorStride = sizeof( _color ),
+    size_t _uvStride = sizeof( _uv ),
+    const std::optional< std::span< const U > >& _indexes = std::nullopt ) {
+    const std::array l_position = { _position.x, _position.y };
+    const SDL_FColor l_color = _color;
+    const std::array l_uv = { _uv.x, _uv.y };
+
+    bool l_result = false;
+
+    if ( _indexes ) {
+        const std::vector l_indexes = stdfunc::spanToVector( _indexes.value() );
+
+        l_result = SDL_RenderGeometryRaw(
+            _renderer, nullptr, l_position.data(), _positionStride, &l_color,
+            _colorStride, l_uv.data(), _uvStride, _vertexesAmount,
+            l_indexes.data(), l_indexes.size(), sizeof( U ) );
+
+    } else {
+        l_result = SDL_RenderGeometryRaw(
+            _renderer, nullptr, l_position.data(), _positionStride, &l_color,
+            _colorStride, l_uv.data(), _uvStride, _vertexesAmount, nullptr, U{},
+            sizeof( U ) );
+    }
+
+    assert( l_result );
 }
 
 } // namespace slickdl

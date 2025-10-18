@@ -100,9 +100,8 @@ namespace pixels {
 
 [[nodiscard]] auto pixelFormatDetails( format_t _format )
     -> const pixelFormatDetails_t {
-    return (
-        std::bit_cast< SDL_PixelFormatDetails* >( SDL_GetPixelFormatDetails(
-            static_cast< SDL_PixelFormat >( _format ) ) ) );
+    return ( std::bit_cast< SDL_PixelFormatDetails* >(
+        SDL_GetPixelFormatDetails( toLegacy( _format ) ) ) );
 }
 
 } // namespace pixels

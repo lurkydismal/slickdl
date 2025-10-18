@@ -33,8 +33,16 @@ using flip_t = enum class flip : uint8_t {
     return ( static_cast< SDL_ScaleMode >( _scale ) );
 }
 
+[[nodiscard]] constexpr auto toLegacy( scale_t* _scale ) -> SDL_ScaleMode* {
+    return ( std::bit_cast< SDL_ScaleMode* >( _scale ) );
+}
+
 [[nodiscard]] constexpr auto toLegacy( flip_t _flip ) -> SDL_FlipMode {
     return ( static_cast< SDL_FlipMode >( _flip ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( flip_t* _flip ) -> SDL_FlipMode* {
+    return ( std::bit_cast< SDL_FlipMode* >( _flip ) );
 }
 
 // Surface
@@ -445,8 +453,8 @@ using surface_t = struct surface {
     [[nodiscard]] auto blend() const -> blend_t {
         blend_t l_blend = blend_t::none;
 
-        const bool l_result = SDL_GetSurfaceBlendMode(
-            _data, std::bit_cast< SDL_BlendMode* >( &l_blend ) );
+        const bool l_result =
+            SDL_GetSurfaceBlendMode( _data, toLegacy( &l_blend ) );
 
         assert( l_result );
 

@@ -2,6 +2,8 @@
 
 #include <SDL3/SDL_blendmode.h>
 
+#include <bit>
+
 namespace slickdl {
 
 // These predefined blend modes are supported everywhere.
@@ -70,14 +72,28 @@ using blendFactor_t = enum class blendFactor : uint8_t {
     return ( static_cast< SDL_BlendMode >( _blend ) );
 }
 
+[[nodiscard]] constexpr auto toLegacy( blend_t* _blend ) -> SDL_BlendMode* {
+    return ( std::bit_cast< SDL_BlendMode* >( _blend ) );
+}
+
 [[nodiscard]] constexpr auto toLegacy( blendOperation_t _blendOperation )
     -> SDL_BlendOperation {
     return ( static_cast< SDL_BlendOperation >( _blendOperation ) );
 }
 
+[[nodiscard]] constexpr auto toLegacy( blendOperation_t* _blendOperation )
+    -> SDL_BlendOperation* {
+    return ( std::bit_cast< SDL_BlendOperation* >( _blendOperation ) );
+}
+
 [[nodiscard]] constexpr auto toLegacy( blendFactor_t _blendFactor )
     -> SDL_BlendFactor {
     return ( static_cast< SDL_BlendFactor >( _blendFactor ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( blendFactor_t* _blendFactor )
+    -> SDL_BlendFactor* {
+    return ( std::bit_cast< SDL_BlendFactor* >( _blendFactor ) );
 }
 
 // The functions SDL_SetRenderDrawBlendMode and SDL_SetTextureBlendMode accept
