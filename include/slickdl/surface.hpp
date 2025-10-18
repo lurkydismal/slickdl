@@ -10,7 +10,6 @@
 #include "slickdl/blend.hpp"
 #include "slickdl/color.hpp"
 #include "slickdl/pixels_palette.hpp"
-#include "slickdl/point_line_box.hpp"
 #include "stddebug.hpp"
 #include "stdfloat16.hpp"
 
@@ -137,10 +136,17 @@ using surface_t = struct surface {
                  static_cast< uint32_t >( flag_t::lockNeeded ) );
     }
 
-#if 0
-    // TODO: Implement
-    // Get the properties associated with a surface
-    //
+    static constexpr std::string_view g_whitePointFloatSDR =
+        "SDL.surface.SDR_white_point";
+    static constexpr std::string_view g_headroomFloatHDR =
+        "SDL.surface.HDR_headroom";
+    static constexpr std::string_view g_tonemapOperatorString =
+        "SDL.surface.tonemap";
+    static constexpr std::string_view g_hotspotXNumber =
+        "SDL.surface.hotspot.x";
+    static constexpr std::string_view g_hotspotYNumber =
+        "SDL.surface.hotspot.y";
+
     // The following properties are understood by SDL:
     //
     // - SDL_PROP_SURFACE_SDR_WHITE_POINT_FLOAT: for HDR10 and floating point
@@ -161,20 +167,13 @@ using surface_t = struct surface {
     //   left edge of the image, if this surface is being used as a cursor
     // - SDL_PROP_SURFACE_HOTSPOT_Y_NUMBER: the hotspot pixel offset from the
     //   top edge of the image, if this surface is being used as a cursor
-    auto properties() -> SDL_PropertiesID {
+    [[nodiscard]] auto properties() const -> SDL_PropertiesID {
         const SDL_PropertiesID l_properties = SDL_GetSurfaceProperties( _data );
 
-        slickdl::assert(l_properties);
+        assert( l_properties );
 
         return ( l_properties );
     }
-
-#define SDL_PROP_SURFACE_SDR_WHITE_POINT_FLOAT "SDL.surface.SDR_white_point"
-#define SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT "SDL.surface.HDR_headroom"
-#define SDL_PROP_SURFACE_TONEMAP_OPERATOR_STRING "SDL.surface.tonemap"
-#define SDL_PROP_SURFACE_HOTSPOT_X_NUMBER "SDL.surface.hotspot.x"
-#define SDL_PROP_SURFACE_HOTSPOT_Y_NUMBER "SDL.surface.hotspot.y"
-#endif
 
     // Setting the colorspace doesn't change the pixels, only how they are
     // interpreted in color operations
@@ -183,7 +182,7 @@ using surface_t = struct surface {
     void colorspace( SDL_Colorspace _colorspace ) {
         const bool l_result = SDL_SetSurfaceColorspace( _data, _colorspace );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Get the colorspace used by a surface
@@ -205,7 +204,7 @@ using surface_t = struct surface {
     void palette( const palette_t& _palette ) {
         const bool l_result = SDL_SetSurfacePalette( _data, _palette );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Get the palette used by a surface
@@ -227,7 +226,7 @@ using surface_t = struct surface {
     void addAlternate( surface& _image ) {
         const bool l_result = SDL_AddSurfaceAlternateImage( _data, _image );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         // TODO: Call destructor
     }
@@ -250,7 +249,8 @@ using surface_t = struct surface {
                 SDL_GetSurfaceImages( _data, &l_count );
 
             // Convert
-            for ( surface _image : std::span( l_images.get(), l_count ) ) {
+            for ( const surface& _image :
+                  std::span( l_images.get(), l_count ) ) {
                 l_returnValue.emplace_back( _image );
             }
 
@@ -283,7 +283,7 @@ using surface_t = struct surface {
     void lock() {
         const bool l_result = SDL_LockSurface( _data );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Release a surface after directly accessing the pixels
@@ -318,7 +318,7 @@ using surface_t = struct surface {
     void saveBMP( SDL_IOStream& _stream, bool _closeIO ) {
         const bool l_result = SDL_SaveBMP_IO( _data, &_stream, _closeIO );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 #endif
 
@@ -329,7 +329,7 @@ using surface_t = struct surface {
     void setRLE( bool _enabled ) {
         const bool l_result = SDL_SetSurfaceRLE( _data, _enabled );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     [[nodiscard]] auto hasRLE() const -> bool {
@@ -350,7 +350,7 @@ using surface_t = struct surface {
         const bool l_result =
             SDL_SetSurfaceColorKey( _data, _enabled, _key.pack() );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Returns whether the surface has a color key.
@@ -365,7 +365,7 @@ using surface_t = struct surface {
 
         const bool l_result = SDL_GetSurfaceColorKey( _data, &l_key );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         return ( l_key );
     }
@@ -383,7 +383,7 @@ using surface_t = struct surface {
         const bool l_result = SDL_SetSurfaceColorMod(
             _data, _color.red, _color.green, _color.blue );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Get the additional color value multiplied into blit operations.
@@ -396,7 +396,7 @@ using surface_t = struct surface {
             SDL_GetSurfaceColorMod( _data, &l_returnValue.red,
                                     &l_returnValue.green, &l_returnValue.blue );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         return ( l_returnValue );
     }
@@ -413,7 +413,7 @@ using surface_t = struct surface {
     void alphaMod( uint8_t _alpha ) {
         const bool l_result = SDL_SetSurfaceAlphaMod( _data, _alpha );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Get the additional alpha value used in blit operations.
@@ -422,7 +422,7 @@ using surface_t = struct surface {
 
         const bool l_result = SDL_GetSurfaceAlphaMod( _data, &l_alpha );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         return ( l_alpha );
     }
@@ -438,7 +438,7 @@ using surface_t = struct surface {
         const bool l_result =
             SDL_SetSurfaceBlendMode( _data, toLegacy( _blend ) );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Get the blend mode used for blit operations.
@@ -448,7 +448,7 @@ using surface_t = struct surface {
         const bool l_result = SDL_GetSurfaceBlendMode(
             _data, std::bit_cast< SDL_BlendMode* >( &l_blend ) );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         return ( l_blend );
     }
@@ -472,7 +472,7 @@ using surface_t = struct surface {
 
         const bool l_result = SDL_SetSurfaceClipRect( _data, &l_zone );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Get the clipping rectangle for a surface.
@@ -486,7 +486,7 @@ using surface_t = struct surface {
 
         const bool l_result = SDL_GetSurfaceClipRect( _data, &l_zone );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         return { l_zone };
     }
@@ -497,7 +497,7 @@ using surface_t = struct surface {
     void flip( flip_t _flip ) {
         const bool l_result = SDL_FlipSurface( _data, toLegacy( _flip ) );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Creates a new surface identical to the existing surface, scaled to the
@@ -581,7 +581,7 @@ using surface_t = struct surface {
     void premultiplyAlpha( bool _linear ) {
         const bool l_result = SDL_PremultiplySurfaceAlpha( _data, _linear );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Clear a surface with a specific color, with floating point precision.
@@ -605,7 +605,7 @@ using surface_t = struct surface {
         const bool l_result =
             SDL_ClearSurface( _data, _red, _green, _blue, _alpha );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a fast fill of a zone with a specific color.
@@ -626,7 +626,7 @@ using surface_t = struct surface {
 
         const bool l_result = SDL_FillSurfaceRect( _data, &l_zone, _color );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a fast fill with a specific color.
@@ -645,7 +645,7 @@ using surface_t = struct surface {
     void fill( uint32_t _color ) {
         const bool l_result = SDL_FillSurfaceRect( _data, nullptr, _color );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a fast fill of a set of zones with a specific color.
@@ -668,7 +668,7 @@ using surface_t = struct surface {
         const bool l_result = SDL_FillSurfaceRects( _data, l_zones.data(),
                                                     l_zones.size(), _color );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Performs a fast blit from the source surface to the destination surface
@@ -740,7 +740,7 @@ using surface_t = struct surface {
         const bool l_result =
             SDL_BlitSurface( _data, nullptr, _destination, nullptr );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a scaled blit to a destination surface, which may be of a
@@ -757,7 +757,7 @@ using surface_t = struct surface {
         const bool l_result = SDL_BlitSurfaceScaled(
             _data, nullptr, _destination, nullptr, toLegacy( _scale ) );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a stretched pixel copy from one surface to another.
@@ -773,7 +773,7 @@ using surface_t = struct surface {
         const bool l_result = SDL_StretchSurface( _data, nullptr, _destination,
                                                   nullptr, toLegacy( _scale ) );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a tiled blit to a destination surface, which may be of a
@@ -792,7 +792,7 @@ using surface_t = struct surface {
         const bool l_result =
             SDL_BlitSurfaceTiled( _data, nullptr, _destination, nullptr );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a scaled and tiled blit to a destination surface, which may be of
@@ -814,7 +814,7 @@ using surface_t = struct surface {
             _data, nullptr, _scaleAmount, toLegacy( _scale ), _destination,
             nullptr );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform a scaled blit using the 9-grid algorithm to a destination
@@ -851,7 +851,7 @@ using surface_t = struct surface {
             _data, nullptr, _zone.minX, _zone.maxX, _zone.minY, _zone.maxY,
             _scaleAmount, toLegacy( _scale ), _destination, nullptr );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Map an RGBA quadruple to a pixel value for a surface.
@@ -893,7 +893,7 @@ using surface_t = struct surface {
             _data, _point.x, _point.y, &l_color.red, &l_color.green,
             &l_color.blue, &l_color.alpha );
 
-        slickdl::assert( l_result );
+        assert( l_result );
 
         return ( l_color );
     }
@@ -939,7 +939,7 @@ bool ReadSurfacePixelFloat(SDL_Surface *surface, int x, int y, float *r, float *
             SDL_WriteSurfacePixel( _data, _point.x, _point.y, _color.red,
                                    _color.green, _color.blue, _color.alpha );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
 #if 0
@@ -983,7 +983,7 @@ private:
         const bool l_result =
             SDL_BlitSurface( _data, nullptr, _destination, nullptr );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Perform low-level surface scaled blitting only.
@@ -1002,7 +1002,7 @@ private:
         const bool l_result = SDL_BlitSurfaceUncheckedScaled(
             _data, nullptr, _destination, nullptr, toLegacy( _scale ) );
 
-        slickdl::assert( l_result );
+        assert( l_result );
     }
 
     // Variables

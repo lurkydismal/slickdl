@@ -7,26 +7,18 @@
 
 #include "clipping_zone.hpp"
 #include "slickdl.hpp"
+#include "slickdl/point.hpp"
 #include "stddebug.hpp"
+#include "stdinplace_vector.hpp"
 
 namespace slickdl {
-
-// The structure that defines a point
-template < is_int_or_float T >
-struct point {
-    [[nodiscard]] constexpr auto operator<=>( const point< T >& _box ) const =
-        default;
-
-    T x, y;
-};
-
-template < typename T >
-using point_t = point< T >;
 
 template < is_int_or_float T >
 struct line {
     [[nodiscard]] constexpr auto operator<=>( const line< T >& _box ) const =
         default;
+
+    [[nodiscard]] constexpr auto points() const -> std::vector< point_t< T > >;
 
     point_t< T > start;
     point_t< T > end;
@@ -35,13 +27,30 @@ struct line {
 template < typename T >
 using line_t = line< T >;
 
+template < typename T, typename ContainerType = std::vector< point_t< T > > >
+[[nodiscard]] constexpr auto toPoints( std::span< const line_t< T > > _lines )
+    -> ContainerType {
+    ContainerType l_returnValue;
+
+    l_returnValue.reserve( _lines.size() * 2 );
+
+    for ( const line_t< T >& _line : _lines ) {
+        l_returnValue.emplace_back( _line.start );
+        l_returnValue.emplace_back( _line.end );
+    }
+
+    return ( l_returnValue );
+}
+
 // A box, with the origin at the upper left
 template < is_int_or_float T >
 struct box {
+    using native_t = isIntOrFloat_t< T, SDL_Rect, SDL_FRect >;
+
     // TODO: Improve
     using clippingZone_t = clippingZone_t< T >;
 
-    constexpr box( SDL_Rect& _rectangle )
+    constexpr box( native_t& _rectangle )
         : x( _rectangle.x ),
           y( _rectangle.y ),
           width( _rectangle.w ),
@@ -59,14 +68,14 @@ struct box {
         } );
     }
 
-    constexpr auto operator=( SDL_Rect& _rectangle ) -> box& {
+    constexpr auto operator=( native_t& _rectangle ) -> box& {
         *this = box( _rectangle );
 
         return ( *this );
     }
 
-    [[nodiscard]] constexpr operator SDL_Rect() const {
-        return ( SDL_Rect{
+    [[nodiscard]] constexpr operator native_t() const {
+        return ( native_t{
             x,
             y,
             width,
@@ -281,7 +290,8 @@ struct box {
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x, _clippingZone.y,
+            _clippingZone.x,
+            _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };
@@ -385,8 +395,7 @@ struct box {
         -> std::optional< line_t< T > > {
         std::optional< line_t< T > > l_returnValue = std::nullopt;
 
-        using bigT_t =
-            std::conditional_t< std::is_integral_v< T >, int64_t, double >;
+        using bigT_t = isIntOrFloat_t< T, int64_t, double >;
 
         const size_t l_enclosePointsEpsilon =
             ( ( std::is_integral_v< T > ) ? ( 1 ) : ( 0 ) );
@@ -621,6 +630,24 @@ template < is_int_or_float T >
     const clippingZone_t< T >& _clippingZone ) -> bool {
     return ( inRange1D( _point.x, _clippingZone.minX, _clippingZone.maxX ) &&
              inRange1D( _point.y, _clippingZone.minY, _clippingZone.maxY ) );
+}
+
+template < typename T, typename ContainerType = std::vector< point_t< T > > >
+[[nodiscard]] constexpr auto toPoints( std::span< const box_t< T > > _boxes )
+    -> ContainerType {
+    ContainerType l_returnValue;
+
+    l_returnValue.reserve( _boxes.size() * 2 );
+
+    for ( const box_t< T >& _box : _boxes ) {
+        l_returnValue.emplace_back( _box.x );
+        l_returnValue.emplace_back( _box.y );
+
+        l_returnValue.emplace_back( _box.x + _box.width );
+        l_returnValue.emplace_back( _box.y + _box.height );
+    }
+
+    return ( l_returnValue );
 }
 
 #if 0

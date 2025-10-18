@@ -4,13 +4,11 @@
 
 #include <cstdint>
 #include <gsl/pointers>
-#include <ranges>
 #include <span>
 #include <string_view>
 #include <variant>
 
 #include "color.hpp"
-#include "slickdl.hpp"
 #include "stdfunc.hpp"
 
 // Largely these facilities deal with pixel _format_: what does this set of
@@ -92,15 +90,7 @@ using palette_t = struct palette {
 
     // Set a range of colors in a palette
     void colors( std::span< const color_t > _colors,
-                 size_t _firstEntryIndex = 0 ) {
-        const std::vector< SDL_Color > l_colors =
-            stdfunc::spanToVector< color_t, SDL_Color >( _colors );
-
-        const bool l_result = SDL_SetPaletteColors(
-            _data, l_colors.data(), _firstEntryIndex, l_colors.size() );
-
-        slickdl::assert( l_result );
-    }
+                 size_t _firstEntryIndex = 0 );
 
     // Map an RGBA quadruple to a pixel value for a given pixel format
     //
@@ -173,7 +163,8 @@ namespace pixels {
 // Uint8 for an 8-bpp format)
 template < std::unsigned_integral U >
     requires( sizeof( U ) <= sizeof( uint32_t ) )
-[[nodiscard]] auto map( pixelFormatDetails_t _format, color_t _color ) -> U {
+[[nodiscard]] inline auto map( pixelFormatDetails_t _format, color_t _color )
+    -> U {
     return ( SDL_MapRGBA( _format, nullptr, _color.red, _color.green,
                           _color.blue, _color.alpha ) );
 }
@@ -189,8 +180,8 @@ template < std::unsigned_integral U >
 // (100% opaque)
 template < std::unsigned_integral U >
     requires( sizeof( U ) <= sizeof( uint32_t ) )
-[[nodiscard]] auto color( pixelValue_t< U > _value,
-                          pixelFormatDetails_t _format ) -> color_t {
+[[nodiscard]] inline auto color( pixelValue_t< U > _value,
+                                 pixelFormatDetails_t _format ) -> color_t {
     color_t l_color{};
 
     SDL_GetRGBA( _value, _format, nullptr, &l_color.red, &l_color.green,
@@ -1033,273 +1024,7 @@ using colorspaceUnderlying_t = std::underlying_type_t< colorspace_t >;
 }
 
 // Get the human readable name of a pixel format.
-[[nodiscard]] constexpr auto name( format_t _format ) -> std::string_view {
-    std::string_view l_returnValue;
-
-    switch ( _format ) {
-        case ( format_t::index1LSB ): {
-            l_returnValue = ( "index1LSB" );
-        }
-
-        case ( format_t::index1MSB ): {
-            l_returnValue = ( "index1MSB" );
-        }
-
-        case ( format_t::index2LSB ): {
-            l_returnValue = ( "index2LSB" );
-        }
-
-        case ( format_t::index2MSB ): {
-            l_returnValue = ( "index2MSB" );
-        }
-
-        case ( format_t::index4LSB ): {
-            l_returnValue = ( "index4LSB" );
-        }
-
-        case ( format_t::index4MSB ): {
-            l_returnValue = ( "index4MSB" );
-        }
-
-        case ( format_t::index8 ): {
-            l_returnValue = ( "index8" );
-        }
-
-        case ( format_t::fRGB332 ): {
-            l_returnValue = ( "fRGB332" );
-        }
-
-        case ( format_t::fXRGB4444 ): {
-            l_returnValue = ( "fXRGB4444" );
-        }
-
-        case ( format_t::fXBGR4444 ): {
-            l_returnValue = ( "fXBGR4444" );
-        }
-
-        case ( format_t::fXRGB1555 ): {
-            l_returnValue = ( "fXRGB1555" );
-        }
-
-        case ( format_t::fXBGR1555 ): {
-            l_returnValue = ( "fXBGR1555" );
-        }
-
-        case ( format_t::fARGB4444 ): {
-            l_returnValue = ( "fARGB4444" );
-        }
-
-        case ( format_t::fRGBA4444 ): {
-            l_returnValue = ( "fRGBA4444" );
-        }
-
-        case ( format_t::fABGR4444 ): {
-            l_returnValue = ( "fABGR4444" );
-        }
-
-        case ( format_t::fBGRA4444 ): {
-            l_returnValue = ( "fBGRA4444" );
-        }
-
-        case ( format_t::fARGB1555 ): {
-            l_returnValue = ( "fARGB1555" );
-        }
-
-        case ( format_t::fRGBA5551 ): {
-            l_returnValue = ( "fRGBA5551" );
-        }
-
-        case ( format_t::fABGR1555 ): {
-            l_returnValue = ( "fABGR1555" );
-        }
-
-        case ( format_t::fBGRA5551 ): {
-            l_returnValue = ( "fBGRA5551" );
-        }
-
-        case ( format_t::fRGB565 ): {
-            l_returnValue = ( "fRGB565" );
-        }
-
-        case ( format_t::fBGR565 ): {
-            l_returnValue = ( "fBGR565" );
-        }
-
-        case ( format_t::fRGB24 ): {
-            l_returnValue = ( "fRGB24" );
-        }
-
-        case ( format_t::fBGR24 ): {
-            l_returnValue = ( "fBGR24" );
-        }
-
-        case ( format_t::fXRGB8888 ): {
-            l_returnValue = ( "fXRGB8888" );
-        }
-
-        case ( format_t::fRGBX8888 ): {
-            l_returnValue = ( "fRGBX8888" );
-        }
-
-        case ( format_t::fXBGR8888 ): {
-            l_returnValue = ( "fXBGR8888" );
-        }
-
-        case ( format_t::fBGRX8888 ): {
-            l_returnValue = ( "fBGRX8888" );
-        }
-
-        case ( format_t::fARGB8888 ): {
-            l_returnValue = ( "fARGB8888" );
-        }
-
-        case ( format_t::fRGBA8888 ): {
-            l_returnValue = ( "fRGBA8888" );
-        }
-
-        case ( format_t::fABGR8888 ): {
-            l_returnValue = ( "fABGR8888" );
-        }
-
-        case ( format_t::fBGRA8888 ): {
-            l_returnValue = ( "fBGRA8888" );
-        }
-
-        case ( format_t::fXRGB2101010 ): {
-            l_returnValue = ( "fXRGB2101010" );
-        }
-
-        case ( format_t::fXBGR2101010 ): {
-            l_returnValue = ( "fXBGR2101010" );
-        }
-
-        case ( format_t::fARGB2101010 ): {
-            l_returnValue = ( "fARGB2101010" );
-        }
-
-        case ( format_t::fABGR2101010 ): {
-            l_returnValue = ( "fABGR2101010" );
-        }
-
-        case ( format_t::fRGB48 ): {
-            l_returnValue = ( "fRGB48" );
-        }
-
-        case ( format_t::fBGR48 ): {
-            l_returnValue = ( "fBGR48" );
-        }
-
-        case ( format_t::fRGBA64 ): {
-            l_returnValue = ( "fRGBA64" );
-        }
-
-        case ( format_t::fARGB64 ): {
-            l_returnValue = ( "fARGB64" );
-        }
-
-        case ( format_t::fBGRA64 ): {
-            l_returnValue = ( "fBGRA64" );
-        }
-
-        case ( format_t::fABGR64 ): {
-            l_returnValue = ( "fABGR64" );
-        }
-
-        case ( format_t::fRGB48Float ): {
-            l_returnValue = ( "fRGB48Float" );
-        }
-
-        case ( format_t::fBGR48Float ): {
-            l_returnValue = ( "fBGR48Float" );
-        }
-
-        case ( format_t::fRGBA64Float ): {
-            l_returnValue = ( "fRGBA64Float" );
-        }
-
-        case ( format_t::fARGB64Float ): {
-            l_returnValue = ( "fARGB64Float" );
-        }
-
-        case ( format_t::fBGRA64Float ): {
-            l_returnValue = ( "fBGRA64Float" );
-        }
-
-        case ( format_t::fABGR64Float ): {
-            l_returnValue = ( "fABGR64Float" );
-        }
-
-        case ( format_t::fRGB96Float ): {
-            l_returnValue = ( "fRGB96Float" );
-        }
-
-        case ( format_t::fBGR96Float ): {
-            l_returnValue = ( "fBGR96Float" );
-        }
-
-        case ( format_t::fRGBA128Float ): {
-            l_returnValue = ( "fRGBA128Float" );
-        }
-
-        case ( format_t::fARGB128Float ): {
-            l_returnValue = ( "fARGB128Float" );
-        }
-
-        case ( format_t::fBGRA128Float ): {
-            l_returnValue = ( "fBGRA128Float" );
-        }
-
-        case ( format_t::fABGR128Float ): {
-            l_returnValue = ( "fABGR128Float" );
-        }
-
-        case ( format_t::fYV12 ): {
-            l_returnValue = ( "fYV12" );
-        }
-
-        case ( format_t::fIYUV ): {
-            l_returnValue = ( "fIYUV" );
-        }
-
-        case ( format_t::fYUY2 ): {
-            l_returnValue = ( "fYUY2" );
-        }
-
-        case ( format_t::fUYVY ): {
-            l_returnValue = ( "fUYVY" );
-        }
-
-        case ( format_t::fYVYU ): {
-            l_returnValue = ( "fYVYU" );
-        }
-
-        case ( format_t::fNV12 ): {
-            l_returnValue = ( "fNV12" );
-        }
-
-        case ( format_t::fNV21 ): {
-            l_returnValue = ( "fNV21" );
-        }
-
-        case ( format_t::fP010 ): {
-            l_returnValue = ( "fP010" );
-        }
-
-        case ( format_t::externalOES ): {
-            l_returnValue = ( "externalOES" );
-        }
-
-        case ( format_t::fMJPG ): {
-            l_returnValue = ( "fMJPG" );
-        }
-
-        default: {
-            l_returnValue = ( "unknown" );
-        }
-    }
-
-    return ( l_returnValue );
-}
+[[nodiscard]] auto name( format_t _format ) -> std::string_view;
 
 using mask_t = struct mask {
     uint32_t red;
@@ -1852,11 +1577,7 @@ using mask_t = struct mask {
 // allocated), and hence should not be modified, especially the palette. Weird
 // errors such as 'Blit combination not supported' may occur.
 [[nodiscard]] auto pixelFormatDetails( format_t _format )
-    -> const pixelFormatDetails_t {
-    return (
-        std::bit_cast< SDL_PixelFormatDetails* >( SDL_GetPixelFormatDetails(
-            static_cast< SDL_PixelFormat >( _format ) ) ) );
-}
+    -> const pixelFormatDetails_t;
 
 // Legacy
 [[nodiscard]] constexpr auto toLegacy( format_t _format ) -> SDL_PixelFormat {

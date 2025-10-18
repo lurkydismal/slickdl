@@ -145,11 +145,6 @@ using blendFactor_t = enum class blendFactor : uint8_t {
     blendOperation_t _colorOperation,
     blendFactor_t _sourceAlphaFactor,
     blendFactor_t _destinationAlphaFactor,
-    blendOperation_t _alphaOperation ) -> blend_t {
-    return ( static_cast< blend_t >( SDL_ComposeCustomBlendMode(
-        toLegacy( _sourceColorFactor ), toLegacy( _destinationColorFactor ),
-        toLegacy( _colorOperation ), toLegacy( _sourceAlphaFactor ),
-        toLegacy( _destinationAlphaFactor ), toLegacy( _alphaOperation ) ) ) );
-}
+    blendOperation_t _alphaOperation ) -> blend_t;
 
 } // namespace slickdl
