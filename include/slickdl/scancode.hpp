@@ -370,6 +370,6 @@ struct std::formatter< slickdl::scancode_t, char > {
 
     auto format( slickdl::scancode_t& _value,
                  std::format_context& _context ) const {
-        return ( std::format_to( _context.out(), "{{}}", _value ) );
+        return ( std::format_to( _context.out(), "{}", _value ) );
     }
 };
