@@ -443,7 +443,7 @@ using id_t = size_t;
 // Return whether a keyboard is currently connected.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto any() -> bool {
+[[nodiscard]] inline auto any() -> bool {
     return ( SDL_HasKeyboard() );
 }
 
@@ -455,7 +455,7 @@ using id_t = size_t;
 // consider it actively in use.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto all() -> std::vector< id_t > {
+[[nodiscard]] inline auto all() -> std::vector< id_t > {
     size_t l_amount = 0;
 
     std::unique_ptr< id_t, void ( * )( void* ) > l_result(
@@ -475,7 +475,8 @@ using id_t = size_t;
 // Get the name of a keyboard.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto name( id_t _id ) -> std::optional< std::string_view > {
+[[nodiscard]] inline auto name( id_t _id )
+    -> std::optional< std::string_view > {
     const char* l_result = SDL_GetKeyboardNameForID( _id );
 
     assert( l_result );
@@ -493,7 +494,7 @@ using id_t = size_t;
 // Query the window which currently has keyboard focus.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto focus() -> slickdl::window_t {
+[[nodiscard]] inline auto focus() -> slickdl::window_t {
     return ( SDL_GetKeyboardFocus() );
 }
 
@@ -518,38 +519,19 @@ using id_t = size_t;
 // pressed or not.
 // TODO: Improve
 [[nodiscard]] auto state()
-    -> std::array< bool, static_cast< size_t >( scancode_t::count ) > {
-    int l_keysAmount = 0;
-    const bool* l_keysState = SDL_GetKeyboardState( &l_keysAmount );
-
-    [[assume( l_keysAmount ==
-              static_cast< int >( slickdl::scancode_t::count ) )]];
-
-    assert( l_keysAmount != static_cast< size_t >( scancode_t::count ) );
-
-    std::array< bool, static_cast< size_t >( scancode_t::count ) >
-        l_returnValue{};
-
-    for ( auto [ _index, _isPressed ] :
-          std::span( l_keysState, l_keysAmount ) | std::views::enumerate ) {
-        l_returnValue.at( _index ) = _isPressed;
-    }
-
-    return ( l_returnValue );
-}
+    -> std::array< bool, static_cast< size_t >( scancode_t::count ) >;
 
 // Clear the state of the keyboard.
 //
 // This function will generate key up events for all pressed keys.
 //
 // Should only be called on the main thread.
-void reset() {
+inline void reset() {
     SDL_ResetKeyboard();
 }
 
 // Get the current key modifier state for the keyboard.
-//
-[[nodiscard]] auto modifier() -> modifier_t {
+[[nodiscard]] inline auto modifier() -> modifier_t {
     return ( static_cast< modifier_t >( SDL_GetModState() ) );
 }
 
@@ -562,7 +544,7 @@ void reset() {
 //
 // This does not change the keyboard state, only the key modifier flags that
 // SDL reports.
-void modifier( modifier_t _modifier ) {
+inline void modifier( modifier_t _modifier ) {
     SDL_SetModState( toLegacy( _modifier ) );
 }
 
@@ -580,9 +562,9 @@ void modifier( modifier_t _modifier ) {
 // If the keycode will be used in key events.
 //
 // Not thread safe.
-[[nodiscard]] auto keyFromScancode( scancode_t _scancode,
-                                    modifier_t _modstate,
-                                    bool _keyEvent ) -> code_t {
+[[nodiscard]] inline auto keyFromScancode( scancode_t _scancode,
+                                           modifier_t _modstate,
+                                           bool _keyEvent ) -> code_t {
     return ( static_cast< code_t >( SDL_GetKeyFromScancode(
         toLegacy( _scancode ), toLegacy( _modstate ), _keyEvent ) ) );
 }
@@ -597,7 +579,7 @@ void modifier( modifier_t _modifier ) {
 // may be NULL.
 //
 // Not thread safe.
-[[nodiscard]] auto scancodeFromKey(
+[[nodiscard]] inline auto scancodeFromKey(
     code_t _code,
     std::optional< modifier_t > _modifier = std::nullopt ) -> scancode_t {
     if ( _modifier ) {
@@ -616,7 +598,7 @@ void modifier( modifier_t _modifier ) {
 // to this function must stay valid while SDL is being used.
 //
 // Not thread safe.
-void scancodeName( scancode_t _scancode, std::string_view _name ) {
+inline void scancodeName( scancode_t _scancode, std::string_view _name ) {
     const bool l_result = SDL_SetScancodeName( toLegacy( _scancode ),
                                                std::string( _name ).c_str() );
 
@@ -635,7 +617,8 @@ void scancodeName( scancode_t _scancode, std::string_view _name ) {
 // strings and scancodes.
 //
 // Not thread safe.
-[[nodiscard]] auto scancodeName( scancode_t _scancode ) -> std::string_view {
+[[nodiscard]] inline auto scancodeName( scancode_t _scancode )
+    -> std::string_view {
     const std::string_view l_result =
         SDL_GetScancodeName( toLegacy( _scancode ) );
 
@@ -647,7 +630,8 @@ void scancodeName( scancode_t _scancode, std::string_view _name ) {
 // Get a scancode from a human-readable name.
 //
 // Not thread safe.
-[[nodiscard]] auto scancodeFromName( std::string_view _name ) -> scancode_t {
+[[nodiscard]] inline auto scancodeFromName( std::string_view _name )
+    -> scancode_t {
     const scancode_t l_result = static_cast< scancode_t >(
         SDL_GetScancodeFromName( std::string( _name ).c_str() ) );
 
@@ -663,7 +647,7 @@ void scancodeName( scancode_t _scancode, std::string_view _name ) {
 // Letters will be presented in their uppercase form, if applicable.
 //
 // Not thread safe.
-[[nodiscard]] auto keyName( code_t _code ) -> std::string_view {
+[[nodiscard]] inline auto keyName( code_t _code ) -> std::string_view {
     const std::string_view l_result = SDL_GetKeyName( toLegacy( _code ) );
 
     assert( !l_result.empty() );
@@ -674,7 +658,7 @@ void scancodeName( scancode_t _scancode, std::string_view _name ) {
 // Get a key code from a human-readable name.
 //
 // Not thread safe.
-[[nodiscard]] auto keyFromName( std::string_view _name ) -> code_t {
+[[nodiscard]] inline auto keyFromName( std::string_view _name ) -> code_t {
     const code_t l_result = static_cast< code_t >(
         SDL_GetKeyFromName( std::string( _name ).c_str() ) );
 
@@ -698,7 +682,7 @@ namespace text_input {
 // passed through.
 //
 // Should only be called on the main thread.
-void start( window_t _window ) {
+inline void start( window_t _window ) {
     const bool l_result = SDL_StartTextInput( _window );
 
     assert( l_result );
@@ -775,7 +759,7 @@ using capitalization_t = enum class capitalization : uint8_t {
 //   https://developer.android.com/reference/android/text/InputType
 //
 // Should only be called on the main thread.
-void start( window_t _window, SDL_PropertiesID _properties ) {
+inline void start( window_t _window, SDL_PropertiesID _properties ) {
     const bool l_result =
         SDL_StartTextInputWithProperties( _window, _properties );
 
@@ -793,7 +777,7 @@ constexpr std::string_view g_androidInputtypeNumber =
 // Check whether or not Unicode text input events are enabled for a window.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto isActive( window_t _window ) -> bool {
+[[nodiscard]] inline auto isActive( window_t _window ) -> bool {
     return ( SDL_TextInputActive( _window ) );
 }
 
@@ -803,7 +787,7 @@ constexpr std::string_view g_androidInputtypeNumber =
 // hide it.
 //
 // Should only be called on the main thread.
-void stop( window_t _window ) {
+inline void stop( window_t _window ) {
     const bool l_result = SDL_StopTextInput( _window );
 
     assert( l_result );
@@ -812,7 +796,7 @@ void stop( window_t _window ) {
 // Dismiss the composition window/IME without disabling the subsystem.
 //
 // Should only be called on the main thread.
-void clearComposition( window_t _window ) {
+inline void clearComposition( window_t _window ) {
     const bool l_result = SDL_ClearComposition( _window );
 
     assert( l_result );
@@ -829,9 +813,9 @@ void clearComposition( window_t _window ) {
 // coordinates.
 //
 // Should only be called on the main thread.
-void area( window_t _window,
-           const std::optional< box_t< int > >& _box,
-           ssize_t _cursor ) {
+inline void area( window_t _window,
+                  const std::optional< box_t< int > >& _box,
+                  ssize_t _cursor ) {
     bool l_result = false;
 
     if ( _box ) {
@@ -856,7 +840,7 @@ void area( window_t _window,
 // coordinates.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto area( window_t _window )
+[[nodiscard]] inline auto area( window_t _window )
     -> std::pair< box_t< int >, ssize_t > {
     box_t< int > l_box;
     ssize_t l_cursor = 0;
@@ -875,14 +859,14 @@ void area( window_t _window,
 // Check whether the platform has screen keyboard support.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto hasScreenKeyboard() -> bool {
+[[nodiscard]] inline auto hasScreenKeyboard() -> bool {
     return ( SDL_HasScreenKeyboardSupport() );
 }
 
 // Check whether the screen keyboard is shown for given window.
 //
 // Should only be called on the main thread.
-[[nodiscard]] auto isScreenKeyboardActive( window_t _window ) -> bool {
+[[nodiscard]] inline auto isScreenKeyboardActive( window_t _window ) -> bool {
     return ( SDL_ScreenKeyboardShown( _window ) );
 }
 

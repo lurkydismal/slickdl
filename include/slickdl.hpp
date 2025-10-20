@@ -26,10 +26,13 @@ using isIntOrFloat_t = std::conditional_t< std::is_same_v< T, int >, U, W >;
 using window_t = gsl::not_null< SDL_Window* >;
 using event_t = SDL_Event;
 
-using volume_t = struct volume {
-    float width;
-    float height;
+template < is_int_or_float T >
+struct volume {
+    T width, height;
 };
+
+template < typename T >
+using volume_t = volume< T >;
 
 // Helpers
 template < typename T >

@@ -7,8 +7,8 @@
 #include <gsl/pointers>
 #include <span>
 
-#include "slickdl.hpp"
 #include "slickdl/color.hpp"
+#include "slickdl/render_texture.hpp"
 #include "slickdl/surface.hpp"
 #include "stddebug.hpp"
 
@@ -27,7 +27,7 @@ void quit() {
 using font_t = struct font {
     font() = delete;
 
-    font( const font& ) = default;
+    font( const font& ) = delete;
     font( font&& ) = default;
 
     font( std::span< const std::byte > _data, float _size = 18 )

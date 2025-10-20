@@ -292,7 +292,7 @@ using renderer_t = struct renderer {
     renderer( surface_t& _surface )
         : _data( SDL_CreateSoftwareRenderer( _surface ) ) {}
 
-    renderer( const renderer& ) = default;
+    renderer( const renderer& ) = delete;
     renderer( renderer&& ) = default;
 
     template < typename OtherType >
@@ -457,8 +457,8 @@ using renderer_t = struct renderer {
     // adjustments, use SDL_GetCurrentRenderOutputSize() instead.
     //
     // Should only be called on the main thread.
-    [[nodiscard]] auto outputSize() const -> volume_t {
-        volume_t l_volume;
+    [[nodiscard]] auto outputSize() const -> volume_t< int > {
+        volume_t< int > l_volume;
 
         const bool l_result = SDL_GetRenderOutputSize(
             _data, std::bit_cast< int* >( &l_volume.width ),
@@ -480,8 +480,8 @@ using renderer_t = struct renderer {
     // SDL_SetRenderLogicalPresentation().
     //
     // Should only be called on the main thread.
-    [[nodiscard]] auto currentOutputSize() const -> volume_t {
-        volume_t l_volume;
+    [[nodiscard]] auto currentOutputSize() const -> volume_t< int > {
+        volume_t< int > l_volume;
 
         const bool l_result = SDL_GetCurrentRenderOutputSize(
             _data, std::bit_cast< int* >( &l_volume.width ),
@@ -540,7 +540,8 @@ using renderer_t = struct renderer {
     // SDL_ConvertEventToRenderCoordinates().
     //
     // Should only be called on the main thread.
-    void logicalPresentation( volume_t _volume, logicalPresentation_t _mode ) {
+    void logicalPresentation( volume_t< int > _volume,
+                              logicalPresentation_t _mode ) {
         const bool l_result = SDL_SetRenderLogicalPresentation(
             _data, _volume.width, _volume.height, toLegacy( _mode ) );
 
@@ -557,8 +558,8 @@ using renderer_t = struct renderer {
     //
     // Should only be called on the main thread.
     [[nodiscard]] auto logicalPresentation() const
-        -> std::pair< volume_t, logicalPresentation_t > {
-        volume_t l_volume;
+        -> std::pair< volume_t< int >, logicalPresentation_t > {
+        volume_t< int > l_volume;
         logicalPresentation_t l_logicalPresentation =
             logicalPresentation_t::disabled;
 
@@ -1498,7 +1499,7 @@ using texture_t = struct texture {
     texture( const renderer_t& _renderer,
              pixels::format_t _format,
              access_t _access,
-             volume_t _volume )
+             volume_t< int > _volume )
         : _data( SDL_CreateTexture( _renderer,
                                     pixels::toLegacy( _format ),
                                     toLegacy( _access ),
@@ -1619,7 +1620,7 @@ using texture_t = struct texture {
     texture( const renderer_t& _renderer, SDL_PropertiesID _props )
         : _data( SDL_CreateTextureWithProperties( _renderer, _props ) ) {}
 
-    texture( const texture& ) = default;
+    texture( const texture& ) = delete;
     texture( texture&& ) = default;
 
     template < typename OtherType >
@@ -1778,13 +1779,14 @@ using texture_t = struct texture {
     }
 
     // Should only be called on the main thread.
-    [[nodiscard]] constexpr auto volume() const -> volume_t {
+    template < typename T >
+    [[nodiscard]] constexpr auto volume() const -> volume_t< T > {
         stdfunc::assert( _data->w );
         stdfunc::assert( _data->h );
 
         return {
-            static_cast< float >( _data->w ),
-            static_cast< float >( _data->h ),
+            static_cast< T >( _data->w ),
+            static_cast< T >( _data->h ),
         };
     }
 
@@ -2291,7 +2293,7 @@ private:
 //
 // Should only be called on the main thread
 [[nodiscard]] inline auto windowAndRenderer( std::string_view _title,
-                                             volume_t _volume,
+                                             volume_t< int > _volume,
                                              SDL_WindowFlags _windowFlags )
     -> std::pair< window_t, renderer_t > {
     SDL_Window* l_window = nullptr;

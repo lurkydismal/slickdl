@@ -9,7 +9,10 @@ template < is_int_or_float T >
 struct clippingZone {
     using native_t = isIntOrFloat_t< T, SDL_Rect, SDL_FRect >;
 
-    constexpr clippingZone() = default;
+    clippingZone() = default;
+
+    constexpr clippingZone( T _minX, T _minY, T _maxX, T _maxY )
+        : minX( _minX ), minY( _minY ), maxX( _maxX ), maxY( _maxY ) {}
 
     constexpr clippingZone( native_t& _rectangle )
         : minX( _rectangle.x ),
@@ -26,6 +29,16 @@ struct clippingZone {
         return ( *this );
     }
 
+    template < typename U >
+    [[nodiscard]] constexpr operator clippingZone< U >() const {
+        return ( clippingZone< U >{
+            static_cast< U >( minX ),
+            static_cast< U >( minY ),
+            static_cast< U >( maxX ),
+            static_cast< U >( maxY ),
+        } );
+    }
+
     constexpr operator native_t() const {
         return ( native_t{
             minX,
@@ -39,27 +52,20 @@ struct clippingZone {
         return ( *this == clippingZone{} );
     }
 
+    [[nodiscard]] constexpr auto points() const
+        -> std::array< point_t< T >, 4 > {
+        return {
+            minX,
+            minY,
+            maxX,
+            maxY,
+        };
+    }
+
     T minX, minY, maxX, maxY;
 };
 
 template < typename T >
 using clippingZone_t = struct clippingZone< T >;
-
-template < typename T, typename ContainerType = std::vector< point_t< T > > >
-[[nodiscard]] constexpr auto toPoints(
-    std::span< const clippingZone_t< T > > _zones ) -> ContainerType {
-    ContainerType l_returnValue;
-
-    l_returnValue.reserve( _zones.size() * 2 );
-
-    for ( const clippingZone_t< T >& _zone : _zones ) {
-        l_returnValue.emplace_back( _zone.minX );
-        l_returnValue.emplace_back( _zone.minY );
-        l_returnValue.emplace_back( _zone.maxX );
-        l_returnValue.emplace_back( _zone.maxY );
-    }
-
-    return ( l_returnValue );
-}
 
 } // namespace slickdl

@@ -71,7 +71,7 @@ using palette_t = struct palette {
     palette( size_t _colorAmount )
         : _data( SDL_CreatePalette( _colorAmount ) ) {}
 
-    palette( const palette& ) = default;
+    palette( const palette& ) = delete;
 
     // TODO: Maybe will assert
     palette( palette&& ) = default;

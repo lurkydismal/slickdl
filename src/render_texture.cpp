@@ -106,7 +106,7 @@ void texture_t::update(
 
         assert( l_result );
 
-        const volume_t l_volume = volume();
+        const auto l_volume = volume< int >();
 
         l_pixels.first = { l_temp, static_cast< size_t >(
                                        ( l_volume.width * l_volume.height ) ) };

@@ -17,28 +17,16 @@ struct line {
     [[nodiscard]] constexpr auto operator<=>( const line< T >& _box ) const =
         default;
 
-    [[nodiscard]] constexpr auto points() const -> std::vector< point_t< T > >;
+    [[nodiscard]] constexpr auto points() const
+        -> std::array< point_t< T >, 2 > {
+        return { start, end };
+    }
 
     point_t< T > start, end;
 };
 
 template < typename T >
 using line_t = line< T >;
-
-template < typename T, typename ContainerType = std::vector< point_t< T > > >
-[[nodiscard]] constexpr auto toPoints( std::span< const line_t< T > > _lines )
-    -> ContainerType {
-    ContainerType l_returnValue;
-
-    l_returnValue.reserve( _lines.size() * 2 );
-
-    for ( const line_t< T >& _line : _lines ) {
-        l_returnValue.emplace_back( _line.start );
-        l_returnValue.emplace_back( _line.end );
-    }
-
-    return ( l_returnValue );
-}
 
 // A box, with the origin at the upper left
 template < is_int_or_float T >
@@ -50,10 +38,8 @@ struct box {
 
     box() = default;
 
-    constexpr box( float _x, float _y, float _width, float _height )
+    constexpr box( T _x, T _y, T _width, T _height )
         : x( _x ), y( _y ), width( _width ), height( _height ) {
-        stdfunc::assert( _x );
-        stdfunc::assert( _y );
         stdfunc::assert( _width );
         stdfunc::assert( _height );
     }
@@ -66,13 +52,13 @@ struct box {
 
     [[nodiscard]] constexpr auto operator<=>( const box& _box ) const = default;
 
-    template < typename T2 >
-    [[nodiscard]] constexpr operator box< T2 >() const {
-        return ( box< T2 >{
-            static_cast< T2 >( x ),
-            static_cast< T2 >( y ),
-            static_cast< T2 >( width ),
-            static_cast< T2 >( height ),
+    template < typename U >
+    [[nodiscard]] constexpr operator box< U >() const {
+        return ( box< U >{
+            static_cast< U >( x ),
+            static_cast< U >( y ),
+            static_cast< U >( width ),
+            static_cast< U >( height ),
         } );
     }
 
@@ -298,8 +284,7 @@ struct box {
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x,
-            _clippingZone.y,
+            _clippingZone.x, _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };
@@ -616,6 +601,16 @@ struct box {
         return ( l_returnValue );
     }
 
+    [[nodiscard]] constexpr auto points() const
+        -> std::array< point_t< T >, 4 > {
+        return {
+            x,
+            y,
+            ( x + width ),
+            ( y + height ),
+        };
+    }
+
     T x, y, width, height;
 
     // Helpers
@@ -638,24 +633,6 @@ template < is_int_or_float T >
     const clippingZone_t< T >& _clippingZone ) -> bool {
     return ( inRange1D( _point.x, _clippingZone.minX, _clippingZone.maxX ) &&
              inRange1D( _point.y, _clippingZone.minY, _clippingZone.maxY ) );
-}
-
-template < typename T, typename ContainerType = std::vector< point_t< T > > >
-[[nodiscard]] constexpr auto toPoints( std::span< const box_t< T > > _boxes )
-    -> ContainerType {
-    ContainerType l_returnValue;
-
-    l_returnValue.reserve( _boxes.size() * 2 );
-
-    for ( const box_t< T >& _box : _boxes ) {
-        l_returnValue.emplace_back( _box.x );
-        l_returnValue.emplace_back( _box.y );
-
-        l_returnValue.emplace_back( _box.x + _box.width );
-        l_returnValue.emplace_back( _box.y + _box.height );
-    }
-
-    return ( l_returnValue );
 }
 
 #if 0
