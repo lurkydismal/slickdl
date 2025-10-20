@@ -48,6 +48,8 @@ struct box {
     // TODO: Improve
     using clippingZone_t = clippingZone_t< T >;
 
+    box() = default;
+
     constexpr box( float _x, float _y, float _width, float _height )
         : x( _x ), y( _y ), width( _width ), height( _height ) {
         stdfunc::assert( _x );
@@ -296,7 +298,8 @@ struct box {
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x, _clippingZone.y,
+            _clippingZone.x,
+            _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };

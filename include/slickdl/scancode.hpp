@@ -58,8 +58,8 @@ using scancode_t = enum class scancode : uint16_t {
 
     minus = 45,
     equals = 46,
-    leftBracket = 47,
-    rightBracket = 48,
+    leftParenthesis = 47,
+    rightParenthesis = 48,
     backslash = 49, /**< Located at the lower left of the return
                      *   key on ISO keyboards and at the right end
                      *   of the QWERTY row on ANSI keyboards
@@ -245,8 +245,8 @@ using scancode_t = enum class scancode : uint16_t {
     decimalSeparator = 179,
     currencyUnit = 180,
     currencySubunit = 181,
-    kpLeftParen = 182,
-    kpRightParen = 183,
+    kpLeftParenthesis = 182,
+    kpRightParenthesis = 183,
     kpLeftBrace = 184,
     kpRightBrace = 185,
     kpTab = 186,
@@ -263,9 +263,9 @@ using scancode_t = enum class scancode : uint16_t {
     kpLess = 197,
     kpGreater = 198,
     kpAmpersand = 199,
-    kpDblampersand = 200,
+    kpDoubleampersand = 200,
     kpVerticalbar = 201,
-    kpDblverticalbar = 202,
+    kpDoubleverticalbar = 202,
     kpColon = 203,
     kpHash = 204,
     kpSpace = 205,
@@ -286,14 +286,14 @@ using scancode_t = enum class scancode : uint16_t {
     kpDecimal = 220,
     kpHexadecimal = 221,
 
-    lCtrl = 224,
-    lShift = 225,
-    lAlt = 226,  /**< alt, option */
-    lMeta = 227, /**< windows, command (apple), meta */
-    rCtrl = 228,
-    rShift = 229,
-    rAlt = 230,  /**< alt gr, option */
-    rMeta = 231, /**< windows, command (apple), meta */
+    leftCtrl = 224,
+    leftShift = 225,
+    leftAlt = 226,  /**< alt, option */
+    leftMeta = 227, /**< windows, command (apple), meta */
+    rightCtrl = 228,
+    rightShift = 229,
+    rightAlt = 230,  /**< alt gr, option */
+    rightMeta = 231, /**< windows, command (apple), meta */
 
     mode = 257, /**< I'm not sure if this is really not covered
                  *   by any of the above, but since there's a
