@@ -1360,7 +1360,7 @@ using renderer_t = struct renderer {
     // Should only be called on the main thread.
     template < stdfunc::is_formattable... Arguments >
     void debugText( point_t< float > _position,
-                    std::format_string< Arguments... > _format = "",
+                    std::format_string< Arguments... > _format,
                     Arguments&&... _arguments ) {
         const std::string l_text =
             std::format( _format, std::forward< Arguments >( _arguments )... );
@@ -2245,7 +2245,7 @@ using texture_t = struct texture {
     // be rendered in sequential order.
     //
     // Should only be called on the main thread.
-    template < std::unsigned_integral U = size_t >
+    template < std::unsigned_integral U = uint32_t >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
     void renderGeometry(
         renderer_t& _renderer,
@@ -2327,7 +2327,7 @@ private:
 //
 // Should only be called on the main thread.
 inline void renderTarget(
-    const renderer_t& _renderer,
+    renderer_t& _renderer,
     const std::optional< texture_t >& _texture = std::nullopt ) {
     bool l_result = false;
 
@@ -2347,8 +2347,7 @@ inline void renderTarget(
 // created, and is reported a NULL here.
 //
 // Should only be called on the main thread.
-[[nodiscard]] inline auto renderTarget( const renderer_t& _renderer )
-    -> texture_t {
+[[nodiscard]] inline auto renderTarget( renderer_t& _renderer ) -> texture_t {
     return ( SDL_GetRenderTarget( _renderer ) );
 }
 
@@ -2360,6 +2359,7 @@ inline void renderTarget(
 // vertices will be rendered in sequential order.
 //
 // Should only be called on the main thread.
+// TODO: Move to renderer_t
 inline void renderGeometry( renderer_t& _renderer,
                             std::span< const vertex_t > _vertexes,
                             const std::optional< std::span< const size_t > >&
@@ -2400,9 +2400,10 @@ inline void renderGeometry( renderer_t& _renderer,
 // be rendered in sequential order.
 //
 // Should only be called on the main thread.
-template < std::unsigned_integral U = size_t >
+// TODO: Move to renderer_t
+template < std::unsigned_integral U = uint32_t >
     requires( sizeof( U ) <= sizeof( uint32_t ) )
-void renderGeometry(
+inline void renderGeometry(
     renderer_t& _renderer,
     point_t< float > _position,
     color_t _color,

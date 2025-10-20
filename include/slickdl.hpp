@@ -1,15 +1,11 @@
 #pragma once
 
-#include <SDL3/SDL_error.h>
 #include <SDL3/SDL_events.h>
-#include <SDL3/SDL_rect.h>
-#if 0
-#include <SDL3/SDL_gpu.h>
-#endif
 #include <SDL3/SDL_video.h>
 
 #include <gsl/pointers>
 
+#include "slickdl/error.hpp"
 #include "stddebug.hpp"
 
 namespace slickdl {
@@ -29,9 +25,6 @@ using isIntOrFloat_t = std::conditional_t< std::is_same_v< T, int >, U, W >;
 // Types
 using window_t = gsl::not_null< SDL_Window* >;
 using event_t = SDL_Event;
-#if 0
-using GPUDevice_t = gsl::not_null< SDL_GPUDevice* >;
-#endif
 
 using volume_t = struct volume {
     float width;
@@ -46,7 +39,9 @@ template < typename T >
 }
 
 constexpr void assert( bool _result ) {
-    stdfunc::assert( _result, "{}", SDL_GetError() );
+    const std::optional l_message = slickdl::error::get();
+
+    stdfunc::assert( _result, "{}", l_message.value_or( "" ) );
 }
 
 } // namespace slickdl

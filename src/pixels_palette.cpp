@@ -1,7 +1,8 @@
 #include "slickdl/pixels_palette.hpp"
 
+#include <flat_map>
+
 #include "slickdl.hpp"
-#include "stdflat_map.hpp"
 
 namespace slickdl {
 
@@ -21,7 +22,7 @@ namespace pixels {
 [[nodiscard]] auto name( format_t _format ) -> std::string_view {
     std::string_view l_returnValue;
 
-    static const stdfunc::flatMap_t< format_t, std::string_view > l_lookUpTable{
+    static const std::flat_map< format_t, std::string_view > l_lookUpTable{
         { format_t::index1LSB, "index1LSB" },
         { format_t::index1MSB, "index1MSB" },
         { format_t::index2LSB, "index2LSB" },
@@ -96,12 +97,6 @@ namespace pixels {
     }
 
     return ( l_returnValue );
-}
-
-[[nodiscard]] auto pixelFormatDetails( format_t _format )
-    -> const pixelFormatDetails_t {
-    return ( std::bit_cast< SDL_PixelFormatDetails* >(
-        SDL_GetPixelFormatDetails( toLegacy( _format ) ) ) );
 }
 
 } // namespace pixels

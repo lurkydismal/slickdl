@@ -155,12 +155,17 @@ using blendFactor_t = enum class blendFactor : uint8_t {
 // target. The `blendFactor_t::destinationAlpha` and
 // `blendFactor_t::oneMinusDestinationAlpha` factors do not have an effect in
 // this case.
-[[nodiscard]] auto composeCustomBlendMode(
+[[nodiscard]] inline auto composeCustomBlendMode(
     blendFactor_t _sourceColorFactor,
     blendFactor_t _destinationColorFactor,
     blendOperation_t _colorOperation,
     blendFactor_t _sourceAlphaFactor,
     blendFactor_t _destinationAlphaFactor,
-    blendOperation_t _alphaOperation ) -> blend_t;
+    blendOperation_t _alphaOperation ) -> blend_t {
+    return ( static_cast< blend_t >( SDL_ComposeCustomBlendMode(
+        toLegacy( _sourceColorFactor ), toLegacy( _destinationColorFactor ),
+        toLegacy( _colorOperation ), toLegacy( _sourceAlphaFactor ),
+        toLegacy( _destinationAlphaFactor ), toLegacy( _alphaOperation ) ) ) );
+}
 
 } // namespace slickdl

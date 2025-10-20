@@ -26,6 +26,7 @@ void quit() {
 
 using font_t = struct font {
     font() = delete;
+
     font( const font& ) = default;
     font( font&& ) = default;
 

@@ -9,7 +9,6 @@
 #include "slickdl.hpp"
 #include "slickdl/point.hpp"
 #include "stddebug.hpp"
-#include "stdinplace_vector.hpp"
 
 namespace slickdl {
 
@@ -20,8 +19,7 @@ struct line {
 
     [[nodiscard]] constexpr auto points() const -> std::vector< point_t< T > >;
 
-    point_t< T > start;
-    point_t< T > end;
+    point_t< T > start, end;
 };
 
 template < typename T >
@@ -49,6 +47,14 @@ struct box {
 
     // TODO: Improve
     using clippingZone_t = clippingZone_t< T >;
+
+    constexpr box( float _x, float _y, float _width, float _height )
+        : x( _x ), y( _y ), width( _width ), height( _height ) {
+        stdfunc::assert( _x );
+        stdfunc::assert( _y );
+        stdfunc::assert( _width );
+        stdfunc::assert( _height );
+    }
 
     constexpr box( native_t& _rectangle )
         : x( _rectangle.x ),
@@ -290,7 +296,8 @@ struct box {
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x, _clippingZone.y,
+            _clippingZone.x,
+            _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };

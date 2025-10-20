@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SDL3/SDL_scancode.h>
+
 #include <cstdint>
 #include <format>
 
@@ -360,7 +362,12 @@ using scancode_t = enum class scancode : uint16_t {
     count = 512
 };
 
+// Legacy
+[[nodiscard]] constexpr auto toLegacy( scancode_t _scancode ) -> SDL_Scancode {
+    return ( static_cast< SDL_Scancode >( _scancode ) );
 }
+
+} // namespace slickdl
 
 template <>
 struct std::formatter< slickdl::scancode_t, char > {

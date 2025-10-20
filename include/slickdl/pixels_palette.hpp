@@ -1570,12 +1570,6 @@ using mask_t = struct mask {
     return ( format_t::unknown );
 }
 
-// Returned structure may come from a shared global cache (i.e. not newly
-// allocated), and hence should not be modified, especially the palette. Weird
-// errors such as 'Blit combination not supported' may occur.
-[[nodiscard]] auto pixelFormatDetails( format_t _format )
-    -> const pixelFormatDetails_t;
-
 // Legacy
 [[nodiscard]] constexpr auto toLegacy( format_t _format ) -> SDL_PixelFormat {
     return ( static_cast< SDL_PixelFormat >( _format ) );
@@ -1583,6 +1577,16 @@ using mask_t = struct mask {
 
 [[nodiscard]] constexpr auto toLegacy( format_t* _format ) -> SDL_PixelFormat* {
     return ( std::bit_cast< SDL_PixelFormat* >( _format ) );
+}
+
+// Pixels
+// Returned structure may come from a shared global cache (i.e. not newly
+// allocated), and hence should not be modified, especially the palette. Weird
+// errors such as 'Blit combination not supported' may occur.
+[[nodiscard]] inline auto pixelFormatDetails( format_t _format )
+    -> const pixelFormatDetails_t {
+    return ( std::bit_cast< SDL_PixelFormatDetails* >(
+        SDL_GetPixelFormatDetails( toLegacy( _format ) ) ) );
 }
 
 } // namespace pixels
