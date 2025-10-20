@@ -1,6 +1,10 @@
 #pragma once
 
+#include <SDL3/SDL_init.h>
+
 #include <cstdint>
+
+#include "slickdl.hpp"
 
 // All SDL programs need to initialize the library before starting to work
 // with it
@@ -24,25 +28,16 @@
 // we can name the app in the system's audio mixer, etc). Those that want to
 // provide a _lot_ of information should look at the more-detailed
 // SDL_SetAppMetadataProperty()
-namespace slickdl::init {
+namespace slickdl {
 
-/* As of version 0.5, SDL is loaded dynamically into the application */
+namespace init {
 
-/**
- * Initialization flags for SDL_Init and/or SDL_InitSubSystem
- *
- * These are the flags which may be passed to SDL_Init(). You should specify
- * the subsystems which you will be using in your application
- *
- * \since This datatype is available since SDL 3.2.0
- *
- * \sa SDL_Init
- * \sa SDL_Quit
- * \sa SDL_InitSubSystem
- * \sa SDL_QuitSubSystem
- * \sa SDL_WasInit
- */
+// Initialization flags for SDL_Init and/or SDL_InitSubSystem
+//
+// These are the flags which may be passed to SDL_Init(). You should specify
+// the subsystems which you will be using in your application
 using flag_t = enum class flag : uint32_t {
+    none = 0,
     audio = 0x10U,     /**< `SDL_INIT_AUDIO` implies `SDL_INIT_EVENTS` */
     video = 0x20U,     /**< `SDL_INIT_VIDEO` implies `SDL_INIT_EVENTS`, should
                                be \ initialized on the main thread */
@@ -54,142 +49,97 @@ using flag_t = enum class flag : uint32_t {
     camera = 0x10000U, /**< `SDL_INIT_CAMERA` implies `SDL_INIT_EVENTS` */
 };
 
-/**
- * Return values for optional main callbacks
- *
- * Returning SDL_APP_SUCCESS or SDL_APP_FAILURE from SDL_AppInit,
- * SDL_AppEvent, or SDL_AppIterate will terminate the program and report
- * success/failure to the operating system. What that means is
- * platform-dependent. On Unix, for example, on success, the process error
- * code will be zero, and on failure it will be 1. This interface doesn't
- * allow you to return specific exit codes, just whether there was an error
- * generally or not
- *
- * Returning SDL_APP_CONTINUE from these functions will let the app continue
- * to run
- *
- * See
- * [Main callbacks in
- * SDL3](https://wiki.libsdl.org/SDL3/README/main-functions#main-callbacks-in-sdl3)
- * for complete details
- *
- * \since This enum is available since SDL 3.2.0
- */
-using appResult_t = enum class appResult : uint8_t {
-    remain,  /**< Value that requests that the app continue from the
-                          main callbacks. */
-    success, /**< Value that requests termination with success from the
-                        main callbacks. */
-    failure  /**< Value that requests termination with error from the
-                        main callbacks. */
-};
+using flagUnderlying_t = std::underlying_type_t< flag_t >;
 
-/**
- * Initialize the SDL library
- *
- * SDL_Init() simply forwards to calling SDL_InitSubSystem(). Therefore, the
- * two may be used interchangeably. Though for readability of your code
- * SDL_InitSubSystem() might be preferred
- *
- * The file I/O (for example: SDL_IOFromFile) and threading (SDL_CreateThread)
- * subsystems are initialized by default. Message boxes
- * (SDL_ShowSimpleMessageBox) also attempt to work without initializing the
- * video subsystem, in hopes of being useful in showing an error dialog when
- * SDL_Init fails. You must specifically initialize other subsystems if you
- * use them in your application
- *
- * Logging (such as SDL_Log) works without initialization, too
- *
- * `flags` may be any of the following OR'd together:
- *
- * - `SDL_INIT_AUDIO`: audio subsystem; automatically initializes the events
- *   subsystem
- * - `SDL_INIT_VIDEO`: video subsystem; automatically initializes the events
- *   subsystem, should be initialized on the main thread
- * - `SDL_INIT_JOYSTICK`: joystick subsystem; automatically initializes the
- *   events subsystem
- * - `SDL_INIT_HAPTIC`: haptic (force feedback) subsystem
- * - `SDL_INIT_GAMEPAD`: gamepad subsystem; automatically initializes the
- *   joystick subsystem
- * - `SDL_INIT_EVENTS`: events subsystem
- * - `SDL_INIT_SENSOR`: sensor subsystem; automatically initializes the events
- *   subsystem
- * - `SDL_INIT_CAMERA`: camera subsystem; automatically initializes the events
- *   subsystem
- *
- * Subsystem initialization is ref-counted, you must call SDL_QuitSubSystem()
- * for each SDL_InitSubSystem() to correctly shutdown a subsystem manually (or
- * call SDL_Quit() to force shutdown). If a subsystem is already loaded then
- * this call will increase the ref-count and return
- *
- * Consider reporting some basic metadata about your application before
- * calling SDL_Init, using either SDL_SetAppMetadata() or
- * SDL_SetAppMetadataProperty()
- */
-extern auto init( flag_t _flags ) -> bool;
+[[nodiscard]] constexpr auto toLegacy( flag_t _flag ) -> SDL_InitFlags {
+    return ( static_cast< SDL_InitFlags >( _flag ) );
+}
 
-/**
- * Compatibility function to initialize the SDL library
- *
- * This function and SDL_Init() are interchangeable
- *
- * \param flags any of the flags used by SDL_Init(); see SDL_Init for details
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information
- *
- * \since This function is available since SDL 3.2.0
- *
- * \sa SDL_Init
- * \sa SDL_Quit
- * \sa SDL_QuitSubSystem
- */
-extern auto initSubSystem( flag_t _flags ) -> bool;
+// SDL_Init() simply forwards to calling SDL_InitSubSystem(). Therefore, the
+// two may be used interchangeably. Though for readability of your code
+// SDL_InitSubSystem() might be preferred
+//
+// The file I/O (for example: SDL_IOFromFile) and threading (SDL_CreateThread)
+// subsystems are initialized by default. Message boxes
+// (SDL_ShowSimpleMessageBox) also attempt to work without initializing the
+// video subsystem, in hopes of being useful in showing an error dialog when
+// SDL_Init fails. You must specifically initialize other subsystems if you
+// use them in your application
+//
+// Logging (such as SDL_Log) works without initialization, too
+//
+// `flags` may be any of the following OR'd together:
+//
+// - `SDL_INIT_AUDIO`: audio subsystem; automatically initializes the events
+//   subsystem
+// - `SDL_INIT_VIDEO`: video subsystem; automatically initializes the events
+//   subsystem, should be initialized on the main thread
+// - `SDL_INIT_JOYSTICK`: joystick subsystem; automatically initializes the
+//   events subsystem
+// - `SDL_INIT_HAPTIC`: haptic (force feedback) subsystem
+// - `SDL_INIT_GAMEPAD`: gamepad subsystem; automatically initializes the
+//   joystick subsystem
+// - `SDL_INIT_EVENTS`: events subsystem
+// - `SDL_INIT_SENSOR`: sensor subsystem; automatically initializes the events
+//   subsystem
+// - `SDL_INIT_CAMERA`: camera subsystem; automatically initializes the events
+//   subsystem
+//
+// Subsystem initialization is ref-counted, you must call SDL_QuitSubSystem()
+// for each SDL_InitSubSystem() to correctly shutdown a subsystem manually (or
+// call SDL_Quit() to force shutdown). If a subsystem is already loaded then
+// this call will increase the ref-count and return
+//
+// Consider reporting some basic metadata about your application before
+// calling SDL_Init, using either SDL_SetAppMetadata() or
+// SDL_SetAppMetadataProperty()
+// TODO: Rename
+inline void all( flag_t _flags ) {
+    const bool l_result = SDL_Init( toLegacy( _flags ) );
 
-/**
- * Shut down specific SDL subsystems
- *
- * You still need to call SDL_Quit() even if you close all open subsystems
- * with SDL_QuitSubSystem()
- *
- * \param flags any of the flags used by SDL_Init(); see SDL_Init for details
- *
- * \since This function is available since SDL 3.2.0
- *
- * \sa SDL_InitSubSystem
- * \sa SDL_Quit
- */
-extern void quitSubSystem( flag_t _flags );
+    assert( l_result );
+}
 
-/**
- * Get a mask of the specified subsystems which are currently initialized
- *
- * \param flags any of the flags used by SDL_Init(); see SDL_Init for details
- * \returns a mask of all initialized subsystems if `flags` is 0, otherwise it
- *          returns the initialization status of the specified subsystems
- *
- * \since This function is available since SDL 3.2.0
- *
- * \sa SDL_Init
- * \sa SDL_InitSubSystem
- */
-extern auto wasInit( flag_t _flags ) -> flag_t;
+// This function and SDL_Init() are interchangeable
+inline void subSystem( flag_t _flags ) {
+    const bool l_result = SDL_InitSubSystem( toLegacy( _flags ) );
 
-/**
- * Clean up all initialized subsystems
- *
- * You should call this function even if you have already shutdown each
- * initialized subsystem with SDL_QuitSubSystem(). It is safe to call this
- * function even in the case of errors in initialization
- *
- * You can use this function with atexit() to ensure that it is run when your
- * application is shutdown, but it is not wise to do this from a library or
- * other dynamically loaded code
- *
- * \since This function is available since SDL 3.2.0
- *
- * \sa SDL_Init
- * \sa SDL_QuitSubSystem
- */
-extern void quit();
+    assert( l_result );
+}
 
-} // namespace slickdl::init
+// Get a mask of the specified subsystems which are currently initialized
+//
+// A mask of all initialized subsystems if `flags` is NULL, otherwise it returns
+// the initialization status of the specified subsystems
+auto currentFlags( std::optional< init::flag_t > _mask = std::nullopt )
+    -> init::flag_t {
+    const auto l_result = static_cast< init::flag_t >(
+        SDL_WasInit( toLegacy( _mask.value_or( init::flag_t::none ) ) ) );
+
+    assert( static_cast< flagUnderlying_t >( l_result ) != 0 );
+
+    return ( l_result );
+}
+
+} // namespace init
+
+namespace quit {
+
+// Clean up all initialized subsystems
+//
+// You should call this function even if you have already shutdown each
+// initialized subsystem with SDL_QuitSubSystem(). It is safe to call this
+// function even in the case of errors in initialization
+inline void all() {
+    SDL_Quit();
+}
+
+// You still need to call SDL_Quit() even if you close all open subsystems
+// with SDL_QuitSubSystem()
+inline void subSystem( init::flag_t _flags ) {
+    SDL_QuitSubSystem( init::toLegacy( _flags ) );
+}
+
+} // namespace quit
+
+} // namespace slickdl
