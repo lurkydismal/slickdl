@@ -1,8 +1,8 @@
 #pragma once
 
+#include <SDL3/SDL_keyboard.h>
 #include <SDL3/SDL_stdinc.h>
 
-#include <bitset>
 #include <cstdint>
 #include <ranges>
 #include <type_traits>
@@ -12,10 +12,6 @@
 #include "slickdl.hpp"
 
 namespace slickdl::keyboard {
-
-#define EXTENDED_MASK ( 1U << 29 )
-#define SCANCODE_MASK ( 1U << 30 )
-#define SCANCODE_TO_KEYCODE( X ) ( ( X ) | SDLK_SCANCODE_MASK )
 
 // The SDL virtual key representation.
 //
@@ -522,7 +518,7 @@ using id_t = size_t;
 // pressed or not.
 // TODO: Improve
 [[nodiscard]] auto state()
-    -> std::bitset< static_cast< size_t >( scancode_t::count ) > {
+    -> std::array< bool, static_cast< size_t >( scancode_t::count ) > {
     int l_keysAmount = 0;
     const bool* l_keysState = SDL_GetKeyboardState( &l_keysAmount );
 
@@ -531,11 +527,12 @@ using id_t = size_t;
 
     assert( l_keysAmount != static_cast< size_t >( scancode_t::count ) );
 
-    std::bitset< static_cast< size_t >( scancode_t::count ) > l_returnValue;
+    std::array< bool, static_cast< size_t >( scancode_t::count ) >
+        l_returnValue{};
 
     for ( auto [ _index, _isPressed ] :
           std::span( l_keysState, l_keysAmount ) | std::views::enumerate ) {
-        l_returnValue.set( _index, _isPressed );
+        l_returnValue.at( _index ) = _isPressed;
     }
 
     return ( l_returnValue );
@@ -878,10 +875,8 @@ void area( window_t _window,
 // Check whether the platform has screen keyboard support.
 //
 // Should only be called on the main thread.
-void hasScreenKeyboard() {
-    const bool l_result = SDL_HasScreenKeyboardSupport();
-
-    assert( l_result );
+[[nodiscard]] auto hasScreenKeyboard() -> bool {
+    return ( SDL_HasScreenKeyboardSupport() );
 }
 
 // Check whether the screen keyboard is shown for given window.
@@ -889,6 +884,15 @@ void hasScreenKeyboard() {
 // Should only be called on the main thread.
 [[nodiscard]] auto isScreenKeyboardActive( window_t _window ) -> bool {
     return ( SDL_ScreenKeyboardShown( _window ) );
+}
+
+constexpr size_t g_extendedCodeMask = ( 1U << 29 );
+
+[[nodiscard]] constexpr auto scancodeToKeycode( scancode_t _scancode )
+    -> code_t {
+    constexpr size_t l_scancodeMask = ( 1U << 30 );
+
+    return ( static_cast< code_t >( toLegacy( _scancode ) | l_scancodeMask ) );
 }
 
 } // namespace slickdl::keyboard
