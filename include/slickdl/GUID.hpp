@@ -2,9 +2,12 @@
 
 #include <SDL3/SDL_guid.h>
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
+
+#include "slickdl.hpp"
 
 // A GUID is a 128-bit value that represents something that is uniquely
 // identifiable by this value: "globally unique."
@@ -42,28 +45,17 @@ using GUID_t = struct GUID {
     //
     // An ASCII representation of a GUID.
     constexpr GUID( std::string_view _compiled ) {
-        SDL_GUID l_guid;
-        int l_maxOutputBytes = sizeof( l_guid );
-        size_t l_len = _compiled.length();
-        uint8_t* l_p = nullptr;
-        size_t l_i = 0;
+        // Require exactly 32 hex digits
+        assert( _compiled.size() == ( 2UZ * 16 ) );
 
-        // Make sure it's even
-        l_len = ( l_len ) & ~0x1;
+        size_t l_idx = 0;
 
-        __builtin_memset( &l_guid, 0, sizeof( l_guid ) );
+        for ( size_t _index = 0; ( _index < _compiled.size() ); _index += 2 ) {
+            char l_hi = _nibble( _compiled[ _index ] );
+            char l_lo = _nibble( _compiled[ _index + 1 ] );
 
-        l_p = std::bit_cast< uint8_t* >( &l_guid );
-
-        for ( l_i = 0; ( l_i < l_len ) &&
-                       ( ( l_p - std::bit_cast< uint8_t* >( &l_guid ) ) <
-                         l_maxOutputBytes );
-              l_i += 2, std::advance( l_p, 1 ) ) {
-            *l_p = ( _nibble( static_cast< char >( _compiled[ l_i ] ) ) << 4 ) |
-                   _nibble( static_cast< char >( _compiled[ l_i + 1 ] ) );
+            _data.at( l_idx++ ) = ( ( l_hi << 4 ) | l_lo );
         }
-
-        *this = l_guid;
     }
 
     ~GUID() = default;
@@ -73,47 +65,34 @@ using GUID_t = struct GUID {
     [[nodiscard]] constexpr operator native_t() const {
         native_t l_GUID;
 
-        std::ranges::copy_n( _data.begin(), _data.size(),
-                             std::ranges::begin( l_GUID.data ) );
+        std::ranges::copy( _data, std::ranges::begin( l_GUID.data ) );
 
         return ( l_GUID );
     }
 
     [[nodiscard]] constexpr auto empty() const -> bool {
-        return ( _data.empty() );
+        return ( std::ranges::all_of(
+            _data, []( uint8_t _byte ) -> bool { return ( _byte == 0 ); } ) );
     }
 
     // Get an ASCII string representation for a given SDL_GUID.
     //
     // The size of pszGUID, should be at least 33 bytes.
-    [[nodiscard]] constexpr auto toString() const -> std::string {
-        std::array< char, 33 > l_string{};
-        size_t l_cbGuid = 33;
+    [[nodiscard]] auto toString() const -> std::string {
+        static constexpr auto l_hexLUT = std::to_array( "0123456789abcdef" );
 
-        {
-            constexpr auto l_rgchHexToASCII =
-                std::to_array( "0123456789abcdef" );
+        std::string l_returnValue;
 
-            auto l_iterator = l_string.begin();
-            size_t l_i = 0;
+        l_returnValue.resize( 16UZ * 2 );
 
-            for ( l_i = 0; l_i < _data.size() && l_i < ( l_cbGuid - 1 ) / 2;
-                  l_i++ ) {
-                // each input byte writes 2 ascii chars, and might write a null
-                // byte. If we don't have room for next input byte, stop
-                char l_c = _data.at( l_i );
+        for ( size_t _index = 0; ( _index < 16 ); ++_index ) {
+            uint8_t l_byte = _data.at( _index );
 
-                *l_iterator = l_rgchHexToASCII.at( l_c >> 4 );
-                std::advance( l_iterator, 1 );
-
-                *l_iterator = l_rgchHexToASCII.at( l_c & 0x0F );
-                std::advance( l_iterator, 1 );
-            }
-
-            *l_iterator = '\0';
+            l_returnValue[ 2 * _index ] = l_hexLUT.at( l_byte >> 4 );
+            l_returnValue[ 2 * _index + 1 ] = l_hexLUT.at( l_byte & 0xF );
         }
 
-        return { l_string.data() };
+        return ( l_returnValue );
     }
 
     // Helpers
@@ -131,6 +110,8 @@ private:
 
         } else {
             // FIX: Error
+            assert( false );
+
             return ( 0 );
         }
     }

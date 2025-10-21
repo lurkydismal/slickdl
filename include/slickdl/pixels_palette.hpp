@@ -596,8 +596,8 @@ using packedLayoutUnderlying_t = std::underlying_type_t< packedLayout_t >;
     }
 
     return ( _order.visit( stdfunc::overloadedVisit{
-        []( std::monostate ) constexpr -> format_t { return {}; },
-        [ & ]( auto&& _order ) constexpr -> format_t {
+        []( std::monostate ) -> format_t { return {}; },
+        [ & ]( auto&& _order ) -> format_t {
             return ( static_cast< format_t >(
                 ( 1 << 28 ) |
                 ( static_cast< pixelUnderlying_t >( _type ) << 24 ) |
@@ -698,19 +698,19 @@ using packedLayoutUnderlying_t = std::underlying_type_t< packedLayout_t >;
     const order_t l_order = order( _format );
 
     return ( l_order.visit( stdfunc::overloadedVisit{
-        []( packedOrder_t _order ) constexpr -> bool {
+        []( packedOrder_t _order ) -> bool {
             return ( ( _order == packedOrder_t::poARGB ) ||
                      ( _order == packedOrder_t::poRGBA ) ||
                      ( _order == packedOrder_t::poABGR ) ||
                      ( _order == packedOrder_t::poBGRA ) );
         },
-        []( arrayOrder_t _order ) constexpr -> bool {
+        []( arrayOrder_t _order ) -> bool {
             return ( ( _order == arrayOrder_t::aoARGB ) ||
                      ( _order == arrayOrder_t::aoRGBA ) ||
                      ( _order == arrayOrder_t::aoABGR ) ||
                      ( _order == arrayOrder_t::aoBGRA ) );
         },
-        []( auto&& ) constexpr -> bool { return ( false ); },
+        []( auto&& ) -> bool { return ( false ); },
     } ) );
 }
 
@@ -1216,8 +1216,7 @@ using mask_t = struct mask {
         }
 
         l_returnValue = order( _format ).visit( stdfunc::overloadedVisit{
-            [ & ]( packedOrder_t _packedOrder ) constexpr
-                -> std::optional< mask_t > {
+            [ & ]( packedOrder_t _packedOrder ) -> std::optional< mask_t > {
                 switch ( _packedOrder ) {
                     case ( packedOrder_t::poXRGB ): {
                         l_mask.red = l_masks[ 1 ];
@@ -1294,7 +1293,7 @@ using mask_t = struct mask {
 
                 return ( l_mask );
             },
-            []( auto&& ) constexpr -> std::optional< mask_t > {
+            []( auto&& ) -> std::optional< mask_t > {
                 return ( std::nullopt );
             },
         } );
