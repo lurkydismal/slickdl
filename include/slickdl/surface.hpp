@@ -23,11 +23,15 @@ using scale_t = enum class scale : int8_t {
                  // for pixel art
 };
 
+using scaleUnderlying_t = std::underlying_type_t< scale_t >;
+
 using flip_t = enum class flip : uint8_t {
     none,       // Do not flip
     horizontal, // Flip horizontally
     vertical,   // Flip vertically
 };
+
+using flipUnderlying_t = std::underlying_type_t< flip_t >;
 
 // Legacy
 [[nodiscard]] constexpr auto toLegacy( scale_t _scale ) -> SDL_ScaleMode {
@@ -77,6 +81,8 @@ using surface_t = struct surface {
         aligned = 0x8U,      // Surface uses pixel memory allocated with
                              // SDL_aligned_alloc()
     };
+
+    using flagUnderlying_t = std::underlying_type_t< flag_t >;
 
     surface() = delete;
 
