@@ -1,4 +1,4 @@
-#include "slickdl/keybpard.hpp"
+#include "slickdl/keyboard.hpp"
 
 namespace slickdl::keyboard {
 

@@ -2,14 +2,10 @@
 
 #include <SDL3/SDL_init.h>
 
-#include <flat_map>
 #include <gsl/pointers>
 #include <optional>
 #include <string>
 #include <string_view>
-
-#include "log.hpp"
-#include "slickdl.hpp"
 
 namespace slickdl::metadata {
 

@@ -1,5 +1,10 @@
 #include "slickdl/metadata.hpp"
 
+#include <flat_map>
+
+#include "log.hpp"
+#include "slickdl.hpp"
+
 namespace slickdl::metadata::property {
 
 // TODO: Improve

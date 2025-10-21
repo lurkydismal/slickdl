@@ -248,7 +248,7 @@ using renderer_t = struct renderer {
     //   queue family index used for presentation.
     //
     // Should only be called on the main thread.
-    renderer( SDL_PropertiesID _properties )
+    renderer( properties::id_t _properties )
         : _data( SDL_CreateRendererWithProperties( _properties ) ) {}
 
 #if 0
@@ -444,7 +444,7 @@ using renderer_t = struct renderer {
     //
     // \returns a valid property ID on success or 0 on failure; call
     //          SDL_GetError() for more information.
-    [[nodiscard]] auto properties() const -> SDL_PropertiesID {
+    [[nodiscard]] auto properties() const -> properties::id_t {
         return ( SDL_GetRendererProperties( _data ) );
     }
 
@@ -1617,7 +1617,7 @@ using texture_t = struct texture {
     //   if you want to wrap an existing texture.
     //
     // Should only be called on the main thread.
-    texture( const renderer_t& _renderer, SDL_PropertiesID _props )
+    texture( const renderer_t& _renderer, properties::id_t _props )
         : _data( SDL_CreateTextureWithProperties( _renderer, _props ) ) {}
 
     texture( const texture& ) = delete;
@@ -1766,8 +1766,8 @@ using texture_t = struct texture {
     //   associated with the V plane of a YUV texture
     // - `SDL_PROP_TEXTURE_OPENGLES2_TEXTURE_TARGET_NUMBER`: the GLenum for the
     //   texture target (`GL_TEXTURE_2D`, `GL_TEXTURE_EXTERNAL_OES`, etc)
-    [[nodiscard]] auto properties() const -> SDL_PropertiesID {
-        const SDL_PropertiesID l_properties = SDL_GetTextureProperties( _data );
+    [[nodiscard]] auto properties() const -> properties::id_t {
+        const properties::id_t l_properties = SDL_GetTextureProperties( _data );
 
         assert( l_properties );
 

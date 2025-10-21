@@ -7,9 +7,10 @@
 #include <ranges>
 #include <type_traits>
 
-#include "line_box.hpp"
-#include "scancode.hpp"
 #include "slickdl.hpp"
+#include "slickdl/line_box.hpp"
+#include "slickdl/properties.hpp"
+#include "slickdl/scancode.hpp"
 
 namespace slickdl::keyboard {
 
@@ -759,7 +760,7 @@ using capitalization_t = enum class capitalization : uint8_t {
 //   https://developer.android.com/reference/android/text/InputType
 //
 // Should only be called on the main thread.
-inline void start( window_t _window, SDL_PropertiesID _properties ) {
+inline void start( window_t _window, properties::id_t _properties ) {
     const bool l_result =
         SDL_StartTextInputWithProperties( _window, _properties );
 

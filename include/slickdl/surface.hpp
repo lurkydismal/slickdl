@@ -6,10 +6,11 @@
 #include <type_traits>
 #include <utility>
 
-#include "clipping_zone.hpp"
 #include "slickdl/blend.hpp"
+#include "slickdl/clipping_zone.hpp"
 #include "slickdl/color.hpp"
 #include "slickdl/pixels_palette.hpp"
+#include "slickdl/properties.hpp"
 #include "stddebug.hpp"
 #include "stdfloat16.hpp"
 
@@ -174,8 +175,8 @@ using surface_t = struct surface {
     //   left edge of the image, if this surface is being used as a cursor
     // - SDL_PROP_SURFACE_HOTSPOT_Y_NUMBER: the hotspot pixel offset from the
     //   top edge of the image, if this surface is being used as a cursor
-    [[nodiscard]] auto properties() const -> SDL_PropertiesID {
-        const SDL_PropertiesID l_properties = SDL_GetSurfaceProperties( _data );
+    [[nodiscard]] auto properties() const -> properties::id_t {
+        const properties::id_t l_properties = SDL_GetSurfaceProperties( _data );
 
         assert( l_properties );
 
@@ -549,7 +550,7 @@ using surface_t = struct surface {
     [[nodiscard]] auto convert( pixels::format_t _format,
                                 const palette_t& _palette,
                                 SDL_Colorspace _colorspace,
-                                SDL_PropertiesID _properties = 0 ) const
+                                properties::id_t _properties = 0 ) const
         -> surface {
         return ( SDL_ConvertSurfaceAndColorspace(
             _data, pixels::toLegacy( _format ), _palette, _colorspace,
@@ -569,7 +570,7 @@ using surface_t = struct surface {
     // Not thread safe.
     [[nodiscard]] auto convert( pixels::format_t _format,
                                 SDL_Colorspace _colorspace,
-                                SDL_PropertiesID _properties = 0 ) const
+                                properties::id_t _properties = 0 ) const
         -> surface {
         return ( SDL_ConvertSurfaceAndColorspace(
             _data, pixels::toLegacy( _format ), nullptr, _colorspace,
@@ -1048,14 +1049,14 @@ bool ConvertPixels(int width, int height, SDL_PixelFormat source_format, const v
  * \param source_format an SDL_PixelFormat value of the source pixels format.
  * \param source_colorspace an SDL_Colorspace value describing the colorspace of
  *                       the source pixels.
- * \param source_properties an SDL_PropertiesID with additional source color
+ * \param source_properties an properties::id_t with additional source color
  *                       properties, or 0.
  * \param source a pointer to the source pixels.
  * \param source_pitch the pitch of the source pixels, in bytes.
  * \param dst_format an SDL_PixelFormat value of the destination pixels format.
  * \param dst_colorspace an SDL_Colorspace value describing the colorspace of
  *                       the destination pixels.
- * \param dst_properties an SDL_PropertiesID with additional destination color
+ * \param dst_properties an properties::id_t with additional destination color
  *                       properties, or 0.
  * \param destination a pointer to be filled in with new pixel data.
  * \param dst_pitch the pitch of the destination pixels, in bytes.
@@ -1066,7 +1067,7 @@ bool ConvertPixels(int width, int height, SDL_PixelFormat source_format, const v
  *               threads at once. It is safe to use the same source pixels
  *               from multiple threads.
  */
-bool ConvertPixelsAndColorspace(int width, int height, SDL_PixelFormat source_format, SDL_Colorspace source_colorspace, SDL_PropertiesID source_properties, const void *source, int source_pitch, SDL_PixelFormat dst_format, SDL_Colorspace dst_colorspace, SDL_PropertiesID dst_properties, void *destination, int dst_pitch);
+bool ConvertPixelsAndColorspace(int width, int height, SDL_PixelFormat source_format, SDL_Colorspace source_colorspace, properties::id_t source_properties, const void *source, int source_pitch, SDL_PixelFormat dst_format, SDL_Colorspace dst_colorspace, properties::id_t dst_properties, void *destination, int dst_pitch);
 
 /**
  * Premultiply the alpha on a block of pixels.

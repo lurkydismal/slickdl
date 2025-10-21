@@ -23,6 +23,7 @@ template < is_int_or_float T, typename U, typename W >
 using isIntOrFloat_t = std::conditional_t< std::is_same_v< T, int >, U, W >;
 
 // Types
+using void_t = gsl::not_null< void* >;
 using window_t = gsl::not_null< SDL_Window* >;
 using event_t = SDL_Event;
 
