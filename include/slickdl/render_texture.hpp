@@ -19,7 +19,7 @@ using vertex_t = struct vertex {
     [[nodiscard]] constexpr operator SDL_Vertex() const {
         return ( SDL_Vertex{
             position,
-            color,
+            static_cast< SDL_FColor >( color ),
             textureCoordinate,
         } );
     }
@@ -302,7 +302,7 @@ using renderer_t = struct renderer {
 
     ~renderer() { SDL_DestroyRenderer( _data ); }
 
-    auto operator=( const renderer& ) -> renderer& = default;
+    auto operator=( const renderer& ) -> renderer& = delete;
     auto operator=( renderer&& ) -> renderer& = default;
 
     constexpr operator SDL_Renderer*() const { return ( _data ); }
@@ -1630,7 +1630,7 @@ using texture_t = struct texture {
 
     ~texture() { SDL_DestroyTexture( _data ); }
 
-    auto operator=( const texture& ) -> texture& = default;
+    auto operator=( const texture& ) -> texture& = delete;
     auto operator=( texture&& ) -> texture& = default;
 
     constexpr operator SDL_Texture*() const { return ( _data ); }
@@ -2260,7 +2260,7 @@ using texture_t = struct texture {
         size_t _uvStride = sizeof( _uv ),
         const std::optional< std::span< const U > >& _indexes = std::nullopt ) {
         const std::array l_position = { _position.x, _position.y };
-        const SDL_FColor l_color = _color;
+        const auto l_color = static_cast< SDL_FColor >( _color );
         const std::array l_uv = { _uv.x, _uv.y };
 
         bool l_result = false;
@@ -2416,7 +2416,7 @@ inline void renderGeometry(
     size_t _uvStride = sizeof( _uv ),
     const std::optional< std::span< const U > >& _indexes = std::nullopt ) {
     const std::array l_position = { _position.x, _position.y };
-    const SDL_FColor l_color = _color;
+    const auto l_color = static_cast< SDL_FColor >( _color );
     const std::array l_uv = { _uv.x, _uv.y };
 
     bool l_result = false;

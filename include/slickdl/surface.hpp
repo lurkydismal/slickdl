@@ -86,7 +86,6 @@ using surface_t = struct surface {
     surface( const surface& _other )
         : _data( SDL_DuplicateSurface( _other ) ) {}
 
-    // TODO: Maybe will assert
     surface( surface&& ) = default;
 
     template < typename OtherType >
@@ -133,7 +132,7 @@ using surface_t = struct surface {
 
     ~surface() { SDL_DestroySurface( _data ); }
 
-    auto operator=( const surface& ) -> surface& = default;
+    auto operator=( const surface& ) -> surface& = delete;
     auto operator=( surface&& ) -> surface& = default;
 
     constexpr operator SDL_Surface*() const { return ( _data ); }

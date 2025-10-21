@@ -37,7 +37,7 @@ using color_t = struct color {
         } );
     }
 
-    constexpr operator SDL_FColor() const {
+    explicit constexpr operator SDL_FColor() const {
         return ( SDL_FColor{
             .r = ( static_cast< float >( red ) / 0xFF ),
             .g = ( static_cast< float >( green ) / 0xFF ),

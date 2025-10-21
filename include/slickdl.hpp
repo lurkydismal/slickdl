@@ -44,7 +44,7 @@ template < typename T >
 constexpr void assert( bool _result ) {
     const std::optional l_message = slickdl::error::get();
 
-    stdfunc::assert( _result, "{}", l_message.value_or( "" ) );
+    stdfunc::assert( _result, "{}", l_message.value_or( "<empty>" ) );
 }
 
 } // namespace slickdl

@@ -18,7 +18,7 @@ struct point {
         default;
 
     template < typename U >
-    [[nodiscard]] constexpr operator point< U >() const {
+    [[nodiscard]] explicit constexpr operator point< U >() const {
         return ( point< U >{
             static_cast< U >( x ),
             static_cast< U >( y ),
