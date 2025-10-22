@@ -55,6 +55,14 @@ using flagUnderlying_t = std::underlying_type_t< flag_t >;
     return ( static_cast< SDL_InitFlags >( _flag ) );
 }
 
+[[nodiscard]] constexpr auto toLegacy( flag_t* _flag ) -> SDL_InitFlags* {
+    return ( std::bit_cast< SDL_InitFlags* >( _flag ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_InitFlags _flag ) -> flag_t {
+    return ( static_cast< flag_t >( _flag ) );
+}
+
 // SDL_Init() simply forwards to calling SDL_InitSubSystem(). Therefore, the
 // two may be used interchangeably. Though for readability of your code
 // SDL_InitSubSystem() might be preferred

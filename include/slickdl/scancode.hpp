@@ -367,6 +367,16 @@ using scancode_t = enum class scancode : uint16_t {
     return ( static_cast< SDL_Scancode >( _scancode ) );
 }
 
+[[nodiscard]] constexpr auto toLegacy( scancode_t* _scancode )
+    -> SDL_Scancode* {
+    return ( std::bit_cast< SDL_Scancode* >( _scancode ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_Scancode _scancode )
+    -> scancode_t {
+    return ( static_cast< scancode_t >( _scancode ) );
+}
+
 } // namespace slickdl
 
 template <>

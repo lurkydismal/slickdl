@@ -387,6 +387,18 @@ using code_t = enum class code : uint32_t {
 
 using codeUnderlying_t = std::underlying_type_t< code_t >;
 
+[[nodiscard]] constexpr auto toLegacy( code_t _code ) -> SDL_Keycode {
+    return ( static_cast< SDL_Keycode >( _code ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( code_t* _code ) -> SDL_Keycode* {
+    return ( std::bit_cast< SDL_Keycode* >( _code ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_Keycode _code ) -> code_t {
+    return ( static_cast< code_t >( _code ) );
+}
+
 // Valid key modifiers (possibly OR'd together).
 using modifier_t = enum class modifier : uint16_t {
     none = 0U,          /**< no modifier is applicable. */
@@ -416,21 +428,16 @@ using modifier_t = enum class modifier : uint16_t {
 
 using modifierUnderlying_t = std::underlying_type_t< modifier_t >;
 
-// Legacy
-[[nodiscard]] constexpr auto toLegacy( code_t _code ) -> SDL_Keycode {
-    return ( static_cast< SDL_Keycode >( _code ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( code_t* _code ) -> SDL_Keycode* {
-    return ( std::bit_cast< SDL_Keycode* >( _code ) );
-}
-
 [[nodiscard]] constexpr auto toLegacy( modifier_t _modifier ) -> SDL_Keymod {
     return ( static_cast< SDL_Keymod >( _modifier ) );
 }
 
 [[nodiscard]] constexpr auto toLegacy( modifier_t* _modifier ) -> SDL_Keymod* {
     return ( std::bit_cast< SDL_Keymod* >( _modifier ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_Keymod _modifier ) -> modifier_t {
+    return ( static_cast< modifier_t >( _modifier ) );
 }
 
 // This is a unique ID for a keyboard for the time it is connected to the

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <gsl/pointers>
+#include <type_traits>
 
 #include "slickdl.hpp"
 #include "slickdl/blend.hpp"
@@ -37,6 +38,22 @@ using access_t = enum class access : uint8_t {
     target,    /**< Texture can be used as a render target */
 };
 
+using accessUnderlying_t = std::underlying_type_t< access_t >;
+
+[[nodiscard]] constexpr auto toLegacy( access_t _access ) -> SDL_TextureAccess {
+    return ( static_cast< SDL_TextureAccess >( _access ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( access_t* _access )
+    -> SDL_TextureAccess* {
+    return ( std::bit_cast< SDL_TextureAccess* >( _access ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_TextureAccess _access )
+    -> access_t {
+    return ( static_cast< access_t >( _access ) );
+}
+
 // This affects how texture coordinates are interpreted outside of [0, 1]
 using addressMode_t = enum class addressMode : int8_t {
     invalid = -1,
@@ -46,33 +63,7 @@ using addressMode_t = enum class addressMode : int8_t {
     wrap,   /**< The texture is repeated (tiled) */
 };
 
-// How the logical size is mapped to the output.
-using logicalPresentation_t = enum class rendererLogicalPresentation : uint8_t {
-    disabled, /**< There is no logical size in effect */
-    stretch,  /**< The rendered content is stretched to the output resolution */
-    letterbox, /**< The rendered content is fit to the largest dimension and the
-                  other dimension is letterboxed with black bars */
-    overscan, /**< The rendered content is fit to the smallest dimension and the
-                 other dimension extends beyond the output bounds */
-    integerScale, /**< The rendered content is scaled up by integer multiples to
-                     fit the output resolution */
-};
-
-using vsync_t = enum class vsync : int8_t {
-    adaptive = -1,
-    disabled = 0,
-    enabled = 1,
-};
-
-// Legacy
-[[nodiscard]] constexpr auto toLegacy( access_t _access ) -> SDL_TextureAccess {
-    return ( static_cast< SDL_TextureAccess >( _access ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( access_t* _access )
-    -> SDL_TextureAccess* {
-    return ( std::bit_cast< SDL_TextureAccess* >( _access ) );
-}
+using addressModeUnderlying_t = std::underlying_type_t< addressMode_t >;
 
 [[nodiscard]] constexpr auto toLegacy( addressMode_t _addressMode )
     -> SDL_TextureAddressMode {
@@ -83,6 +74,26 @@ using vsync_t = enum class vsync : int8_t {
     -> SDL_TextureAddressMode* {
     return ( std::bit_cast< SDL_TextureAddressMode* >( _addressMode ) );
 }
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_TextureAddressMode _addressMode )
+    -> addressMode_t {
+    return ( static_cast< addressMode_t >( _addressMode ) );
+}
+
+// How the logical size is mapped to the output.
+using logicalPresentation_t = enum class logicalPresentation : uint8_t {
+    disabled, /**< There is no logical size in effect */
+    stretch,  /**< The rendered content is stretched to the output resolution */
+    letterbox, /**< The rendered content is fit to the largest dimension and the
+                  other dimension is letterboxed with black bars */
+    overscan, /**< The rendered content is fit to the smallest dimension and the
+                 other dimension extends beyond the output bounds */
+    integerScale, /**< The rendered content is scaled up by integer multiples to
+                     fit the output resolution */
+};
+
+using logicalPresentationUnderlying_t =
+    std::underlying_type_t< logicalPresentation_t >;
 
 [[nodiscard]] constexpr auto toLegacy(
     logicalPresentation_t _logicalPresentation )
@@ -98,12 +109,30 @@ using vsync_t = enum class vsync : int8_t {
         _logicalPresentation ) );
 }
 
+[[nodiscard]] constexpr auto fromLegacy(
+    SDL_RendererLogicalPresentation _logicalPresentation )
+    -> logicalPresentation_t {
+    return ( static_cast< logicalPresentation_t >( _logicalPresentation ) );
+}
+
+using vsync_t = enum class vsync : int8_t {
+    adaptive = -1,
+    disabled = 0,
+    enabled = 1,
+};
+
+using vsyncUnderlying_t = std::underlying_type_t< vsync_t >;
+
 [[nodiscard]] constexpr auto toLegacy( vsync_t _vsync ) -> int {
     return ( static_cast< int >( _vsync ) );
 }
 
 [[nodiscard]] constexpr auto toLegacy( vsync_t* _vsync ) -> int* {
     return ( std::bit_cast< int* >( _vsync ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( int _vsync ) -> vsync_t {
+    return ( static_cast< vsync_t >( _vsync ) );
 }
 
 // Renderer

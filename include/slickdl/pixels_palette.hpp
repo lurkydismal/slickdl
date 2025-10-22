@@ -1578,6 +1578,10 @@ using mask_t = struct mask {
     return ( std::bit_cast< SDL_PixelFormat* >( _format ) );
 }
 
+[[nodiscard]] constexpr auto fromLegacy( SDL_PixelFormat _format ) -> format_t {
+    return ( static_cast< format_t >( _format ) );
+}
+
 // Pixels
 // Returned structure may come from a shared global cache (i.e. not newly
 // allocated), and hence should not be modified, especially the palette. Weird

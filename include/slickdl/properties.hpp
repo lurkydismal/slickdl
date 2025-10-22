@@ -53,6 +53,10 @@ using typeUnderlying_t = std::underlying_type_t< type_t >;
     return ( std::bit_cast< SDL_PropertyType* >( _type ) );
 }
 
+[[nodiscard]] constexpr auto fromLegacy( SDL_PropertyType _type ) -> type_t {
+    return ( static_cast< type_t >( _type ) );
+}
+
 // Get the global SDL properties.
 [[nodiscard]] inline auto global() -> id_t {
     const id_t l_result = SDL_GetGlobalProperties();

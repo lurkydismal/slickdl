@@ -42,12 +42,20 @@ using flipUnderlying_t = std::underlying_type_t< flip_t >;
     return ( std::bit_cast< SDL_ScaleMode* >( _scale ) );
 }
 
+[[nodiscard]] constexpr auto fromLegacy( SDL_ScaleMode _scale ) -> scale_t {
+    return ( static_cast< scale_t >( _scale ) );
+}
+
 [[nodiscard]] constexpr auto toLegacy( flip_t _flip ) -> SDL_FlipMode {
     return ( static_cast< SDL_FlipMode >( _flip ) );
 }
 
 [[nodiscard]] constexpr auto toLegacy( flip_t* _flip ) -> SDL_FlipMode* {
     return ( std::bit_cast< SDL_FlipMode* >( _flip ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_FlipMode _flip ) -> flip_t {
+    return ( static_cast< flip_t >( _flip ) );
 }
 
 // Surface
