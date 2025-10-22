@@ -31,7 +31,8 @@ namespace slickdl::GUID {
 using GUID_t = struct GUID {
     using native_t = SDL_GUID;
 
-    GUID() = default;
+    GUID() = delete;
+
     GUID( const GUID& ) = default;
     GUID( GUID&& ) = default;
 
@@ -44,7 +45,8 @@ using GUID_t = struct GUID {
     // generated will not be useful.
     //
     // An ASCII representation of a GUID.
-    constexpr GUID( std::string_view _compiled ) {
+    constexpr GUID( std::string_view _compiled )
+        : _data( decltype( _data ){} ) {
         // Require exactly 32 hex digits
         stdfunc::assert( _compiled.size() == ( 2UZ * 16 ) );
 
@@ -118,7 +120,8 @@ private:
 
     // Variables
 private:
-    std::array< uint8_t, 16 > _data{};
+    // TODO: Make cosnt
+    std::array< uint8_t, 16 > _data;
 };
 
 } // namespace slickdl::GUID

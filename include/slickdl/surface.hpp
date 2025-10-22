@@ -254,24 +254,20 @@ using surface_t = struct surface {
     //
     // Not thread safe
     auto getAlternates() -> std::vector< surface > {
-        std::vector< surface > l_returnValue;
+        // Get native images
+        size_t l_amount = 0;
 
-        {
-            // Get native images
-            int l_count = 0;
-            gsl::not_null< SDL_Surface** > l_images =
-                SDL_GetSurfaceImages( _data, &l_count );
+        std::unique_ptr< SDL_Surface*, void ( * )( void* ) > l_result(
+            SDL_GetSurfaceImages( _data, std::bit_cast< int* >( &l_amount ) ),
+            SDL_free );
 
-            // Convert
-            for ( const surface& _image :
-                  std::span( l_images.get(), l_count ) ) {
-                l_returnValue.emplace_back( _image );
-            }
+        assert( l_result.get() );
 
-            SDL_free( l_images );
-        }
-
-        return ( l_returnValue );
+        return ( std::span( l_result.get(), l_amount ) |
+                 std::views::transform( []( SDL_Surface* _surface ) -> surface {
+                     return ( _surface );
+                 } ) |
+                 std::ranges::to< std::vector >() );
     }
 
     // This function removes a reference from all the alternative versions,

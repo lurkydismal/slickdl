@@ -5,8 +5,7 @@
 #include <bit>
 #include <optional>
 #include <type_traits>
-
-#include "slickdl.hpp"
+#include <utility>
 
 // SDL power management routines.
 //
@@ -27,7 +26,7 @@ using state_t = enum class state : int8_t {
     onBattery,  /**< Not plugged in, running on the battery */
     noBattery,  /**< Plugged in, no battery available */
     charging,   /**< Plugged in, charging battery */
-    charged     /**< Plugged in, battery charged */
+    charged,    /**< Plugged in, battery charged */
 };
 
 using stateUnderlying_t = std::underlying_type_t< state_t >;
@@ -71,31 +70,6 @@ using stateUnderlying_t = std::underlying_type_t< state_t >;
 // 100, or NULL to ignore. This will be filled in with -1 we can't determine a
 // value or there is no battery.
 [[nodiscard]] auto info()
-    -> std::pair< state_t, std::optional< std::pair< size_t, size_t > > > {
-    ssize_t l_seconds = 0;
-    ssize_t l_percent = 0;
-
-    const state_t l_result =
-        fromLegacy( SDL_GetPowerInfo( std::bit_cast< int* >( &l_seconds ),
-                                      std::bit_cast< int* >( &l_percent ) ) );
-
-    assert( l_result == state_t::error );
-
-    if ( l_result == state_t::noBattery ) {
-        return {
-            l_result,
-            std::nullopt,
-        };
-
-    } else {
-        return {
-            l_result,
-            std::pair{
-                static_cast< size_t >( ( l_seconds ) ? ( l_seconds ) : ( 0 ) ),
-                static_cast< size_t >( ( l_percent ) ? ( l_percent ) : ( 0 ) ),
-            },
-        };
-    }
-}
+    -> std::pair< state_t, std::optional< std::pair< size_t, size_t > > >;
 
 } // namespace slickdl::power
