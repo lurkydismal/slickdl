@@ -1491,6 +1491,8 @@ private:
 
 // Texture
 using texture_t = struct texture {
+    using native_t = SDL_Texture;
+
     texture() = delete;
 
     // The contents of a texture when first created are not defined.
@@ -1617,14 +1619,14 @@ using texture_t = struct texture {
     //   if you want to wrap an existing texture.
     //
     // Should only be called on the main thread.
-    texture( const renderer_t& _renderer, properties::id_t _props )
-        : _data( SDL_CreateTextureWithProperties( _renderer, _props ) ) {}
+    texture( const renderer_t& _renderer, properties::id_t _properties )
+        : _data( SDL_CreateTextureWithProperties( _renderer, _properties ) ) {}
 
     texture( const texture& ) = delete;
     texture( texture&& ) = default;
 
     template < typename OtherType >
-        requires std::is_convertible_v< OtherType, SDL_Texture* >
+        requires std::is_convertible_v< OtherType, native_t* >
     constexpr texture( OtherType&& _other )
         : _data( std::forward< OtherType >( _other ) ) {}
 
@@ -1633,7 +1635,7 @@ using texture_t = struct texture {
     auto operator=( const texture& ) -> texture& = delete;
     auto operator=( texture&& ) -> texture& = default;
 
-    constexpr operator SDL_Texture*() const { return ( _data ); }
+    constexpr operator native_t*() const { return ( _data ); }
 
     static constexpr std::string_view g_colorspaceNumber =
         "SDL.texture.colorspace";
@@ -2286,7 +2288,7 @@ using texture_t = struct texture {
 
     // Variables
 private:
-    gsl::not_null< SDL_Texture* > _data;
+    gsl::not_null< native_t* > _data;
 };
 
 // Create a window and default renderer.
