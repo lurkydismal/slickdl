@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-#include "slickdl.hpp"
+#include "stddebug.hpp"
 
 // A GUID is a 128-bit value that represents something that is uniquely
 // identifiable by this value: "globally unique."
@@ -46,7 +46,7 @@ using GUID_t = struct GUID {
     // An ASCII representation of a GUID.
     constexpr GUID( std::string_view _compiled ) {
         // Require exactly 32 hex digits
-        assert( _compiled.size() == ( 2UZ * 16 ) );
+        stdfunc::assert( _compiled.size() == ( 2UZ * 16 ) );
 
         size_t l_idx = 0;
 
@@ -110,7 +110,7 @@ private:
 
         } else {
             // FIX: Error
-            assert( false );
+            stdfunc::assert( false );
 
             return ( 0 );
         }
