@@ -3,7 +3,6 @@
 #include <SDL3/SDL_sensor.h>
 
 #include <gsl/pointers>
-#include <ranges>
 #include <type_traits>
 
 #include "slickdl.hpp"
@@ -129,21 +128,10 @@ private:
 };
 
 // Get a list of currently connected sensors.
-[[nodiscard]] auto all() -> std::vector< id_t > {
-    size_t l_amount = 0;
-
-    std::unique_ptr< id_t, void ( * )( void* ) > l_result(
-        SDL_GetSensors( std::bit_cast< int* >( &l_amount ) ), SDL_free );
-
-    assert( l_result.get() );
-
-    return ( std::span( l_result.get(), l_amount ) |
-             std::ranges::to< std::vector >() );
-}
+[[nodiscard]] auto all() -> std::vector< id_t >;
 
 // Get the instance ID of a sensor.
-// TODO: Rename
-[[nodiscard]] auto id( sensor_t _sensor ) -> id_t {
+[[nodiscard]] inline auto id( sensor_t _sensor ) -> id_t {
     const id_t l_result = SDL_GetSensorID( _sensor );
 
     assert( l_result );
@@ -151,29 +139,18 @@ private:
     return ( l_result );
 }
 
-// Get the platform dependent type of a sensor.
-//
-// This can be called before any sensors are opened.
-[[nodiscard]] auto nonPortableType( id_t _id ) -> int {
-    const int l_result = SDL_GetSensorNonPortableTypeForID( _id );
-
-    assert( l_result != -1 );
-
-    return ( l_result );
-}
-
 // Open a sensor for use.
-[[nodiscard]] auto open( id_t _id ) -> sensor_t {
+[[nodiscard]] inline auto open( id_t _id ) -> sensor_t {
     return { SDL_OpenSensor( _id ) };
 }
 
 // Return the SDL_Sensor associated with an instance ID.
-[[nodiscard]] auto fromId( id_t _id ) -> sensor_t {
+[[nodiscard]] inline auto fromId( id_t _id ) -> sensor_t {
     return { SDL_GetSensorFromID( _id ) };
 }
 
 // Get the properties associated with a sensor.
-[[nodiscard]] auto properties( sensor_t _sensor ) -> properties::id_t {
+[[nodiscard]] inline auto properties( sensor_t _sensor ) -> properties::id_t {
     const properties::id_t l_result = SDL_GetSensorProperties( _sensor );
 
     assert( l_result );
@@ -187,19 +164,19 @@ private:
 //
 // \param instance_id the sensor instance ID.
 // \returns the sensor name, or NULL if `instance_id` is not valid.
-[[nodiscard]] auto name( id_t _id ) -> std::string_view {
+[[nodiscard]] inline auto name( id_t _id ) -> std::string_view {
     return { gsl::make_not_null( SDL_GetSensorNameForID( _id ) ) };
 }
 
 // Get the implementation dependent name of a sensor.
-[[nodiscard]] auto name( sensor_t _sensor ) -> std::string_view {
+[[nodiscard]] inline auto name( sensor_t _sensor ) -> std::string_view {
     return { gsl::make_not_null( SDL_GetSensorName( _sensor ) ) };
 }
 
 // Get the type of a sensor.
 //
 // This can be called before any sensors are opened.
-[[nodiscard]] auto type( id_t _id ) -> type_t {
+[[nodiscard]] inline auto type( id_t _id ) -> type_t {
     const type_t l_result = fromLegacy( SDL_GetSensorTypeForID( _id ) );
 
     assert( l_result != type_t::invalid );
@@ -208,7 +185,7 @@ private:
 }
 
 // Get the type of a sensor.
-[[nodiscard]] auto type( sensor_t _sensor ) -> type_t {
+[[nodiscard]] inline auto type( sensor_t _sensor ) -> type_t {
     const type_t l_result = fromLegacy( SDL_GetSensorType( _sensor ) );
 
     assert( l_result != type_t::invalid );
@@ -217,7 +194,18 @@ private:
 }
 
 // Get the platform dependent type of a sensor.
-[[nodiscard]] auto nonPortableType( sensor_t _sensor ) -> int {
+//
+// This can be called before any sensors are opened.
+[[nodiscard]] inline auto nonPortableType( id_t _id ) -> int {
+    const int l_result = SDL_GetSensorNonPortableTypeForID( _id );
+
+    assert( l_result != -1 );
+
+    return ( l_result );
+}
+
+// Get the platform dependent type of a sensor.
+[[nodiscard]] inline auto nonPortableType( sensor_t _sensor ) -> int {
     const int l_result = SDL_GetSensorNonPortableType( _sensor );
 
     assert( l_result != -1 );
@@ -231,7 +219,7 @@ private:
 //
 // Amount of values to write to data.
 template < size_t N >
-[[nodiscard]] auto data( sensor_t _sensor ) -> std::array< float, N > {
+[[nodiscard]] inline auto data( sensor_t _sensor ) -> std::array< float, N > {
     std::array< float, N > l_data{};
 
     const bool l_result = SDL_GetSensorData( _sensor, l_data.data(), N );
@@ -242,7 +230,7 @@ template < size_t N >
 }
 
 // Close a sensor previously opened with SDL_OpenSensor().
-void close( sensor_t _sensor ) {
+inline void close( sensor_t _sensor ) {
     SDL_CloseSensor( _sensor );
 }
 
@@ -252,7 +240,7 @@ void close( sensor_t _sensor ) {
 // enabled.
 //
 // Needs to be called from the thread that initialized the sensor subsystem.
-void update() {
+inline void update() {
     SDL_UpdateSensors();
 }
 
