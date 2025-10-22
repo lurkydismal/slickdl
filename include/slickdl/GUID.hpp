@@ -13,7 +13,7 @@
 // identifiable by this value: "globally unique."
 //
 // SDL provides functions to convert a GUID to/from a string.
-namespace slickdl::GUID {
+namespace slickdl {
 
 // An SDL_GUID is a 128-bit identifier for an input device that identifies
 // that device across runs of SDL programs on the same platform.
@@ -36,6 +36,7 @@ using GUID_t = struct GUID {
     GUID( const GUID& ) = default;
     GUID( GUID&& ) = default;
 
+    constexpr GUID( native_t _GUID ) : _data( std::to_array( _GUID.data ) ) {}
     constexpr GUID( native_t& _GUID ) : _data( std::to_array( _GUID.data ) ) {}
 
     // Convert a GUID string into a SDL_GUID structure.
@@ -124,4 +125,4 @@ private:
     std::array< uint8_t, 16 > _data;
 };
 
-} // namespace slickdl::GUID
+} // namespace slickdl

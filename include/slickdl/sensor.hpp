@@ -106,26 +106,7 @@ using typeUnderlying_t = std::underlying_type_t< type_t >;
 }
 
 // The opaque structure used to identify an opened SDL sensor.
-using sensor_t = struct sensor {
-    using native_t = SDL_Sensor*;
-
-    sensor() = delete;
-
-    sensor( native_t _sensor ) : _data( _sensor ) {}
-
-    sensor( const sensor& ) = delete;
-    sensor( sensor&& ) = default;
-    ~sensor() = default;
-
-    auto operator=( const sensor& ) -> sensor& = delete;
-    auto operator=( sensor&& ) -> sensor& = default;
-
-    constexpr operator native_t() const { return ( _data ); }
-
-    // Helpers
-private:
-    gsl::not_null< SDL_Sensor* > _data;
-};
+using sensor_t = gsl::not_null< SDL_Sensor* >;
 
 // Get a list of currently connected sensors.
 [[nodiscard]] auto all() -> std::vector< id_t >;
