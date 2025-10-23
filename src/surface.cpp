@@ -3,7 +3,6 @@
 namespace slickdl {
 
 [[nodiscard]] auto surface_t::alternates() -> std::vector< surface > {
-    // Get native images
     size_t l_amount = 0;
 
     std::unique_ptr< SDL_Surface*, void ( * )( void* ) > l_result(
