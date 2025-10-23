@@ -33,7 +33,7 @@ using deviceType_t = enum class deviceType : int8_t {
     invalid = -1,
     direct,           /**< touch screen with window-relative coordinates */
     indirectAbsolute, /**< trackpad with absolute device coordinates */
-    indirectRelative  /**< trackpad with screen cursor-relative coordinates */
+    indirectRelative, /**< trackpad with screen cursor-relative coordinates */
 };
 
 using deviceTypeUnderlying_t = std::underlying_type_t< deviceType_t >;

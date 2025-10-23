@@ -104,8 +104,8 @@ using axis_t = enum class axis : uint8_t {
                            Pen).   Unidirectional: 0 to 1.0 */
     tangentialPressure, /**< Pressure from squeezing the pen
                             ("barrel pressure"). */
-    count               /**< Total known pen axis types in this version of
-                                        SDL. This number may grow in future releases! */
+    count,              /**< Total known pen axis types in this version of
+                                       SDL. This number may grow in future releases! */
 };
 
 using axisUnderlying_t = std::underlying_type_t< axis_t >;
