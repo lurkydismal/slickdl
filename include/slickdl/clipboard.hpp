@@ -1,3 +1,5 @@
+#pragma once
+
 #include <SDL3/SDL_clipboard.h>
 
 #include <string_view>
