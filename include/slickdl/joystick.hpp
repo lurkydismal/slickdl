@@ -82,16 +82,16 @@ using type_t = enum class type : uint8_t {
 
 using typeUnderlying_t = std::underlying_type_t< type_t >;
 
-[[nodiscard]] constexpr auto toLegacy( type_t _type ) -> SDL_JoystickType {
-    return ( static_cast< SDL_JoystickType >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_JoystickType {
+    return ( static_cast< SDL_JoystickType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( type_t* _type ) -> SDL_JoystickType* {
-    return ( std::bit_cast< SDL_JoystickType* >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_JoystickType* {
+    return ( std::bit_cast< SDL_JoystickType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_JoystickType _type ) -> type_t {
-    return ( static_cast< type_t >( _type ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_JoystickType _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
 }
 
 // Possible connection states for a joystick device.
@@ -104,19 +104,19 @@ using connectionState_t = enum class connectionState : int8_t {
 
 using connectionStateUnderlying_t = std::underlying_type_t< connectionState_t >;
 
-[[nodiscard]] constexpr auto toLegacy( connectionState_t _state )
+[[nodiscard]] constexpr auto toLegacy( connectionState_t _value )
     -> SDL_JoystickConnectionState {
-    return ( static_cast< SDL_JoystickConnectionState >( _state ) );
+    return ( static_cast< SDL_JoystickConnectionState >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( connectionState_t* _state )
+[[nodiscard]] constexpr auto toLegacy( connectionState_t* _value )
     -> SDL_JoystickConnectionState* {
-    return ( std::bit_cast< SDL_JoystickConnectionState* >( _state ) );
+    return ( std::bit_cast< SDL_JoystickConnectionState* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_JoystickConnectionState _state )
+[[nodiscard]] constexpr auto fromLegacy( SDL_JoystickConnectionState _value )
     -> connectionState_t {
-    return ( static_cast< connectionState_t >( _state ) );
+    return ( static_cast< connectionState_t >( _value ) );
 }
 
 // The largest value an SDL_Joystick's axis can report.

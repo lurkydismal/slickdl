@@ -92,19 +92,19 @@ using systemCursor_t = enum class systemCursor : uint8_t {
 
 using systemCursorUnderlying_t = std::underlying_type_t< systemCursor_t >;
 
-[[nodiscard]] constexpr auto toLegacy( systemCursor_t _state )
+[[nodiscard]] constexpr auto toLegacy( systemCursor_t _value )
     -> SDL_SystemCursor {
-    return ( static_cast< SDL_SystemCursor >( _state ) );
+    return ( static_cast< SDL_SystemCursor >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( systemCursor_t* _state )
+[[nodiscard]] constexpr auto toLegacy( systemCursor_t* _value )
     -> SDL_SystemCursor* {
-    return ( std::bit_cast< SDL_SystemCursor* >( _state ) );
+    return ( std::bit_cast< SDL_SystemCursor* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_SystemCursor _state )
+[[nodiscard]] constexpr auto fromLegacy( SDL_SystemCursor _value )
     -> systemCursor_t {
-    return ( static_cast< systemCursor_t >( _state ) );
+    return ( static_cast< systemCursor_t >( _value ) );
 }
 
 // Scroll direction types for the Scroll event
@@ -115,19 +115,19 @@ using wheelDirection_t = enum class wheelDirection : uint8_t {
 
 using wheelDirectionUnderlying_t = std::underlying_type_t< wheelDirection_t >;
 
-[[nodiscard]] constexpr auto toLegacy( wheelDirection_t _state )
+[[nodiscard]] constexpr auto toLegacy( wheelDirection_t _value )
     -> SDL_MouseWheelDirection {
-    return ( static_cast< SDL_MouseWheelDirection >( _state ) );
+    return ( static_cast< SDL_MouseWheelDirection >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( wheelDirection_t* _state )
+[[nodiscard]] constexpr auto toLegacy( wheelDirection_t* _value )
     -> SDL_MouseWheelDirection* {
-    return ( std::bit_cast< SDL_MouseWheelDirection* >( _state ) );
+    return ( std::bit_cast< SDL_MouseWheelDirection* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_MouseWheelDirection _state )
+[[nodiscard]] constexpr auto fromLegacy( SDL_MouseWheelDirection _value )
     -> wheelDirection_t {
-    return ( static_cast< wheelDirection_t >( _state ) );
+    return ( static_cast< wheelDirection_t >( _value ) );
 }
 
 // A bitmask of pressed mouse buttons, as reported by SDL_GetMouseState, etc.
@@ -147,19 +147,19 @@ using buttonFlags_t = enum class buttonFlags : uint8_t {
 
 using buttonFlagsUnderlying_t = std::underlying_type_t< buttonFlags_t >;
 
-[[nodiscard]] constexpr auto toLegacy( buttonFlags_t _state )
+[[nodiscard]] constexpr auto toLegacy( buttonFlags_t _value )
     -> SDL_MouseButtonFlags {
-    return ( static_cast< SDL_MouseButtonFlags >( _state ) );
+    return ( static_cast< SDL_MouseButtonFlags >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( buttonFlags_t* _state )
+[[nodiscard]] constexpr auto toLegacy( buttonFlags_t* _value )
     -> SDL_MouseButtonFlags* {
-    return ( std::bit_cast< SDL_MouseButtonFlags* >( _state ) );
+    return ( std::bit_cast< SDL_MouseButtonFlags* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_MouseButtonFlags _state )
+[[nodiscard]] constexpr auto fromLegacy( SDL_MouseButtonFlags _value )
     -> buttonFlags_t {
-    return ( static_cast< buttonFlags_t >( _state ) );
+    return ( static_cast< buttonFlags_t >( _value ) );
 }
 
 [[nodiscard]] constexpr auto mask( buttonFlags_t _x )

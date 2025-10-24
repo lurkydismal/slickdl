@@ -1570,16 +1570,16 @@ using mask_t = struct mask {
 }
 
 // Legacy
-[[nodiscard]] constexpr auto toLegacy( format_t _format ) -> SDL_PixelFormat {
-    return ( static_cast< SDL_PixelFormat >( _format ) );
+[[nodiscard]] constexpr auto toLegacy( format_t _value ) -> SDL_PixelFormat {
+    return ( static_cast< SDL_PixelFormat >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( format_t* _format ) -> SDL_PixelFormat* {
-    return ( std::bit_cast< SDL_PixelFormat* >( _format ) );
+[[nodiscard]] constexpr auto toLegacy( format_t* _value ) -> SDL_PixelFormat* {
+    return ( std::bit_cast< SDL_PixelFormat* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_PixelFormat _format ) -> format_t {
-    return ( static_cast< format_t >( _format ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_PixelFormat _value ) -> format_t {
+    return ( static_cast< format_t >( _value ) );
 }
 
 // Pixels

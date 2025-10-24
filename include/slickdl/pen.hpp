@@ -63,19 +63,19 @@ using inputFlagsUnderlying_t = std::underlying_type_t< inputFlags_t >;
         static_cast< inputFlagsUnderlying_t >( _value ) ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( inputFlags_t _inputFlags )
+[[nodiscard]] constexpr auto toLegacy( inputFlags_t _value )
     -> SDL_PenInputFlags {
-    return ( static_cast< SDL_PenInputFlags >( _inputFlags ) );
+    return ( static_cast< SDL_PenInputFlags >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( inputFlags_t* _inputFlags )
+[[nodiscard]] constexpr auto toLegacy( inputFlags_t* _value )
     -> SDL_PenInputFlags* {
-    return ( std::bit_cast< SDL_PenInputFlags* >( _inputFlags ) );
+    return ( std::bit_cast< SDL_PenInputFlags* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_PenInputFlags _inputFlags )
+[[nodiscard]] constexpr auto fromLegacy( SDL_PenInputFlags _value )
     -> inputFlags_t {
-    return ( static_cast< inputFlags_t >( _inputFlags ) );
+    return ( static_cast< inputFlags_t >( _value ) );
 }
 
 // Pen axis indices.
@@ -110,16 +110,16 @@ using axis_t = enum class axis : uint8_t {
 
 using axisUnderlying_t = std::underlying_type_t< axis_t >;
 
-[[nodiscard]] constexpr auto toLegacy( axis_t _axis ) -> SDL_PenAxis {
-    return ( static_cast< SDL_PenAxis >( _axis ) );
+[[nodiscard]] constexpr auto toLegacy( axis_t _value ) -> SDL_PenAxis {
+    return ( static_cast< SDL_PenAxis >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( axis_t* _axis ) -> SDL_PenAxis* {
-    return ( std::bit_cast< SDL_PenAxis* >( _axis ) );
+[[nodiscard]] constexpr auto toLegacy( axis_t* _value ) -> SDL_PenAxis* {
+    return ( std::bit_cast< SDL_PenAxis* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_PenAxis _axis ) -> axis_t {
-    return ( static_cast< axis_t >( _axis ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_PenAxis _value ) -> axis_t {
+    return ( static_cast< axis_t >( _value ) );
 }
 
 } // namespace slickdl::pen

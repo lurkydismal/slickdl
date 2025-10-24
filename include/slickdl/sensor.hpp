@@ -93,16 +93,16 @@ using type_t = enum class type : int8_t {
 
 using typeUnderlying_t = std::underlying_type_t< type_t >;
 
-[[nodiscard]] constexpr auto toLegacy( type_t _type ) -> SDL_SensorType {
-    return ( static_cast< SDL_SensorType >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_SensorType {
+    return ( static_cast< SDL_SensorType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( type_t* _type ) -> SDL_SensorType* {
-    return ( std::bit_cast< SDL_SensorType* >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_SensorType* {
+    return ( std::bit_cast< SDL_SensorType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_SensorType _type ) -> type_t {
-    return ( static_cast< type_t >( _type ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_SensorType _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
 }
 
 // The opaque structure used to identify an opened SDL sensor.

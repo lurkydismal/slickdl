@@ -34,28 +34,28 @@ using flip_t = enum class flip : uint8_t {
 using flipUnderlying_t = std::underlying_type_t< flip_t >;
 
 // Legacy
-[[nodiscard]] constexpr auto toLegacy( scale_t _scale ) -> SDL_ScaleMode {
-    return ( static_cast< SDL_ScaleMode >( _scale ) );
+[[nodiscard]] constexpr auto toLegacy( scale_t _value ) -> SDL_ScaleMode {
+    return ( static_cast< SDL_ScaleMode >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( scale_t* _scale ) -> SDL_ScaleMode* {
-    return ( std::bit_cast< SDL_ScaleMode* >( _scale ) );
+[[nodiscard]] constexpr auto toLegacy( scale_t* _value ) -> SDL_ScaleMode* {
+    return ( std::bit_cast< SDL_ScaleMode* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_ScaleMode _scale ) -> scale_t {
-    return ( static_cast< scale_t >( _scale ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_ScaleMode _value ) -> scale_t {
+    return ( static_cast< scale_t >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( flip_t _flip ) -> SDL_FlipMode {
-    return ( static_cast< SDL_FlipMode >( _flip ) );
+[[nodiscard]] constexpr auto toLegacy( flip_t _value ) -> SDL_FlipMode {
+    return ( static_cast< SDL_FlipMode >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( flip_t* _flip ) -> SDL_FlipMode* {
-    return ( std::bit_cast< SDL_FlipMode* >( _flip ) );
+[[nodiscard]] constexpr auto toLegacy( flip_t* _value ) -> SDL_FlipMode* {
+    return ( std::bit_cast< SDL_FlipMode* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_FlipMode _flip ) -> flip_t {
-    return ( static_cast< flip_t >( _flip ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_FlipMode _value ) -> flip_t {
+    return ( static_cast< flip_t >( _value ) );
 }
 
 // Surface

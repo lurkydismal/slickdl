@@ -38,19 +38,19 @@ using deviceType_t = enum class deviceType : int8_t {
 
 using deviceTypeUnderlying_t = std::underlying_type_t< deviceType_t >;
 
-[[nodiscard]] constexpr auto toLegacy( deviceType_t _format )
+[[nodiscard]] constexpr auto toLegacy( deviceType_t _value )
     -> SDL_TouchDeviceType {
-    return ( static_cast< SDL_TouchDeviceType >( _format ) );
+    return ( static_cast< SDL_TouchDeviceType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( deviceType_t* _format )
+[[nodiscard]] constexpr auto toLegacy( deviceType_t* _value )
     -> SDL_TouchDeviceType* {
-    return ( std::bit_cast< SDL_TouchDeviceType* >( _format ) );
+    return ( std::bit_cast< SDL_TouchDeviceType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_TouchDeviceType _format )
+[[nodiscard]] constexpr auto fromLegacy( SDL_TouchDeviceType _value )
     -> deviceType_t {
-    return ( static_cast< deviceType_t >( _format ) );
+    return ( static_cast< deviceType_t >( _value ) );
 }
 
 // The SDL_MouseID for mouse events simulated with touch input.

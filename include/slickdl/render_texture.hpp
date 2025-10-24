@@ -40,18 +40,18 @@ using access_t = enum class access : uint8_t {
 
 using accessUnderlying_t = std::underlying_type_t< access_t >;
 
-[[nodiscard]] constexpr auto toLegacy( access_t _access ) -> SDL_TextureAccess {
-    return ( static_cast< SDL_TextureAccess >( _access ) );
+[[nodiscard]] constexpr auto toLegacy( access_t _value ) -> SDL_TextureAccess {
+    return ( static_cast< SDL_TextureAccess >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( access_t* _access )
+[[nodiscard]] constexpr auto toLegacy( access_t* _value )
     -> SDL_TextureAccess* {
-    return ( std::bit_cast< SDL_TextureAccess* >( _access ) );
+    return ( std::bit_cast< SDL_TextureAccess* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_TextureAccess _access )
+[[nodiscard]] constexpr auto fromLegacy( SDL_TextureAccess _value )
     -> access_t {
-    return ( static_cast< access_t >( _access ) );
+    return ( static_cast< access_t >( _value ) );
 }
 
 // This affects how texture coordinates are interpreted outside of [0, 1]
@@ -65,19 +65,19 @@ using addressMode_t = enum class addressMode : int8_t {
 
 using addressModeUnderlying_t = std::underlying_type_t< addressMode_t >;
 
-[[nodiscard]] constexpr auto toLegacy( addressMode_t _addressMode )
+[[nodiscard]] constexpr auto toLegacy( addressMode_t _value )
     -> SDL_TextureAddressMode {
-    return ( static_cast< SDL_TextureAddressMode >( _addressMode ) );
+    return ( static_cast< SDL_TextureAddressMode >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( addressMode_t* _addressMode )
+[[nodiscard]] constexpr auto toLegacy( addressMode_t* _value )
     -> SDL_TextureAddressMode* {
-    return ( std::bit_cast< SDL_TextureAddressMode* >( _addressMode ) );
+    return ( std::bit_cast< SDL_TextureAddressMode* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_TextureAddressMode _addressMode )
+[[nodiscard]] constexpr auto fromLegacy( SDL_TextureAddressMode _value )
     -> addressMode_t {
-    return ( static_cast< addressMode_t >( _addressMode ) );
+    return ( static_cast< addressMode_t >( _value ) );
 }
 
 // How the logical size is mapped to the output.
@@ -95,24 +95,19 @@ using logicalPresentation_t = enum class logicalPresentation : uint8_t {
 using logicalPresentationUnderlying_t =
     std::underlying_type_t< logicalPresentation_t >;
 
-[[nodiscard]] constexpr auto toLegacy(
-    logicalPresentation_t _logicalPresentation )
+[[nodiscard]] constexpr auto toLegacy( logicalPresentation_t _value )
     -> SDL_RendererLogicalPresentation {
-    return ( static_cast< SDL_RendererLogicalPresentation >(
-        _logicalPresentation ) );
+    return ( static_cast< SDL_RendererLogicalPresentation >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy(
-    logicalPresentation_t* _logicalPresentation )
+[[nodiscard]] constexpr auto toLegacy( logicalPresentation_t* _value )
     -> SDL_RendererLogicalPresentation* {
-    return ( std::bit_cast< SDL_RendererLogicalPresentation* >(
-        _logicalPresentation ) );
+    return ( std::bit_cast< SDL_RendererLogicalPresentation* >( _value ) );
 }
 
 [[nodiscard]] constexpr auto fromLegacy(
-    SDL_RendererLogicalPresentation _logicalPresentation )
-    -> logicalPresentation_t {
-    return ( static_cast< logicalPresentation_t >( _logicalPresentation ) );
+    SDL_RendererLogicalPresentation _value ) -> logicalPresentation_t {
+    return ( static_cast< logicalPresentation_t >( _value ) );
 }
 
 using vsync_t = enum class vsync : int8_t {
@@ -123,16 +118,16 @@ using vsync_t = enum class vsync : int8_t {
 
 using vsyncUnderlying_t = std::underlying_type_t< vsync_t >;
 
-[[nodiscard]] constexpr auto toLegacy( vsync_t _vsync ) -> int {
-    return ( static_cast< int >( _vsync ) );
+[[nodiscard]] constexpr auto toLegacy( vsync_t _value ) -> int {
+    return ( static_cast< int >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( vsync_t* _vsync ) -> int* {
-    return ( std::bit_cast< int* >( _vsync ) );
+[[nodiscard]] constexpr auto toLegacy( vsync_t* _value ) -> int* {
+    return ( std::bit_cast< int* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( int _vsync ) -> vsync_t {
-    return ( static_cast< vsync_t >( _vsync ) );
+[[nodiscard]] constexpr auto fromLegacy( int _value ) -> vsync_t {
+    return ( static_cast< vsync_t >( _value ) );
 }
 
 // Renderer

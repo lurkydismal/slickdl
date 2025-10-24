@@ -45,16 +45,16 @@ using type_t = enum class type : uint8_t {
 
 using typeUnderlying_t = std::underlying_type_t< type_t >;
 
-[[nodiscard]] constexpr auto toLegacy( type_t _type ) -> SDL_PropertyType {
-    return ( static_cast< SDL_PropertyType >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_PropertyType {
+    return ( static_cast< SDL_PropertyType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( type_t* _type ) -> SDL_PropertyType* {
-    return ( std::bit_cast< SDL_PropertyType* >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_PropertyType* {
+    return ( std::bit_cast< SDL_PropertyType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_PropertyType _type ) -> type_t {
-    return ( static_cast< type_t >( _type ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_PropertyType _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
 }
 
 // Get the global SDL properties.

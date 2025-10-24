@@ -1,3 +1,5 @@
+#pragma once
+
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_video.h>
 
@@ -290,16 +292,16 @@ using type_t = enum class type : uint32_t {
 
 using typeUnderlying_t = std::underlying_type_t< type_t >;
 
-[[nodiscard]] constexpr auto toLegacy( type_t _axisLabel ) -> SDL_EventType {
-    return ( static_cast< SDL_EventType >( _axisLabel ) );
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_EventType {
+    return ( static_cast< SDL_EventType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( type_t* _axisLabel ) -> SDL_EventType* {
-    return ( std::bit_cast< SDL_EventType* >( _axisLabel ) );
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_EventType* {
+    return ( std::bit_cast< SDL_EventType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_EventType _axisLabel ) -> type_t {
-    return ( static_cast< type_t >( _axisLabel ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_EventType _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
 }
 
 // Fields shared by every event
@@ -1183,19 +1185,16 @@ using action_t = enum class action : uint8_t {
 
 using actionUnderlying_t = std::underlying_type_t< action_t >;
 
-[[nodiscard]] constexpr auto toLegacy( action_t _axisLabel )
-    -> SDL_EventAction {
-    return ( static_cast< SDL_EventAction >( _axisLabel ) );
+[[nodiscard]] constexpr auto toLegacy( action_t _value ) -> SDL_EventAction {
+    return ( static_cast< SDL_EventAction >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( action_t* _axisLabel )
-    -> SDL_EventAction* {
-    return ( std::bit_cast< SDL_EventAction* >( _axisLabel ) );
+[[nodiscard]] constexpr auto toLegacy( action_t* _value ) -> SDL_EventAction* {
+    return ( std::bit_cast< SDL_EventAction* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_EventAction _axisLabel )
-    -> action_t {
-    return ( static_cast< action_t >( _axisLabel ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_EventAction _value ) -> action_t {
+    return ( static_cast< action_t >( _value ) );
 }
 
 // Check the event queue for messages and optionally return them.

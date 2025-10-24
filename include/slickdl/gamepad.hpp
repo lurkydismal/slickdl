@@ -91,16 +91,16 @@ using type_t = enum class type : uint8_t {
 
 using typeUnderlying_t = std::underlying_type_t< type_t >;
 
-[[nodiscard]] constexpr auto toLegacy( type_t _type ) -> SDL_GamepadType {
-    return ( static_cast< SDL_GamepadType >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_GamepadType {
+    return ( static_cast< SDL_GamepadType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( type_t* _type ) -> SDL_GamepadType* {
-    return ( std::bit_cast< SDL_GamepadType* >( _type ) );
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_GamepadType* {
+    return ( std::bit_cast< SDL_GamepadType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadType _type ) -> type_t {
-    return ( static_cast< type_t >( _type ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadType _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
 }
 
 // The list of buttons available on a gamepad
@@ -165,18 +165,18 @@ using button_t = enum class button : int8_t {
 
 using buttonUnderlying_t = std::underlying_type_t< button_t >;
 
-[[nodiscard]] constexpr auto toLegacy( button_t _button ) -> SDL_GamepadButton {
-    return ( static_cast< SDL_GamepadButton >( _button ) );
+[[nodiscard]] constexpr auto toLegacy( button_t _value ) -> SDL_GamepadButton {
+    return ( static_cast< SDL_GamepadButton >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( button_t* _button )
+[[nodiscard]] constexpr auto toLegacy( button_t* _value )
     -> SDL_GamepadButton* {
-    return ( std::bit_cast< SDL_GamepadButton* >( _button ) );
+    return ( std::bit_cast< SDL_GamepadButton* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadButton _button )
+[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadButton _value )
     -> button_t {
-    return ( static_cast< button_t >( _button ) );
+    return ( static_cast< button_t >( _value ) );
 }
 
 // The set of gamepad button labels
@@ -200,19 +200,19 @@ using buttonLabel_t = enum class buttonLabel : uint8_t {
 
 using buttonLabelUnderlying_t = std::underlying_type_t< buttonLabel_t >;
 
-[[nodiscard]] constexpr auto toLegacy( buttonLabel_t _buttonLabel )
+[[nodiscard]] constexpr auto toLegacy( buttonLabel_t _value )
     -> SDL_GamepadButtonLabel {
-    return ( static_cast< SDL_GamepadButtonLabel >( _buttonLabel ) );
+    return ( static_cast< SDL_GamepadButtonLabel >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( buttonLabel_t* _buttonLabel )
+[[nodiscard]] constexpr auto toLegacy( buttonLabel_t* _value )
     -> SDL_GamepadButtonLabel* {
-    return ( std::bit_cast< SDL_GamepadButtonLabel* >( _buttonLabel ) );
+    return ( std::bit_cast< SDL_GamepadButtonLabel* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadButtonLabel _buttonLabel )
+[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadButtonLabel _value )
     -> buttonLabel_t {
-    return ( static_cast< buttonLabel_t >( _buttonLabel ) );
+    return ( static_cast< buttonLabel_t >( _value ) );
 }
 
 // The list of axes available on a gamepad
@@ -238,18 +238,16 @@ using axis_t = enum class axis : int8_t {
 
 using axisUnderlying_t = std::underlying_type_t< axis_t >;
 
-[[nodiscard]] constexpr auto toLegacy( axis_t _axisLabel ) -> SDL_GamepadAxis {
-    return ( static_cast< SDL_GamepadAxis >( _axisLabel ) );
+[[nodiscard]] constexpr auto toLegacy( axis_t _value ) -> SDL_GamepadAxis {
+    return ( static_cast< SDL_GamepadAxis >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( axis_t* _axisLabel )
-    -> SDL_GamepadAxis* {
-    return ( std::bit_cast< SDL_GamepadAxis* >( _axisLabel ) );
+[[nodiscard]] constexpr auto toLegacy( axis_t* _value ) -> SDL_GamepadAxis* {
+    return ( std::bit_cast< SDL_GamepadAxis* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadAxis _axisLabel )
-    -> axis_t {
-    return ( static_cast< axis_t >( _axisLabel ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadAxis _value ) -> axis_t {
+    return ( static_cast< axis_t >( _value ) );
 }
 
 // Types of gamepad control bindings.
@@ -267,19 +265,19 @@ using bindingType_t = enum class bindingType : uint8_t {
 
 using bindingTypeUnderlying_t = std::underlying_type_t< bindingType_t >;
 
-[[nodiscard]] constexpr auto toLegacy( bindingType_t _axisLabel )
+[[nodiscard]] constexpr auto toLegacy( bindingType_t _value )
     -> SDL_GamepadBindingType {
-    return ( static_cast< SDL_GamepadBindingType >( _axisLabel ) );
+    return ( static_cast< SDL_GamepadBindingType >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( bindingType_t* _axisLabel )
+[[nodiscard]] constexpr auto toLegacy( bindingType_t* _value )
     -> SDL_GamepadBindingType* {
-    return ( std::bit_cast< SDL_GamepadBindingType* >( _axisLabel ) );
+    return ( std::bit_cast< SDL_GamepadBindingType* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadBindingType _axisLabel )
+[[nodiscard]] constexpr auto fromLegacy( SDL_GamepadBindingType _value )
     -> bindingType_t {
-    return ( static_cast< bindingType_t >( _axisLabel ) );
+    return ( static_cast< bindingType_t >( _value ) );
 }
 
 // A mapping between one joystick input to a gamepad control.
