@@ -200,6 +200,7 @@ using sensor_t = gsl::not_null< SDL_Sensor* >;
 //
 // Amount of values to write to data.
 template < size_t N >
+    requires( N > 0 )
 [[nodiscard]] inline auto data( sensor_t _sensor ) -> std::array< float, N > {
     std::array< float, N > l_data{};
 

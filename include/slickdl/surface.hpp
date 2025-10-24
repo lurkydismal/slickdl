@@ -261,22 +261,7 @@ using surface_t = struct surface {
     // the first element in the returned array
     //
     // Not thread safe
-    auto getAlternates() -> std::vector< surface > {
-        // Get native images
-        size_t l_amount = 0;
-
-        std::unique_ptr< SDL_Surface*, void ( * )( void* ) > l_result(
-            SDL_GetSurfaceImages( _data, std::bit_cast< int* >( &l_amount ) ),
-            SDL_free );
-
-        assert( l_result.get() );
-
-        return ( std::span( l_result.get(), l_amount ) |
-                 std::views::transform( []( SDL_Surface* _surface ) -> surface {
-                     return ( _surface );
-                 } ) |
-                 std::ranges::to< std::vector >() );
-    }
+    [[nodiscard]] auto alternates() -> std::vector< surface >;
 
     // This function removes a reference from all the alternative versions,
     // destroying them if this is the last reference to them
@@ -372,7 +357,9 @@ using surface_t = struct surface {
     }
 
     // Returns whether the surface has a color key.
-    auto hasColorKey() -> bool { return ( SDL_SurfaceHasColorKey( _data ) ); }
+    [[nodiscard]] auto hasColorKey() const -> bool {
+        return ( SDL_SurfaceHasColorKey( _data ) );
+    }
 
     // Get the color key (transparent pixel) for a surface.
     //

@@ -37,7 +37,10 @@ using GUID_t = struct GUID {
     GUID( GUID&& ) = default;
 
     constexpr GUID( native_t _GUID ) : _data( std::to_array( _GUID.data ) ) {}
+#if 0
+    // TODO: Improve
     constexpr GUID( native_t& _GUID ) : _data( std::to_array( _GUID.data ) ) {}
+#endif
 
     // Convert a GUID string into a SDL_GUID structure.
     //

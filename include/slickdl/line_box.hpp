@@ -284,7 +284,8 @@ struct box {
         }
 
         clippingZone_t l_clippingZone = {
-            _clippingZone.x, _clippingZone.y,
+            _clippingZone.x,
+            _clippingZone.y,
             _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
             _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
         };

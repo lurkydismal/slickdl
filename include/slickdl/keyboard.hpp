@@ -463,22 +463,7 @@ using id_t = size_t;
 // consider it actively in use.
 //
 // Should only be called on the main thread.
-[[nodiscard]] inline auto all() -> std::vector< id_t > {
-    size_t l_amount = 0;
-
-    std::unique_ptr< id_t, void ( * )( void* ) > l_result(
-        std::bit_cast< id_t* >(
-            SDL_GetKeyboards( std::bit_cast< int* >( &l_amount ) ) ),
-        SDL_free );
-
-    if ( l_result.get() ) {
-        return ( std::span( l_result.get(), l_amount ) |
-                 std::ranges::to< std::vector >() );
-
-    } else {
-        return {};
-    }
-}
+[[nodiscard]] auto all() -> std::vector< id_t >;
 
 // Get the name of a keyboard.
 //

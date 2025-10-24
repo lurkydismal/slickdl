@@ -168,8 +168,12 @@ inline void unlock() {
 // This can be called before any joysticks are opened.
 //
 // -1 if it's not available.
-[[nodiscard]] inline auto playerIndex( id_t _id ) -> ssize_t {
-    return ( SDL_GetJoystickPlayerIndexForID( _id ) );
+[[nodiscard]] inline auto playerIndex( id_t _id ) -> size_t {
+    const ssize_t l_result = SDL_GetJoystickPlayerIndexForID( _id );
+
+    assert( l_result != -1 );
+
+    return ( l_result );
 }
 
 // Get the implementation-dependent GUID of a joystick.
@@ -502,9 +506,9 @@ inline void virtualSensorData( joystick_t _joystick,
 // TODO: Rename
 namespace cap {
 
-constexpr std::string_view g_ledMonoBoolean = "SDL.joystick.cap.mono_led";
-constexpr std::string_view g_ledRGBBoolean = "SDL.joystick.cap.rgb_led";
-constexpr std::string_view g_ledPlayerBoolean = "SDL.joystick.cap.player_led";
+constexpr std::string_view g_monoLEDBoolean = "SDL.joystick.cap.mono_led";
+constexpr std::string_view g_LEDRGBBoolean = "SDL.joystick.cap.rgb_led";
+constexpr std::string_view g_playerLEDBoolean = "SDL.joystick.cap.player_led";
 constexpr std::string_view g_rumbleBoolean = "SDL.joystick.cap.rumble";
 constexpr std::string_view g_rumbleTriggerBoolean =
     "SDL.joystick.cap.trigger_rumble";
@@ -535,9 +539,18 @@ constexpr std::string_view g_rumbleTriggerBoolean =
 
 // Set the player index of an opened joystick.
 //
-// -1 to clear the player index and turn off player LEDs.
-inline void playerIndex( joystick_t _joystick, size_t _playerIndex ) {
-    const bool l_result = SDL_SetJoystickPlayerIndex( _joystick, _playerIndex );
+// NULL to clear the player index and turn off player LEDs.
+inline void playerIndex( joystick_t _joystick,
+                         std::optional< size_t > _playerIndex = std::nullopt ) {
+    bool l_result = false;
+
+    if ( _playerIndex ) {
+        l_result =
+            SDL_SetJoystickPlayerIndex( _joystick, _playerIndex.value() );
+
+    } else {
+        l_result = SDL_SetJoystickPlayerIndex( _joystick, -1 );
+    }
 
     assert( l_result );
 }
@@ -610,14 +623,14 @@ inline void playerIndex( joystick_t _joystick, size_t _playerIndex ) {
 //
 // A CRC used to distinguish different products with the same VID/PID, or 0 if
 // not available.
-[[nodiscard]] inline auto info( GUID_t _guid )
+[[nodiscard]] inline auto info( GUID_t _GUID )
     -> std::tuple< uint16_t, uint16_t, uint16_t, uint16_t > {
     uint16_t l_vendor = 0;
     uint16_t l_product = 0;
     uint16_t l_version = 0;
     uint16_t l_crc16 = 0;
 
-    SDL_GetJoystickGUIDInfo( _guid, &l_vendor, &l_product, &l_version,
+    SDL_GetJoystickGUIDInfo( _GUID, &l_vendor, &l_product, &l_version,
                              &l_crc16 );
 
     return { l_vendor, l_product, l_version, l_crc16 };
