@@ -123,11 +123,11 @@ inline void text( std::string_view _text ) {
 // handle this. Essentially returning no data is more or less undefined behavior
 // and may cause breakage in receiving applications. The returned data will not
 // be freed so it needs to be retained and dealt with internally.
-using dataCallback_t = SDL_ClipboardDataCallback;
+using dataCallback_t = gsl::not_null< SDL_ClipboardDataCallback >;
 
 // Callback function that will be called when the clipboard is cleared, or
 // new data is set.
-using cleanupCallback_t = SDL_ClipboardCleanupCallback;
+using cleanupCallback_t = gsl::not_null< SDL_ClipboardCleanupCallback >;
 
 // Offer clipboard data to the OS.
 //

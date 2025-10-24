@@ -82,6 +82,8 @@ using flipUnderlying_t = std::underlying_type_t< flip_t >;
 // When a surface holds MJPG format data, pixels points at the compressed JPEG
 // image and pitch is the length of that data
 using surface_t = struct surface {
+    using native_t = SDL_Surface;
+
     using flag_t = enum class flag : uint8_t {
         preallocated = 0x1u, // Surface uses preallocated pixel memory
         lockNeeded = 0x2U,   // Surface needs to be locked to access pixels
@@ -104,7 +106,7 @@ using surface_t = struct surface {
     surface( surface&& ) = default;
 
     template < typename OtherType >
-        requires std::is_convertible_v< OtherType, SDL_Surface* >
+        requires std::is_convertible_v< OtherType, native_t* >
     constexpr surface( OtherType&& _other )
         : _data( std::forward< OtherType >( _other ) ) {}
 
@@ -150,7 +152,7 @@ using surface_t = struct surface {
     auto operator=( const surface& ) -> surface& = delete;
     auto operator=( surface&& ) -> surface& = default;
 
-    constexpr operator SDL_Surface*() const { return ( _data ); }
+    constexpr operator native_t*() const { return ( _data ); }
 
     // Evaluates to true if the surface needs to be locked before access
     [[nodiscard]] constexpr auto mustLock() const -> bool {
@@ -1012,7 +1014,7 @@ private:
 
     // Variables
 private:
-    gsl::not_null< SDL_Surface* > _data;
+    gsl::not_null< native_t* > _data;
 };
 
 #if 0
