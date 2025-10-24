@@ -213,7 +213,7 @@ inline void set( id_t _properties,
 // Get the type of a property in a group of properties.
 [[nodiscard]] inline auto type( id_t _properties, std::string_view _name )
     -> type_t {
-    const type_t l_result = static_cast< type_t >(
+    const type_t l_result = fromLegacy(
         SDL_GetPropertyType( _properties, std::string( _name ).c_str() ) );
 
     assert( l_result != type_t::invalid );

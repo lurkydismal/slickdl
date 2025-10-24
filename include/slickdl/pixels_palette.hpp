@@ -1588,7 +1588,7 @@ using mask_t = struct mask {
 // errors such as 'Blit combination not supported' may occur.
 [[nodiscard]] inline auto pixelFormatDetails( format_t _format )
     -> const pixelFormatDetails_t {
-    return ( std::bit_cast< SDL_PixelFormatDetails* >(
+    return ( const_cast< SDL_PixelFormatDetails* >(
         SDL_GetPixelFormatDetails( toLegacy( _format ) ) ) );
 }
 

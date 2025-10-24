@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <format>
+#include <type_traits>
 
 namespace slickdl {
 
@@ -362,6 +363,8 @@ using scancode_t = enum class scancode : uint16_t {
     count = 512
 };
 
+using scancodeUnderlying_t = std::underlying_type_t< scancode_t >;
+
 // Legacy
 [[nodiscard]] constexpr auto toLegacy( scancode_t _value ) -> SDL_Scancode {
     return ( static_cast< SDL_Scancode >( _value ) );
@@ -373,6 +376,20 @@ using scancode_t = enum class scancode : uint16_t {
 
 [[nodiscard]] constexpr auto fromLegacy( SDL_Scancode _value ) -> scancode_t {
     return ( static_cast< scancode_t >( _value ) );
+}
+
+[[nodiscard]] constexpr auto operator|( scancode_t _storage, scancode_t _value )
+    -> scancode_t {
+    return ( static_cast< scancode_t >(
+        static_cast< scancodeUnderlying_t >( _storage ) |
+        static_cast< scancodeUnderlying_t >( _value ) ) );
+}
+
+[[nodiscard]] constexpr auto operator&( scancode_t _storage, scancode_t _value )
+    -> scancode_t {
+    return ( static_cast< scancode_t >(
+        static_cast< scancodeUnderlying_t >( _storage ) &
+        static_cast< scancodeUnderlying_t >( _value ) ) );
 }
 
 } // namespace slickdl

@@ -69,12 +69,15 @@ struct box {
     }
 
     [[nodiscard]] constexpr operator native_t() const {
-        return ( native_t{
-            x,
-            y,
-            width,
-            height,
-        } );
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t >( *this ) );
+    }
+
+    [[nodiscard]] constexpr operator native_t*() const {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
     }
 
     // Determine whether a box has no area

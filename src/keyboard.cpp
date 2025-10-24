@@ -1,5 +1,7 @@
 #include "slickdl/keyboard.hpp"
 
+#include <ranges>
+
 namespace slickdl::keyboard {
 
 [[nodiscard]] auto all() -> std::vector< id_t > {

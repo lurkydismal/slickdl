@@ -119,9 +119,9 @@ inline void subSystem( flag_t _flags ) {
 //
 // A mask of all initialized subsystems if `flags` is NULL, otherwise it returns
 // the initialization status of the specified subsystems
-auto currentFlags( std::optional< init::flag_t > _mask = std::nullopt )
-    -> init::flag_t {
-    const auto l_result = static_cast< init::flag_t >(
+[[nodiscard]] inline auto currentFlags(
+    std::optional< init::flag_t > _mask = std::nullopt ) -> init::flag_t {
+    const auto l_result = init::fromLegacy(
         SDL_WasInit( toLegacy( _mask.value_or( init::flag_t::none ) ) ) );
 
     assert( static_cast< flagUnderlying_t >( l_result ) != 0 );

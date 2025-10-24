@@ -344,7 +344,7 @@ private:
 [[nodiscard]] inline auto attach(
     const virtualTouchpadDescription_t& _description ) -> id_t {
     const int l_result = SDL_AttachVirtualJoystick(
-        std::bit_cast< const SDL_VirtualJoystickDesc* >( _description ) );
+        std::bit_cast< const SDL_VirtualJoystickDesc* >( &_description ) );
 
     assert( l_result );
 

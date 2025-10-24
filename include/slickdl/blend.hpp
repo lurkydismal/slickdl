@@ -176,7 +176,7 @@ using blendFactor_t = enum class blendFactor : uint8_t {
     blendFactor_t _sourceAlphaFactor,
     blendFactor_t _destinationAlphaFactor,
     blendOperation_t _alphaOperation ) -> blend_t {
-    return ( static_cast< blend_t >( SDL_ComposeCustomBlendMode(
+    return ( fromLegacy( SDL_ComposeCustomBlendMode(
         toLegacy( _sourceColorFactor ), toLegacy( _destinationColorFactor ),
         toLegacy( _colorOperation ), toLegacy( _sourceAlphaFactor ),
         toLegacy( _destinationAlphaFactor ), toLegacy( _alphaOperation ) ) ) );

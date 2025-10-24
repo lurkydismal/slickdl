@@ -4,7 +4,6 @@
 #include <SDL3/SDL_stdinc.h>
 
 #include <cstdint>
-#include <ranges>
 #include <type_traits>
 
 #include "slickdl.hpp"
@@ -525,7 +524,7 @@ inline void reset() {
 
 // Get the current key modifier state for the keyboard.
 [[nodiscard]] inline auto modifier() -> modifier_t {
-    return ( static_cast< modifier_t >( SDL_GetModState() ) );
+    return ( fromLegacy( SDL_GetModState() ) );
 }
 
 // Set the current key modifier state for the keyboard.
@@ -558,7 +557,7 @@ inline void modifier( modifier_t _modifier ) {
 [[nodiscard]] inline auto keyFromScancode( scancode_t _scancode,
                                            modifier_t _modstate,
                                            bool _keyEvent ) -> code_t {
-    return ( static_cast< code_t >( SDL_GetKeyFromScancode(
+    return ( fromLegacy( SDL_GetKeyFromScancode(
         toLegacy( _scancode ), toLegacy( _modstate ), _keyEvent ) ) );
 }
 
@@ -576,11 +575,11 @@ inline void modifier( modifier_t _modifier ) {
     code_t _code,
     std::optional< modifier_t > _modifier = std::nullopt ) -> scancode_t {
     if ( _modifier ) {
-        return ( static_cast< scancode_t >( SDL_GetScancodeFromKey(
+        return ( slickdl::fromLegacy( SDL_GetScancodeFromKey(
             toLegacy( _code ), toLegacy( &_modifier.value() ) ) ) );
 
     } else {
-        return ( static_cast< scancode_t >(
+        return ( slickdl::fromLegacy(
             SDL_GetScancodeFromKey( toLegacy( _code ), nullptr ) ) );
     }
 }
@@ -625,7 +624,7 @@ inline void scancodeName( scancode_t _scancode, std::string_view _name ) {
 // Not thread safe.
 [[nodiscard]] inline auto scancodeFromName( std::string_view _name )
     -> scancode_t {
-    const scancode_t l_result = static_cast< scancode_t >(
+    const scancode_t l_result = slickdl::fromLegacy(
         SDL_GetScancodeFromName( std::string( _name ).c_str() ) );
 
     assert( l_result != scancode_t::unknown );
@@ -652,8 +651,8 @@ inline void scancodeName( scancode_t _scancode, std::string_view _name ) {
 //
 // Not thread safe.
 [[nodiscard]] inline auto keyFromName( std::string_view _name ) -> code_t {
-    const code_t l_result = static_cast< code_t >(
-        SDL_GetKeyFromName( std::string( _name ).c_str() ) );
+    const code_t l_result =
+        fromLegacy( SDL_GetKeyFromName( std::string( _name ).c_str() ) );
 
     assert( l_result != code_t::unknown );
 
@@ -838,9 +837,8 @@ inline void area( window_t _window,
     box_t< int > l_box;
     ssize_t l_cursor = 0;
 
-    const bool l_result =
-        SDL_GetTextInputArea( _window, std::bit_cast< SDL_Rect* >( &l_box ),
-                              std::bit_cast< int* >( &l_cursor ) );
+    const bool l_result = SDL_GetTextInputArea(
+        _window, l_box, std::bit_cast< int* >( &l_cursor ) );
 
     assert( l_result );
 
@@ -867,9 +865,9 @@ constexpr size_t g_extendedCodeMask = ( 1U << 29 );
 
 [[nodiscard]] constexpr auto scancodeToKeycode( scancode_t _scancode )
     -> code_t {
-    constexpr size_t l_scancodeMask = ( 1U << 30 );
+    constexpr auto l_scancodeMask = static_cast< scancode_t >( 1U << 30 );
 
-    return ( static_cast< code_t >( toLegacy( _scancode ) | l_scancodeMask ) );
+    return ( static_cast< code_t >( _scancode | l_scancodeMask ) );
 }
 
 } // namespace slickdl::keyboard
