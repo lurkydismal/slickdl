@@ -2,7 +2,11 @@
 
 #include <SDL3/SDL_video.h>
 
+#include <vector>
+
 #include "slickdl.hpp"
+#include "slickdl/line_box.hpp"
+#include "slickdl/properties.hpp"
 
 // SDL's video subsystem is largely interested in abstracting window
 // management from the underlying operating system. You can create windows,
@@ -36,7 +40,7 @@ namespace display {
 // If the display is disconnected and reconnected, it will get a new ID.
 //
 // The value 0 is an invalid ID.
-using id_t = int32_t;
+using id_t = uint32_t;
 
 // The pointer to the global `wl_display` object used by the Wayland video
 // backend.
@@ -88,6 +92,200 @@ using orientationUnderlying_t = std::underlying_type_t< orientation_t >;
 [[nodiscard]] constexpr auto fromLegacy( SDL_DisplayOrientation _value )
     -> orientation_t {
     return ( static_cast< orientation_t >( _value ) );
+}
+
+// Get a list of currently connected displays.
+//
+// Should only be called on the main thread.
+[[nodiscard]] auto all() -> std::vector< id_t >;
+
+// Return the primary display.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto primary() -> id_t {
+    const id_t l_result = SDL_GetPrimaryDisplay();
+
+    assert( l_result );
+
+    return ( l_result );
+}
+
+// Get the properties associated with a display.
+//
+// The following read-only properties are provided by SDL:
+//
+// - `SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN`: true if the display has HDR
+//   headroom above the SDR white point. This is for informational and
+//   diagnostic purposes only, as not all platforms provide this information
+//   at the display level.
+//
+// On KMS/DRM:
+//
+// - `SDL_PROP_DISPLAY_KMSDRM_PANEL_ORIENTATION_NUMBER`: the "panel
+//   orientation" property for the display in degrees of clockwise rotation.
+//   Note that this is provided only as a hint, and the application is
+//   responsible for any coordinate transformations needed to conform to the
+//   requested display orientation.
+//
+// On Wayland:
+//
+// - `SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER`: the wl_output associated
+//   with the display
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto properties( id_t _id ) -> properties::id_t {
+    const properties::id_t l_result = SDL_GetDisplayProperties( _id );
+
+    assert( l_result );
+
+    return ( l_result );
+}
+
+constexpr std::string_view g_enabledHDRBoolean = "SDL.display.HDR_enabled";
+constexpr std::string_view g_panelOrientationKMSDRMNumber =
+    "SDL.display.KMSDRM.panel_orientation";
+constexpr std::string_view g_waylandWlOutputPointer =
+    "SDL.display.wayland.wl_output";
+
+// Get the name of a display in UTF-8 encoding.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto name( id_t _id ) -> std::string_view {
+    return { gsl::make_not_null( SDL_GetDisplayName( _id ) ) };
+}
+
+// Get the desktop area represented by a display.
+//
+// The primary display is often located at (0,0), but may be placed at a
+// different location depending on monitor layout.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto bounds( id_t _id ) -> box_t< int > {
+    SDL_Rect l_box;
+
+    const bool l_result = SDL_GetDisplayBounds( _id, &l_box );
+
+    assert( l_result );
+
+    return { l_box };
+}
+
+// Get the usable desktop area represented by a display, in screen
+// coordinates.
+//
+// This is the same area as SDL_GetDisplayBounds() reports, but with portions
+// reserved by the system removed. For example, on Apple's macOS, this
+// subtracts the area occupied by the menu bar and dock.
+//
+// Setting a window to be fullscreen generally bypasses these unusable areas,
+// so these are good guidelines for the maximum space available to a
+// non-fullscreen window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto usableBounds( id_t _id ) -> box_t< int > {
+    SDL_Rect l_box;
+
+    const bool l_result = SDL_GetDisplayUsableBounds( _id, &l_box );
+
+    assert( l_result );
+
+    return { l_box };
+}
+
+// Get the orientation of a display when it is unrotated.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto naturalOrientation( id_t _id ) -> orientation_t {
+    const orientation_t l_result =
+        fromLegacy( SDL_GetNaturalDisplayOrientation( _id ) );
+
+    assert( l_result != orientation_t::unknown );
+
+    return ( l_result );
+}
+
+// Get the orientation of a display.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto currentOrientation( id_t _id ) -> orientation_t {
+    const orientation_t l_result =
+        fromLegacy( SDL_GetCurrentDisplayOrientation( _id ) );
+
+    assert( l_result != orientation_t::unknown );
+
+    return ( l_result );
+}
+
+// Get the content scale of a display.
+//
+// The content scale is the expected scale for content based on the DPI
+// settings of the display. For example, a 4K display might have a 2.0 (200%)
+// display scale, which means that the user expects UI elements to be twice as
+// big on this display, to aid in readability.
+//
+// After window creation, SDL_GetWindowDisplayScale() should be used to query
+// the content scale factor for individual windows instead of querying the
+// display for a window and calling this function, as the per-window content
+// scale factor may differ from the base value of the display it is on,
+// particularly on high-DPI and/or multi-monitor desktop configurations.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto contentScale( id_t _id ) -> float {
+    const float l_result = SDL_GetDisplayContentScale( _id );
+
+    assert( l_result );
+
+    return ( l_result );
+}
+
+// Get a list of fullscreen display modes available on a display.
+//
+// The display modes are sorted in this priority:
+//
+// - w -> largest to smallest
+// - h -> largest to smallest
+// - bits per pixel -> more colors to fewer colors
+// - packed pixel layout -> largest to smallest
+// - refresh rate -> highest to lowest
+// - pixel density -> lowest to highest
+//
+// Should only be called on the main thread.
+[[nodiscard]] auto fullscreenModes( id_t _id )
+    -> std::vector< gsl::not_null< mode_t* > >;
+
+// Get the closest match to the requested display mode.
+//
+// The available display modes are scanned and `closest` is filled in with the
+// closest mode matching the requested mode and returned. The mode format and
+// refresh rate default to the desktop mode if they are set to 0. The modes
+// are scanned with size being first priority, format being second priority,
+// and finally checking the refresh rate. If all the available modes are too
+// small, then false is returned.
+//
+// Should only be called on the main thread.
+inline void closestFullscreenMode( id_t _id,
+                                   volume_t< int > _volume,
+                                   float _refreshRate = 0,
+                                   bool _includeHighDensityModes = false ) {
+    mode_t l_closest;
+
+    const bool l_result = SDL_GetClosestFullscreenDisplayMode(
+        _id, _volume.width, _volume.height, _refreshRate,
+        _includeHighDensityModes, &l_closest );
+
+    assert( l_result );
+}
+
+// Get information about the desktop's display mode.
+//
+// There's a difference between this function and SDL_GetCurrentDisplayMode()
+// when SDL runs fullscreen and has changed the resolution. In that case this
+// function will return the previous native display mode, and not the current
+// display mode.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto mode( id_t _id ) -> gsl::not_null< const mode_t* > {
+    return ( SDL_GetDesktopDisplayMode( _id ) );
 }
 
 } // namespace display
@@ -167,700 +365,329 @@ using flagsUnderlying_t = std::underlying_type_t< flags_t >;
 // SDL_WINDOWPOS_UNDEFINED or SDL_WINDOWPOS_UNDEFINED_DISPLAY.
 constexpr size_t g_undefinedPositionMask = 0x1FFF0000u;
 
+// Used to indicate that you don't care what the window position is.
+//
+// If you _really_ don't care, SDL_WINDOWPOS_UNDEFINED is the same, but always
+// uses the primary display instead of specifying one.
+// FIX: What is this?
+[[nodiscard]] constexpr auto makePositionUndefined( auto _x ) {
+    return ( g_undefinedPositionMask | _x );
+}
+
+// Used to indicate that you don't care what the window position/display is.
+//
+// This always uses the primary display.
+constexpr auto g_undefinedPosition = makePositionUndefined( 0 );
+
+// A macro to test if the window position is marked as "undefined."
+//
+// \param X the window position value.
+[[nodiscard]] constexpr auto isPositionUndefined( auto _x ) -> bool {
+    ( ( _x & 0xFFFF0000 ) == g_undefinedPositionMask );
+}
+
+// A magic value used with SDL_WINDOWPOS_CENTERED.
+//
+// Generally this macro isn't used directly, but rather through
+// SDL_WINDOWPOS_CENTERED or SDL_WINDOWPOS_CENTERED_DISPLAY.
+constexpr auto g_centeredPositionMask = 0x2FFF0000U;
+
+// Used to indicate that the window position should be centered.
+//
+// SDL_WINDOWPOS_CENTERED is the same, but always uses the primary display
+// instead of specifying one.
+[[nodiscard]] constexpr auto makePositionCentered( auto _x ) {
+    return ( g_centeredPositionMask | _x );
+}
+
+// Used to indicate that the window position should be centered.
+//
+// This always uses the primary display.
+constexpr auto g_centeredPosition = makePositionCentered( 0 );
+
+// A macro to test if the window position is marked as "centered."
+[[nodiscard]] constexpr auto isPositionCentered( auto _x ) {
+    return ( ( _x & 0xFFFF0000 ) == SDL_WINDOWPOS_CENTERED_MASK );
+}
+
+// Window flash operation.
+using flashOperation_t = enum class flashOperation : uint8_t {
+    cancel,       /**< Cancel any window flash state */
+    briefly,      /**< Flash the window briefly to get attention */
+    untilFocused, /**< Flash the window until it gets focus */
+};
+
+using flashOperationUnderlying_t = std::underlying_type_t< flashOperation_t >;
+
+[[nodiscard]] constexpr auto toLegacy( flashOperation_t _value )
+    -> SDL_FlashOperation {
+    return ( static_cast< SDL_FlashOperation >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( flashOperation_t* _value )
+    -> SDL_FlashOperation* {
+    return ( std::bit_cast< SDL_FlashOperation* >( _value ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_FlashOperation _value )
+    -> flashOperation_t {
+    return ( static_cast< flashOperation_t >( _value ) );
+}
+
+// Window progress state
+using progressState_t = enum class progressState : int8_t {
+    invalid = -1,  /**< An invalid progress state indicating an error; check
+                      SDL_GetError() */
+    none,          /**< No progress bar is shown */
+    indeterminate, /**< The progress bar is shown in a indeterminate state */
+    normal,        /**< The progress bar is shown in a normal state */
+    paused,        /**< The progress bar is shown in a paused state */
+    error, /**< The progress bar is shown in a state indicating the application
+              had an error */
+};
+
+using progressStateUnderlying_t = std::underlying_type_t< progressState_t >;
+
+[[nodiscard]] constexpr auto toLegacy( progressState_t _value )
+    -> SDL_ProgressState {
+    return ( static_cast< SDL_ProgressState >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( progressState_t* _value )
+    -> SDL_ProgressState* {
+    return ( std::bit_cast< SDL_ProgressState* >( _value ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_ProgressState _value )
+    -> progressState_t {
+    return ( static_cast< progressState_t >( _value ) );
+}
+
 } // namespace window
 
+// An opaque handle to an OpenGL context.
+using contextGL_t = gsl::not_null< gsl::not_null< SDL_GLContextState* >* >;
+
+// Opaque type for an EGL display.
+using displayEGL_t = gsl::not_null< void* >;
+
+// Opaque type for an EGL config.
+using configEGL_t = gsl::not_null< void* >;
+
+// Opaque type for an EGL surface.
+using surfaceEGL_t = gsl::not_null< void* >;
+
+// An EGL attribute, used when creating an EGL context.
+using attributeEGL_t = intptr_t;
+
+// An EGL integer attribute, used when creating an EGL surface.
+using intEGL_t = int;
+
+// EGL platform attribute initialization callback.
+//
+// This is called when SDL is attempting to create an EGL context, to let the
+// app add extra attributes to its eglGetPlatformDisplay() call.
+//
+// The callback should return a pointer to an EGL attribute array terminated
+// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
+// process will fail gracefully.
+//
+// The returned pointer should be allocated with SDL_malloc() and will be
+// passed to SDL_free().
+//
+// The arrays returned by each callback will be appended to the existing
+// attribute arrays defined by SDL.
+using attributeEGLArrayCallback_t = gsl::not_null< SDL_EGLAttribArrayCallback >;
+
+// EGL surface/context attribute initialization callback types.
+//
+// This is called when SDL is attempting to create an EGL surface, to let the
+// app add extra attributes to its eglCreateWindowSurface() or
+// eglCreateContext calls.
+//
+// For convenience, the EGLDisplay and EGLConfig to use are provided to the
+// callback.
+//
+// The callback should return a pointer to an EGL attribute array terminated
+// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
+// process will fail gracefully.
+//
+// The returned pointer should be allocated with SDL_malloc() and will be
+// passed to SDL_free().
+//
+// The arrays returned by each callback will be appended to the existing
+// attribute arrays defined by SDL.
+using intEGLArrayCallback_t = gsl::not_null< SDL_EGLIntArrayCallback >;
+
+// An enumeration of OpenGL configuration attributes.
+//
+// While you can set most OpenGL attributes normally, the attributes listed
+// above must be known before SDL creates the window that will be used with
+// the OpenGL context. These attributes are set and read with
+// SDL_GL_SetAttribute() and SDL_GL_GetAttribute().
+//
+// In some cases, these attributes are minimum requests; the GL does not
+// promise to give you exactly what you asked for. It's possible to ask for a
+// 16-bit depth buffer and get a 24-bit one instead, for example, or to ask
+// for no stencil buffer and still have one available. Context creation should
+// fail if the GL can't provide your requested attributes at a minimum, but
+// you should check to see exactly what you got.
+using attributeGL_t = enum class attributeGL : uint8_t {
+    redSize,        /**< the minimum number of bits for the red channel of the
+                               color buffer; defaults to 8. */
+    greenSize,      /**< the minimum number of bits for the green channel of
+                               the color buffer; defaults to 8. */
+    blueSize,       /**< the minimum number of bits for the blue channel of
+                               the color buffer; defaults to 8. */
+    alphaSize,      /**< the minimum number of bits for the alpha channel of
+                               the color buffer; defaults to 8. */
+    bufferSize,     /**< the minimum number of bits for frame buffer size;
+                               defaults to 0. */
+    doublebuffer,   /**< whether the output is single or double buffered;
+                              defaults to double buffering on. */
+    depthSize,      /**< the minimum number of bits in the depth buffer;
+                               defaults to 16. */
+    stencilSize,    /**< the minimum number of bits in the stencil buffer;
+                               defaults to 0. */
+    accumRedSize,   /**< the minimum number of bits for the red channel
+                                of the accumulation buffer; defaults to 0. */
+    accumGreenSize, /**< the minimum number of bits for the green
+                                channel of the accumulation buffer; defaults to
+                                0. */
+    accumBlueSize,  /**< the minimum number of bits for the blue channel
+                                of the accumulation buffer; defaults to 0. */
+    accumAlphaSize, /**< the minimum number of bits for the alpha
+                                channel of the accumulation buffer; defaults to
+                                0. */
+    stereo,         /**< whether the output is stereo 3D; defaults to off. */
+    multiSampleBuffers,  /**< the number of buffers used for multisample
+                                   anti-aliasing; defaults to 0. */
+    multiSampleSamples,  /**< the number of samples used around the
+                                   current pixel used for multisample
+                                   anti-aliasing. */
+    acceleratedVisual,   /**< set to 1 to require hardware acceleration,
+                                    set to 0 to force software rendering; defaults
+                                    to allow either. */
+    retainedBacking,     /**< not used (deprecated). */
+    contextMajorVersion, /**< OpenGL context major version. */
+    contextMinorVersion, /**< OpenGL context minor version. */
+    contextFlags,        /**< some combination of 0 or more of elements of the
+                                    SDL_GLContextFlag enumeration; defaults to 0. */
+    contextProfileMask,  /**< type of GL context (Core, Compatibility,
+                                     ES). See SDL_GLProfile; default value
+                                     depends on platform. */
+    shareWithCurrentContext, /**< OpenGL context sharing; defaults to 0. */
+    framebufferSrgbCapable, /**< requests sRGB capable visual; defaults to 0. */
+    contextReleaseBehavior, /**< sets context the release behavior. See
+                                        SDL_GLContextReleaseFlag; defaults to
+                                        FLUSH. */
+    contextResetNotification, /**< set context reset notification. See
+                                          SDL_GLContextResetNotification;
+                                          defaults to NO_NOTIFICATION. */
+    contextNoError,
+    floatBuffers,
+    platformEGL,
+};
+
+// Possible values to be set for the SDL_GL_CONTEXT_PROFILE_MASK attribute.
+using profileGL_t = enum class profileGL : uint8_t {
+    core = 0x1,        /**< OpenGL Core Profile context */
+    compatibility = 2, /**< OpenGL Compatibility Profile context */
+    es = 0x4,          /**< GLX_CONTEXT_ES2_PROFILE_BIT_EXT \ */
+};
+
+// Possible flags to be set for the SDL_GL_CONTEXT_FLAGS attribute.
+using contextGLFlag_t = enum class contextGLFlag : uint8_t {
+    debug = 0x1,
+    forwardCompatible = 0x2,
+    robustAccess = 0x4,
+    resetIsolation = 0x8,
+};
+
+// Possible values to be set for the SDL_GL_CONTEXT_RELEASE_BEHAVIOR
+// attribute.
+using contextGLReleaseFlag_t = enum class contextGLReleaseFlag : uint8_t {
+    none = 0,
+    flush = 0x1,
+};
+
+// Possible values to be set SDL_GL_CONTEXT_RESET_NOTIFICATION attribute.
+using contextGLResetNotification_t =
+    enum class contextGLResetNotification : uint8_t {
+        noNotification = 0,
+        loseContext = 0x1,
+    };
+
+namespace driver {
+
+// Get the number of video drivers compiled into SDL.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto all() -> size_t {
+    return ( SDL_GetNumVideoDrivers() );
+}
+
+// Get the name of a built in video driver.
+//
+// The video drivers are presented in the order in which they are normally
+// checked during initialization.
+//
+// The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
+// "x11" or "windows". These never have Unicode characters, and are not meant
+// to be proper names.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto name( size_t _index ) -> std::string_view {
+    return ( SDL_GetVideoDriver( _index ) );
+}
+
+// Get the name of the currently initialized video driver.
+//
+// The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
+// "x11" or "windows". These never have Unicode characters, and are not meant
+// to be proper names.
+//
+// The name of the current video driver or assert if no driver has been
+// initialized.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto current() -> std::string_view {
+    return { gsl::make_not_null( SDL_GetCurrentVideoDriver() ) };
+}
+
+} // namespace driver
+
+namespace system_theme {
+
 // System theme.
-using systemTheme_t = enum class systemTheme : uint8_t {
+using type_t = enum class type : uint8_t {
     unknown, /**< Unknown system theme */
     light,   /**< Light colored system theme */
     dark,    /**< Dark colored system theme */
 };
 
-using systemThemeUnderlying_t = std::underlying_type_t< systemTheme_t >;
+using typeUnderlying_t = std::underlying_type_t< type_t >;
 
-[[nodiscard]] constexpr auto toLegacy( systemTheme_t _value )
-    -> SDL_SystemTheme {
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_SystemTheme {
     return ( static_cast< SDL_SystemTheme >( _value ) );
 }
 
-[[nodiscard]] constexpr auto toLegacy( systemTheme_t* _value )
-    -> SDL_SystemTheme* {
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_SystemTheme* {
     return ( std::bit_cast< SDL_SystemTheme* >( _value ) );
 }
 
-[[nodiscard]] constexpr auto fromLegacy( SDL_SystemTheme _value )
-    -> systemTheme_t {
-    return ( static_cast< systemTheme_t >( _value ) );
+[[nodiscard]] constexpr auto fromLegacy( SDL_SystemTheme _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
 }
 
-/**
- * Used to indicate that you don't care what the window position is.
- *
- * If you _really_ don't care, SDL_WINDOWPOS_UNDEFINED is the same, but always
- * uses the primary display instead of specifying one.
- *
- * \param X the SDL_DisplayID of the display to use.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_UNDEFINED_DISPLAY( X ) \
-    ( SDL_WINDOWPOS_UNDEFINED_MASK | ( X ) )
+// Get the current system theme.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto current() -> type_t {
+    return ( fromLegacy( SDL_GetSystemTheme() ) );
+}
 
-/**
- * Used to indicate that you don't care what the window position/display is.
- *
- * This always uses the primary display.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_UNDEFINED SDL_WINDOWPOS_UNDEFINED_DISPLAY( 0 )
-
-/**
- * A macro to test if the window position is marked as "undefined."
- *
- * \param X the window position value.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_ISUNDEFINED( X ) \
-    ( ( ( X ) & 0xFFFF0000 ) == SDL_WINDOWPOS_UNDEFINED_MASK )
-
-/**
- * A magic value used with SDL_WINDOWPOS_CENTERED.
- *
- * Generally this macro isn't used directly, but rather through
- * SDL_WINDOWPOS_CENTERED or SDL_WINDOWPOS_CENTERED_DISPLAY.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_CENTERED_MASK 0x2FFF0000u
-
-/**
- * Used to indicate that the window position should be centered.
- *
- * SDL_WINDOWPOS_CENTERED is the same, but always uses the primary display
- * instead of specifying one.
- *
- * \param X the SDL_DisplayID of the display to use.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_CENTERED_DISPLAY( X ) \
-    ( SDL_WINDOWPOS_CENTERED_MASK | ( X ) )
-
-/**
- * Used to indicate that the window position should be centered.
- *
- * This always uses the primary display.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_CENTERED SDL_WINDOWPOS_CENTERED_DISPLAY( 0 )
-
-/**
- * A macro to test if the window position is marked as "centered."
- *
- * \param X the window position value.
- *
- * \since This macro is available since SDL 3.2.0.
- */
-#define SDL_WINDOWPOS_ISCENTERED( X ) \
-    ( ( ( X ) & 0xFFFF0000 ) == SDL_WINDOWPOS_CENTERED_MASK )
-
-/**
- * Window flash operation.
- *
- * \since This enum is available since SDL 3.2.0.
- */
-typedef enum SDL_FlashOperation {
-    SDL_FLASH_CANCEL,       /**< Cancel any window flash state */
-    SDL_FLASH_BRIEFLY,      /**< Flash the window briefly to get attention */
-    SDL_FLASH_UNTIL_FOCUSED /**< Flash the window until it gets focus */
-} SDL_FlashOperation;
-
-/**
- * Window progress state
- *
- * \since This enum is available since SDL 3.2.8.
- */
-typedef enum SDL_ProgressState {
-    SDL_PROGRESS_STATE_INVALID = -1,  /**< An invalid progress state indicating
-                                         an error; check SDL_GetError() */
-    SDL_PROGRESS_STATE_NONE,          /**< No progress bar is shown */
-    SDL_PROGRESS_STATE_INDETERMINATE, /**< The progress bar is shown in a
-                                         indeterminate state */
-    SDL_PROGRESS_STATE_NORMAL, /**< The progress bar is shown in a normal state
-                                */
-    SDL_PROGRESS_STATE_PAUSED, /**< The progress bar is shown in a paused state
-                                */
-    SDL_PROGRESS_STATE_ERROR   /**< The progress bar is shown in a state
-                                  indicating the application had an error */
-} SDL_ProgressState;
-
-/**
- * An opaque handle to an OpenGL context.
- *
- * \since This datatype is available since SDL 3.2.0.
- *
- * \sa SDL_GL_CreateContext
- */
-typedef struct SDL_GLContextState* SDL_GLContext;
-
-/**
- * Opaque type for an EGL display.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef void* SDL_EGLDisplay;
-
-/**
- * Opaque type for an EGL config.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef void* SDL_EGLConfig;
-
-/**
- * Opaque type for an EGL surface.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef void* SDL_EGLSurface;
-
-/**
- * An EGL attribute, used when creating an EGL context.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef intptr_t SDL_EGLAttrib;
-
-/**
- * An EGL integer attribute, used when creating an EGL surface.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef int SDL_EGLint;
-
-/**
- * EGL platform attribute initialization callback.
- *
- * This is called when SDL is attempting to create an EGL context, to let the
- * app add extra attributes to its eglGetPlatformDisplay() call.
- *
- * The callback should return a pointer to an EGL attribute array terminated
- * with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
- * process will fail gracefully.
- *
- * The returned pointer should be allocated with SDL_malloc() and will be
- * passed to SDL_free().
- *
- * The arrays returned by each callback will be appended to the existing
- * attribute arrays defined by SDL.
- *
- * \param userdata an app-controlled pointer that is passed to the callback.
- * \returns a newly-allocated array of attributes, terminated with `EGL_NONE`.
- *
- * \since This datatype is available since SDL 3.2.0.
- *
- * \sa SDL_EGL_SetAttributeCallbacks
- */
-typedef SDL_EGLAttrib* ( *SDL_EGLAttribArrayCallback )( void* userdata );
-
-/**
- * EGL surface/context attribute initialization callback types.
- *
- * This is called when SDL is attempting to create an EGL surface, to let the
- * app add extra attributes to its eglCreateWindowSurface() or
- * eglCreateContext calls.
- *
- * For convenience, the EGLDisplay and EGLConfig to use are provided to the
- * callback.
- *
- * The callback should return a pointer to an EGL attribute array terminated
- * with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
- * process will fail gracefully.
- *
- * The returned pointer should be allocated with SDL_malloc() and will be
- * passed to SDL_free().
- *
- * The arrays returned by each callback will be appended to the existing
- * attribute arrays defined by SDL.
- *
- * \param userdata an app-controlled pointer that is passed to the callback.
- * \param display the EGL display to be used.
- * \param config the EGL config to be used.
- * \returns a newly-allocated array of attributes, terminated with `EGL_NONE`.
- *
- * \since This datatype is available since SDL 3.2.0.
- *
- * \sa SDL_EGL_SetAttributeCallbacks
- */
-typedef SDL_EGLint* ( *SDL_EGLIntArrayCallback )( void* userdata,
-                                                  SDL_EGLDisplay display,
-                                                  SDL_EGLConfig config );
-
-/**
- * An enumeration of OpenGL configuration attributes.
- *
- * While you can set most OpenGL attributes normally, the attributes listed
- * above must be known before SDL creates the window that will be used with
- * the OpenGL context. These attributes are set and read with
- * SDL_GL_SetAttribute() and SDL_GL_GetAttribute().
- *
- * In some cases, these attributes are minimum requests; the GL does not
- * promise to give you exactly what you asked for. It's possible to ask for a
- * 16-bit depth buffer and get a 24-bit one instead, for example, or to ask
- * for no stencil buffer and still have one available. Context creation should
- * fail if the GL can't provide your requested attributes at a minimum, but
- * you should check to see exactly what you got.
- *
- * \since This enum is available since SDL 3.2.0.
- */
-typedef enum SDL_GLAttr {
-    SDL_GL_RED_SIZE, /**< the minimum number of bits for the red channel of the
-                        color buffer; defaults to 8. */
-    SDL_GL_GREEN_SIZE,  /**< the minimum number of bits for the green channel of
-                           the color buffer; defaults to 8. */
-    SDL_GL_BLUE_SIZE,   /**< the minimum number of bits for the blue channel of
-                           the color buffer; defaults to 8. */
-    SDL_GL_ALPHA_SIZE,  /**< the minimum number of bits for the alpha channel of
-                           the color buffer; defaults to 8. */
-    SDL_GL_BUFFER_SIZE, /**< the minimum number of bits for frame buffer size;
-                           defaults to 0. */
-    SDL_GL_DOUBLEBUFFER, /**< whether the output is single or double buffered;
-                            defaults to double buffering on. */
-    SDL_GL_DEPTH_SIZE,   /**< the minimum number of bits in the depth buffer;
-                            defaults to 16. */
-    SDL_GL_STENCIL_SIZE, /**< the minimum number of bits in the stencil buffer;
-                            defaults to 0. */
-    SDL_GL_ACCUM_RED_SIZE,   /**< the minimum number of bits for the red channel
-                                of the accumulation buffer; defaults to 0. */
-    SDL_GL_ACCUM_GREEN_SIZE, /**< the minimum number of bits for the green
-                                channel of the accumulation buffer; defaults to
-                                0. */
-    SDL_GL_ACCUM_BLUE_SIZE, /**< the minimum number of bits for the blue channel
-                               of the accumulation buffer; defaults to 0. */
-    SDL_GL_ACCUM_ALPHA_SIZE, /**< the minimum number of bits for the alpha
-                                channel of the accumulation buffer; defaults to
-                                0. */
-    SDL_GL_STEREO, /**< whether the output is stereo 3D; defaults to off. */
-    SDL_GL_MULTISAMPLEBUFFERS, /**< the number of buffers used for multisample
-                                  anti-aliasing; defaults to 0. */
-    SDL_GL_MULTISAMPLESAMPLES, /**< the number of samples used around the
-                                  current pixel used for multisample
-                                  anti-aliasing. */
-    SDL_GL_ACCELERATED_VISUAL, /**< set to 1 to require hardware acceleration,
-                                  set to 0 to force software rendering; defaults
-                                  to allow either. */
-    SDL_GL_RETAINED_BACKING,   /**< not used (deprecated). */
-    SDL_GL_CONTEXT_MAJOR_VERSION, /**< OpenGL context major version. */
-    SDL_GL_CONTEXT_MINOR_VERSION, /**< OpenGL context minor version. */
-    SDL_GL_CONTEXT_FLAGS, /**< some combination of 0 or more of elements of the
-                             SDL_GLContextFlag enumeration; defaults to 0. */
-    SDL_GL_CONTEXT_PROFILE_MASK, /**< type of GL context (Core, Compatibility,
-                                    ES). See SDL_GLProfile; default value
-                                    depends on platform. */
-    SDL_GL_SHARE_WITH_CURRENT_CONTEXT, /**< OpenGL context sharing; defaults to
-                                          0. */
-    SDL_GL_FRAMEBUFFER_SRGB_CAPABLE, /**< requests sRGB capable visual; defaults
-                                        to 0. */
-    SDL_GL_CONTEXT_RELEASE_BEHAVIOR, /**< sets context the release behavior. See
-                                        SDL_GLContextReleaseFlag; defaults to
-                                        FLUSH. */
-    SDL_GL_CONTEXT_RESET_NOTIFICATION, /**< set context reset notification. See
-                                          SDL_GLContextResetNotification;
-                                          defaults to NO_NOTIFICATION. */
-    SDL_GL_CONTEXT_NO_ERROR,
-    SDL_GL_FLOATBUFFERS,
-    SDL_GL_EGL_PLATFORM
-} SDL_GLAttr;
-
-/**
- * Possible values to be set for the SDL_GL_CONTEXT_PROFILE_MASK attribute.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef uint32_t SDL_GLProfile;
-
-#define SDL_GL_CONTEXT_PROFILE_CORE 0x0001 /**< OpenGL Core Profile context */
-#define SDL_GL_CONTEXT_PROFILE_COMPATIBILITY \
-    0x0002 /**< OpenGL Compatibility Profile context */
-#define SDL_GL_CONTEXT_PROFILE_ES               \
-    0x0004 /**< GLX_CONTEXT_ES2_PROFILE_BIT_EXT \
-            */
-
-/**
- * Possible flags to be set for the SDL_GL_CONTEXT_FLAGS attribute.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef uint32_t SDL_GLContextFlag;
-
-#define SDL_GL_CONTEXT_DEBUG_FLAG 0x0001
-#define SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG 0x0002
-#define SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG 0x0004
-#define SDL_GL_CONTEXT_RESET_ISOLATION_FLAG 0x0008
-
-/**
- * Possible values to be set for the SDL_GL_CONTEXT_RELEASE_BEHAVIOR
- * attribute.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef uint32_t SDL_GLContextReleaseFlag;
-
-#define SDL_GL_CONTEXT_RELEASE_BEHAVIOR_NONE 0x0000
-#define SDL_GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH 0x0001
-
-/**
- * Possible values to be set SDL_GL_CONTEXT_RESET_NOTIFICATION attribute.
- *
- * \since This datatype is available since SDL 3.2.0.
- */
-typedef uint32_t SDL_GLContextResetNotification;
-
-#define SDL_GL_CONTEXT_RESET_NO_NOTIFICATION 0x0000
-#define SDL_GL_CONTEXT_RESET_LOSE_CONTEXT 0x0001
-
-/* Function prototypes */
-
-/**
- * Get the number of video drivers compiled into SDL.
- *
- * \returns the number of built in video drivers.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetVideoDriver
- */
-int SDL_GetNumVideoDrivers( void );
-
-/**
- * Get the name of a built in video driver.
- *
- * The video drivers are presented in the order in which they are normally
- * checked during initialization.
- *
- * The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
- * "x11" or "windows". These never have Unicode characters, and are not meant
- * to be proper names.
- *
- * \param index the index of a video driver.
- * \returns the name of the video driver with the given **index**.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetNumVideoDrivers
- */
-const char* SDL_GetVideoDriver( int index );
-
-/**
- * Get the name of the currently initialized video driver.
- *
- * The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
- * "x11" or "windows". These never have Unicode characters, and are not meant
- * to be proper names.
- *
- * \returns the name of the current video driver or NULL if no driver has been
- *          initialized.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetNumVideoDrivers
- * \sa SDL_GetVideoDriver
- */
-const char* SDL_GetCurrentVideoDriver( void );
-
-/**
- * Get the current system theme.
- *
- * \returns the current system theme, light, dark, or unknown.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_SystemTheme SDL_GetSystemTheme( void );
-
-/**
- * Get a list of currently connected displays.
- *
- * \param count a pointer filled in with the number of displays returned, may
- *              be NULL.
- * \returns a 0 terminated array of display instance IDs or NULL on failure;
- *          call SDL_GetError() for more information. This should be freed
- *          with SDL_free() when it is no longer needed.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_DisplayID* SDL_GetDisplays( int* count );
-
-/**
- * Return the primary display.
- *
- * \returns the instance ID of the primary display on success or 0 on failure;
- *          call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplays
- */
-SDL_DisplayID SDL_GetPrimaryDisplay( void );
-
-/**
- * Get the properties associated with a display.
- *
- * The following read-only properties are provided by SDL:
- *
- * - `SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN`: true if the display has HDR
- *   headroom above the SDR white point. This is for informational and
- *   diagnostic purposes only, as not all platforms provide this information
- *   at the display level.
- *
- * On KMS/DRM:
- *
- * - `SDL_PROP_DISPLAY_KMSDRM_PANEL_ORIENTATION_NUMBER`: the "panel
- *   orientation" property for the display in degrees of clockwise rotation.
- *   Note that this is provided only as a hint, and the application is
- *   responsible for any coordinate transformations needed to conform to the
- *   requested display orientation.
- *
- * On Wayland:
- *
- * - `SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER`: the wl_output associated
- *   with the display
- *
- * \param displayID the instance ID of the display to query.
- * \returns a valid property ID on success or 0 on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_PropertiesID SDL_GetDisplayProperties( SDL_DisplayID displayID );
-
-#define SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN "SDL.display.HDR_enabled"
-#define SDL_PROP_DISPLAY_KMSDRM_PANEL_ORIENTATION_NUMBER \
-    "SDL.display.KMSDRM.panel_orientation"
-#define SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER \
-    "SDL.display.wayland.wl_output"
-
-/**
- * Get the name of a display in UTF-8 encoding.
- *
- * \param displayID the instance ID of the display to query.
- * \returns the name of a display or NULL on failure; call SDL_GetError() for
- *          more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplays
- */
-const char* SDL_GetDisplayName( SDL_DisplayID displayID );
-
-/**
- * Get the desktop area represented by a display.
- *
- * The primary display is often located at (0,0), but may be placed at a
- * different location depending on monitor layout.
- *
- * \param displayID the instance ID of the display to query.
- * \param rect the SDL_Rect structure filled in with the display bounds.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplayUsableBounds
- * \sa SDL_GetDisplays
- */
-bool SDL_GetDisplayBounds( SDL_DisplayID displayID, SDL_Rect* rect );
-
-/**
- * Get the usable desktop area represented by a display, in screen
- * coordinates.
- *
- * This is the same area as SDL_GetDisplayBounds() reports, but with portions
- * reserved by the system removed. For example, on Apple's macOS, this
- * subtracts the area occupied by the menu bar and dock.
- *
- * Setting a window to be fullscreen generally bypasses these unusable areas,
- * so these are good guidelines for the maximum space available to a
- * non-fullscreen window.
- *
- * \param displayID the instance ID of the display to query.
- * \param rect the SDL_Rect structure filled in with the display bounds.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplayBounds
- * \sa SDL_GetDisplays
- */
-bool SDL_GetDisplayUsableBounds( SDL_DisplayID displayID, SDL_Rect* rect );
-
-/**
- * Get the orientation of a display when it is unrotated.
- *
- * \param displayID the instance ID of the display to query.
- * \returns the SDL_DisplayOrientation enum value of the display, or
- *          `SDL_ORIENTATION_UNKNOWN` if it isn't available.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplays
- */
-SDL_DisplayOrientation SDL_GetNaturalDisplayOrientation(
-    SDL_DisplayID displayID );
-
-/**
- * Get the orientation of a display.
- *
- * \param displayID the instance ID of the display to query.
- * \returns the SDL_DisplayOrientation enum value of the display, or
- *          `SDL_ORIENTATION_UNKNOWN` if it isn't available.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplays
- */
-SDL_DisplayOrientation SDL_GetCurrentDisplayOrientation(
-    SDL_DisplayID displayID );
-
-/**
- * Get the content scale of a display.
- *
- * The content scale is the expected scale for content based on the DPI
- * settings of the display. For example, a 4K display might have a 2.0 (200%)
- * display scale, which means that the user expects UI elements to be twice as
- * big on this display, to aid in readability.
- *
- * After window creation, SDL_GetWindowDisplayScale() should be used to query
- * the content scale factor for individual windows instead of querying the
- * display for a window and calling this function, as the per-window content
- * scale factor may differ from the base value of the display it is on,
- * particularly on high-DPI and/or multi-monitor desktop configurations.
- *
- * \param displayID the instance ID of the display to query.
- * \returns the content scale of the display, or 0.0f on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowDisplayScale
- * \sa SDL_GetDisplays
- */
-float SDL_GetDisplayContentScale( SDL_DisplayID displayID );
-
-/**
- * Get a list of fullscreen display modes available on a display.
- *
- * The display modes are sorted in this priority:
- *
- * - w -> largest to smallest
- * - h -> largest to smallest
- * - bits per pixel -> more colors to fewer colors
- * - packed pixel layout -> largest to smallest
- * - refresh rate -> highest to lowest
- * - pixel density -> lowest to highest
- *
- * \param displayID the instance ID of the display to query.
- * \param count a pointer filled in with the number of display modes returned,
- *              may be NULL.
- * \returns a NULL terminated array of display mode pointers or NULL on
- *          failure; call SDL_GetError() for more information. This is a
- *          single allocation that should be freed with SDL_free() when it is
- *          no longer needed.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplays
- */
-SDL_DisplayMode** SDL_GetFullscreenDisplayModes( SDL_DisplayID displayID,
-                                                 int* count );
-
-/**
- * Get the closest match to the requested display mode.
- *
- * The available display modes are scanned and `closest` is filled in with the
- * closest mode matching the requested mode and returned. The mode format and
- * refresh rate default to the desktop mode if they are set to 0. The modes
- * are scanned with size being first priority, format being second priority,
- * and finally checking the refresh rate. If all the available modes are too
- * small, then false is returned.
- *
- * \param displayID the instance ID of the display to query.
- * \param w the width in pixels of the desired display mode.
- * \param h the height in pixels of the desired display mode.
- * \param refresh_rate the refresh rate of the desired display mode, or 0.0f
- *                     for the desktop refresh rate.
- * \param include_high_density_modes boolean to include high density modes in
- *                                   the search.
- * \param closest a pointer filled in with the closest display mode equal to
- *                or larger than the desired mode.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplays
- * \sa SDL_GetFullscreenDisplayModes
- */
-bool SDL_GetClosestFullscreenDisplayMode( SDL_DisplayID displayID,
-                                          int w,
-                                          int h,
-                                          float refresh_rate,
-                                          bool include_high_density_modes,
-                                          SDL_DisplayMode* closest );
-
-/**
- * Get information about the desktop's display mode.
- *
- * There's a difference between this function and SDL_GetCurrentDisplayMode()
- * when SDL runs fullscreen and has changed the resolution. In that case this
- * function will return the previous native display mode, and not the current
- * display mode.
- *
- * \param displayID the instance ID of the display to query.
- * \returns a pointer to the desktop display mode or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetCurrentDisplayMode
- * \sa SDL_GetDisplays
- */
-const SDL_DisplayMode* SDL_GetDesktopDisplayMode( SDL_DisplayID displayID );
+} // namespace system_theme
 
 /**
  * Get information about the current display mode.
@@ -881,7 +708,7 @@ const SDL_DisplayMode* SDL_GetDesktopDisplayMode( SDL_DisplayID displayID );
  * \sa SDL_GetDesktopDisplayMode
  * \sa SDL_GetDisplays
  */
-const SDL_DisplayMode* SDL_GetCurrentDisplayMode( SDL_DisplayID displayID );
+const SDL_DisplayMode* SDL_GetCurrentDisplayMode( id_t _id );
 
 /**
  * Get the display containing a point.
