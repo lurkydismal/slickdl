@@ -197,7 +197,8 @@ constexpr size_t g_x2Mask = mask( buttonFlags_t::x2 );
 // can therefore potentially freeze the entire system. Care should be taken with
 // proper synchronization practices when adding other side effects beyond
 // mutation of the x and y values.
-using motionTransformCallback_t = SDL_MouseMotionTransformCallback;
+using motionTransformCallback_t =
+    gsl::not_null< SDL_MouseMotionTransformCallback >;
 
 // Return whether a mouse is currently connected.
 //

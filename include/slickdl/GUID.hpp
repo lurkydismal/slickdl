@@ -76,11 +76,15 @@ using GUID_t = struct GUID {
     auto operator=( GUID&& ) -> GUID& = default;
 
     [[nodiscard]] constexpr operator native_t() const {
-        native_t l_GUID;
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
 
-        std::ranges::copy( _data, std::ranges::begin( l_GUID.data ) );
+        return ( std::bit_cast< native_t >( *this ) );
+    }
 
-        return ( l_GUID );
+    [[nodiscard]] constexpr operator native_t*() const {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
     }
 
     [[nodiscard]] constexpr auto empty() const -> bool {

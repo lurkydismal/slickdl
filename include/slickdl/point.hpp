@@ -1,6 +1,7 @@
 #pragma once
 
 #include "slickdl.hpp"
+#include "stdinplace_vector.hpp"
 
 namespace slickdl {
 
@@ -11,7 +12,9 @@ struct point {
 
     point() = default;
 
-    constexpr point( native_t& _rectangle )
+    point( T _x, T _y ) : x( _x ), y( _y ) {}
+
+    constexpr point( const native_t& _rectangle )
         : x( _rectangle.x ), y( _rectangle.y ) {}
 
     [[nodiscard]] constexpr auto operator<=>( const point< T >& _box ) const =
@@ -26,19 +29,46 @@ struct point {
     }
 
     [[nodiscard]] constexpr operator native_t() const {
-        return ( native_t{
-            x,
-            y,
-        } );
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t >( *this ) );
     }
 
-    T x, y;
+    [[nodiscard]] constexpr operator native_t*() const {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
+    }
+
+    T x{}, y{};
 };
 
 template < typename T >
 using point_t = point< T >;
 
+template < typename T >
+concept has_points = ( requires( const T& _argument ) {
+    { T::g_pointsAmount } -> std::convertible_to< size_t >;
+    { _argument.points() } -> std::ranges::input_range;
+} );
+
 template < typename T, template < typename > typename U >
+    requires( !std::is_same_v< U< T >, std::span< T > > &&
+              has_points< U< T > > )
+[[nodiscard]] constexpr auto toPoints( const U< T > _somethingWithPoints )
+    -> auto {
+    stdfunc::inplaceVector_t< point_t< T >, U< T >::g_pointsAmount >
+        l_returnValue;
+
+    for ( const point_t< T >& _point : _somethingWithPoints.points() ) {
+        l_returnValue.emplace_back( _point );
+    }
+
+    return ( l_returnValue );
+}
+
+template < typename T, template < typename > typename U >
+    requires has_points< U< T > >
 [[nodiscard]] constexpr auto toPoints(
     std::span< const U< T > > _somethingWithPoints )
     -> std::vector< point_t< T > > {

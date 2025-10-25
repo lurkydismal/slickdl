@@ -125,8 +125,7 @@ inline void unlock( id_t _properties ) {
 //
 // This callback may fire without any locks held; if this is a concern, the app
 // should provide its own locking.
-// TODO: Improve
-using cleanupPropertyCallback_t = void ( * )( void* _userData, void_t _value );
+using cleanupPropertyCallback_t = gsl::not_null< SDL_CleanupPropertyCallback >;
 
 // Set a pointer property in a group of properties with a cleanup function
 // that is called when the property is deleted.
@@ -151,8 +150,7 @@ inline void pointerPropertyWithCleanup(
     void* _userData = nullptr ) {
     const bool l_result = SDL_SetPointerPropertyWithCleanup(
         _properties, std::string( _name ).c_str(), _value.value(),
-        std::bit_cast< SDL_CleanupPropertyCallback >( _cleanup.value() ),
-        _userData );
+        _cleanup.value(), _userData );
 
     assert( l_result );
 }
@@ -169,24 +167,24 @@ inline void set( id_t _properties,
                  std::string_view _name,
                  std::optional< T > _value = std::nullopt ) {
     const auto l_name = std::string( _name );
-    std::function< T( id_t, const char*, T ) > l_getterFunction;
+    std::function< bool( id_t, const char*, T ) > l_setterFunction;
     bool l_result = false;
 
     // TODO: Improve
-    if constexpr ( std::is_pointer_v< T > ) {
-        l_getterFunction = SDL_SetPointerProperty;
+    if constexpr ( std::is_same_v< T, const char* > ) {
+        l_setterFunction = SDL_SetStringProperty;
 
-    } else if constexpr ( std::is_same_v< T, const char* > ) {
-        l_getterFunction = SDL_SetStringProperty;
-
-    } else if constexpr ( std::is_integral_v< T > ) {
-        l_getterFunction = SDL_SetNumberProperty;
-
-    } else if constexpr ( std::is_floating_point_v< T > ) {
-        l_getterFunction = SDL_SetFloatProperty;
+    } else if constexpr ( std::is_pointer_v< T > ) {
+        l_setterFunction = SDL_SetPointerProperty;
 
     } else if constexpr ( std::is_same_v< T, bool > ) {
-        l_getterFunction = SDL_SetBooleanProperty;
+        l_setterFunction = SDL_SetBooleanProperty;
+
+    } else if constexpr ( std::is_integral_v< T > ) {
+        l_setterFunction = SDL_SetNumberProperty;
+
+    } else if constexpr ( std::is_same_v< T, float > ) {
+        l_setterFunction = SDL_SetFloatProperty;
 
     } else {
         // TODO: Message
@@ -195,10 +193,10 @@ inline void set( id_t _properties,
 
     if ( _value ) {
         l_result =
-            l_getterFunction( _properties, l_name.c_str(), _value.value() );
+            l_setterFunction( _properties, l_name.c_str(), _value.value() );
 
     } else {
-        l_result = l_getterFunction( _properties, l_name.c_str(), T{} );
+        l_result = l_setterFunction( _properties, l_name.c_str(), T{} );
     }
 
     assert( l_result );
@@ -241,20 +239,20 @@ template < typename T >
     std::function< T( id_t, const char*, T ) > l_getterFunction;
 
     // TODO: Improve
-    if constexpr ( std::is_pointer_v< T > ) {
+    if constexpr ( std::is_same_v< T, const char* > ) {
+        l_getterFunction = SDL_GetStringProperty;
+
+    } else if constexpr ( std::is_pointer_v< T > ) {
         l_getterFunction = SDL_GetPointerProperty;
 
-    } else if constexpr ( std::is_same_v< T, const char* > ) {
-        l_getterFunction = SDL_GetStringProperty;
+    } else if constexpr ( std::is_same_v< T, bool > ) {
+        l_getterFunction = SDL_GetBooleanProperty;
 
     } else if constexpr ( std::is_integral_v< T > ) {
         l_getterFunction = SDL_GetNumberProperty;
 
-    } else if constexpr ( std::is_floating_point_v< T > ) {
+    } else if constexpr ( std::is_same_v< T, float > ) {
         l_getterFunction = SDL_GetFloatProperty;
-
-    } else if constexpr ( std::is_same_v< T, bool > ) {
-        l_getterFunction = SDL_GetBooleanProperty;
 
     } else {
         // TODO: Message
@@ -290,10 +288,7 @@ inline void clear( id_t _properties, std::string_view _name ) {
 //
 // enumerateCallback_t holds a lock on `_properties` during this
 // callback.
-// TODO: Improve
-using enumerateCallback_t = void ( * )( void* _userData,
-                                        id_t _properties,
-                                        std::string_view _name );
+using enumerateCallback_t = gsl::not_null< SDL_EnumeratePropertiesCallback >;
 
 // Enumerate the properties contained in a group of properties.
 //
@@ -302,10 +297,8 @@ using enumerateCallback_t = void ( * )( void* _userData,
 inline void enumerate( id_t _properties,
                        enumerateCallback_t _callback,
                        void* _userData = nullptr ) {
-    const bool l_result = SDL_EnumerateProperties(
-        _properties,
-        std::bit_cast< SDL_EnumeratePropertiesCallback >( _callback ),
-        _userData );
+    const bool l_result =
+        SDL_EnumerateProperties( _properties, _callback, _userData );
 
     assert( l_result );
 }

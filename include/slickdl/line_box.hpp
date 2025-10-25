@@ -14,11 +14,13 @@ namespace slickdl {
 
 template < is_int_or_float T >
 struct line {
+    static constexpr size_t g_pointsAmount = 2;
+
     [[nodiscard]] constexpr auto operator<=>( const line< T >& _box ) const =
         default;
 
     [[nodiscard]] constexpr auto points() const
-        -> std::array< point_t< T >, 2 > {
+        -> std::array< point_t< T >, g_pointsAmount > {
         return { start, end };
     }
 
@@ -35,6 +37,8 @@ struct box {
 
     // TODO: Improve
     using clippingZone_t = clippingZone_t< T >;
+
+    static constexpr size_t g_pointsAmount = 4;
 
     box() = default;
 
@@ -606,7 +610,7 @@ struct box {
     }
 
     [[nodiscard]] constexpr auto points() const
-        -> std::array< point_t< T >, 4 > {
+        -> std::array< point_t< T >, g_pointsAmount > {
         return {
             x,
             y,
@@ -615,7 +619,7 @@ struct box {
         };
     }
 
-    T x, y, width, height;
+    T x{}, y{}, width{}, height{};
 
     // Helpers
 private:

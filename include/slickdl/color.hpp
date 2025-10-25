@@ -42,13 +42,16 @@ using color_t = struct color {
     auto operator=( const color& ) -> color& = default;
     auto operator=( color&& ) -> color& = default;
 
-    constexpr operator native_t() const {
-        return ( native_t{
-            .r = red,
-            .g = green,
-            .b = blue,
-            .a = alpha,
-        } );
+    [[nodiscard]] constexpr operator native_t() const {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t >( *this ) );
+    }
+
+    [[nodiscard]] constexpr operator native_t*() const {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
     }
 
     explicit constexpr operator SDL_FColor() const {

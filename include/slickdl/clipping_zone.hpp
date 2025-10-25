@@ -9,6 +9,8 @@ template < is_int_or_float T >
 struct clippingZone {
     using native_t = isIntOrFloat_t< T, SDL_Rect, SDL_FRect >;
 
+    static constexpr size_t g_pointsAmount = 2;
+
     clippingZone() = default;
 
     constexpr clippingZone( T _minX, T _minY, T _maxX, T _maxY )
@@ -53,16 +55,14 @@ struct clippingZone {
     }
 
     [[nodiscard]] constexpr auto points() const
-        -> std::array< point_t< T >, 4 > {
+        -> std::array< point_t< T >, g_pointsAmount > {
         return {
-            minX,
-            minY,
-            maxX,
-            maxY,
+            point_t< T >( minX, minY ),
+            point_t< T >( maxX, maxY ),
         };
     }
 
-    T minX, minY, maxX, maxY;
+    T minX{}, minY{}, maxX{}, maxY{};
 };
 
 template < typename T >

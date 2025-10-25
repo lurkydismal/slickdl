@@ -63,6 +63,20 @@ using flagUnderlying_t = std::underlying_type_t< flag_t >;
     return ( static_cast< flag_t >( _value ) );
 }
 
+[[nodiscard]] constexpr auto operator|( flag_t _storage, flag_t _value )
+    -> flag_t {
+    return (
+        static_cast< flag_t >( static_cast< flagUnderlying_t >( _storage ) |
+                               static_cast< flagUnderlying_t >( _value ) ) );
+}
+
+[[nodiscard]] constexpr auto operator&( flag_t _storage, flag_t _value )
+    -> flag_t {
+    return (
+        static_cast< flag_t >( static_cast< flagUnderlying_t >( _storage ) &
+                               static_cast< flagUnderlying_t >( _value ) ) );
+}
+
 // SDL_Init() simply forwards to calling SDL_InitSubSystem(). Therefore, the
 // two may be used interchangeably. Though for readability of your code
 // SDL_InitSubSystem() might be preferred

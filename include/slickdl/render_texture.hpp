@@ -609,10 +609,10 @@ using renderer_t = struct renderer {
     //
     // Should only be called on the main thread.
     [[nodiscard]] auto logicalPresentationFinal() const -> box_t< float > {
-        SDL_FRect l_box;
+        box_t< float > l_box;
 
         const bool l_result =
-            SDL_GetRenderLogicalPresentationRect( _data, &l_box );
+            SDL_GetRenderLogicalPresentationRect( _data, l_box );
 
         assert( l_result );
 
@@ -1070,9 +1070,7 @@ using renderer_t = struct renderer {
             ( ( _needFill ) ? ( SDL_RenderFillRect ) : ( SDL_RenderRect ) );
 
         if ( _box ) {
-            const SDL_FRect l_box = _box.value();
-
-            l_result = l_renderBox( l_renderFunction, &l_box );
+            l_result = l_renderBox( l_renderFunction, _box.value() );
 
         } else {
             l_result = l_renderBox( l_renderFunction, nullptr );
@@ -1515,7 +1513,7 @@ private:
 
 // Texture
 using texture_t = struct texture {
-    using native_t = SDL_Texture;
+    using native_t = SDL_Texture*;
 
     texture() = delete;
 
@@ -1650,7 +1648,7 @@ using texture_t = struct texture {
     texture( texture&& ) = default;
 
     template < typename OtherType >
-        requires std::is_convertible_v< OtherType, native_t* >
+        requires std::is_convertible_v< OtherType, native_t >
     constexpr texture( OtherType&& _other )
         : _data( std::forward< OtherType >( _other ) ) {}
 
@@ -1659,7 +1657,11 @@ using texture_t = struct texture {
     auto operator=( const texture& ) -> texture& = delete;
     auto operator=( texture&& ) -> texture& = default;
 
-    constexpr operator native_t*() const { return ( _data ); }
+    [[nodiscard]] constexpr operator native_t() const {
+        static_assert( sizeof( decltype( _data ) ) == sizeof( native_t ) );
+
+        return ( _data );
+    }
 
     static constexpr std::string_view g_colorspaceNumber =
         "SDL.texture.colorspace";
@@ -2054,11 +2056,8 @@ using texture_t = struct texture {
         renderer_t& _renderer,
         const std::optional< box_t< float > >& _source = std::nullopt,
         const std::optional< box_t< float > >& _destination = std::nullopt ) {
-        const SDL_FRect l_source = _source.value();
-        const SDL_FRect l_destination = _destination.value();
-
-        const bool l_result =
-            SDL_RenderTexture( _renderer, _data, &l_source, &l_destination );
+        const bool l_result = SDL_RenderTexture(
+            _renderer, _data, _source.value(), _destination.value() );
 
         assert( l_result );
     }
@@ -2083,13 +2082,9 @@ using texture_t = struct texture {
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< point_t< float > >& _center = std::nullopt,
         flip_t _flip = flip_t::none ) {
-        const SDL_FRect l_source = _source.value();
-        const SDL_FRect l_destination = _destination.value();
-        const SDL_FPoint l_center = _center.value();
-
         const bool l_result = SDL_RenderTextureRotated(
-            _renderer, _data, &l_source, &l_destination, _angle, &l_center,
-            toLegacy( _flip ) );
+            _renderer, _data, _source.value(), _destination.value(), _angle,
+            _center.value(), toLegacy( _flip ) );
 
         assert( l_result );
     }
@@ -2115,13 +2110,9 @@ using texture_t = struct texture {
         const std::optional< point_t< float > >& _origin = std::nullopt,
         const std::optional< point_t< float > >& _right = std::nullopt,
         const std::optional< point_t< float > >& _down = std::nullopt ) {
-        const SDL_FRect l_source = _source.value();
-        const SDL_FPoint l_origin = _origin.value();
-        const SDL_FPoint l_right = _right.value();
-        const SDL_FPoint l_down = _down.value();
-
         const bool l_result = SDL_RenderTextureAffine(
-            _renderer, _data, &l_source, &l_origin, &l_right, &l_down );
+            _renderer, _data, _source.value(), _origin.value(), _right.value(),
+            _down.value() );
 
         assert( l_result );
     }
@@ -2142,11 +2133,8 @@ using texture_t = struct texture {
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< box_t< float > >& _source = std::nullopt,
         float _scale = 0 ) {
-        const SDL_FRect l_source = _source.value();
-        const SDL_FRect l_destination = _destination.value();
-
         const bool l_result = SDL_RenderTextureTiled(
-            _renderer, _data, &l_source, _scale, &l_destination );
+            _renderer, _data, _source.value(), _scale, _destination.value() );
 
         assert( l_result );
     }
@@ -2176,12 +2164,9 @@ using texture_t = struct texture {
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< box_t< float > >& _source = std::nullopt,
         float _scale = 0 ) {
-        const SDL_FRect l_source = _source.value();
-        const SDL_FRect l_destination = _destination.value();
-
         const bool l_result = SDL_RenderTexture9Grid(
-            _renderer, _data, &l_source, _leftWidth, _rightWidth, _topHeight,
-            _bottomHeight, _scale, &l_destination );
+            _renderer, _data, _source.value(), _leftWidth, _rightWidth,
+            _topHeight, _bottomHeight, _scale, _destination.value() );
 
         assert( l_result );
     }
@@ -2215,12 +2200,10 @@ using texture_t = struct texture {
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< box_t< float > >& _source = std::nullopt,
         float _scale = 0 ) {
-        const SDL_FRect l_source = _source.value();
-        const SDL_FRect l_destination = _destination.value();
-
         const bool l_result = SDL_RenderTexture9GridTiled(
-            _renderer, _data, &l_source, _leftWidth, _rightWidth, _topHeight,
-            _bottomHeight, _scale, &l_destination, _tileScale );
+            _renderer, _data, _source.value(), _leftWidth, _rightWidth,
+            _topHeight, _bottomHeight, _scale, _destination.value(),
+            _tileScale );
 
         assert( l_result );
     }
@@ -2312,7 +2295,7 @@ using texture_t = struct texture {
 
     // Variables
 private:
-    gsl::not_null< native_t* > _data;
+    gsl::not_null< native_t > _data;
 };
 
 // Create a window and default renderer.
