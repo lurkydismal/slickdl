@@ -619,11 +619,11 @@ struct box {
 
     // Helpers
 private:
-    [[nodiscard]] constexpr auto _right( const box& _box ) const -> T {
+    [[nodiscard]] static constexpr auto _right( const box& _box ) -> T {
         return ( _box.x + _box.width );
     }
 
-    [[nodiscard]] constexpr auto _bottom( const box& _box ) const -> T {
+    [[nodiscard]] static constexpr auto _bottom( const box& _box ) -> T {
         return ( _box.y + _box.height );
     }
 };

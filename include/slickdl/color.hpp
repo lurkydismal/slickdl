@@ -5,10 +5,15 @@
 #include <array>
 #include <bit>
 #include <cstdint>
+#include <limits>
 
 namespace slickdl {
 
 using color_t = struct color {
+    using native_t = SDL_Color;
+
+    static constexpr size_t g_maxValue = std::numeric_limits< uint8_t >::max();
+
     color() = default;
     color( const color& ) = default;
     color( color&& ) = default;
@@ -21,15 +26,24 @@ using color_t = struct color {
         : red( _red ), green( _green ), blue( _blue ), alpha( _alpha ) {}
 
     constexpr color( uint8_t _red, uint8_t _green, uint8_t _blue )
-        : red( _red ), green( _green ), blue( _blue ), alpha( 0xFF ) {}
+        : color( _red, _green, _blue, g_maxValue ) {}
 
     constexpr color( uint32_t _colorPacked ) { unpack( _colorPacked ); }
+
+    constexpr color( native_t _color )
+        : color( _color.r, _color.g, _color.b, _color.a ) {}
+
+    constexpr color( SDL_FColor _color )
+        : color( ( _color.r * g_maxValue ),
+                 ( _color.g * g_maxValue ),
+                 ( _color.b * g_maxValue ),
+                 ( _color.a * g_maxValue ) ) {}
 
     auto operator=( const color& ) -> color& = default;
     auto operator=( color&& ) -> color& = default;
 
-    constexpr operator SDL_Color() const {
-        return ( SDL_Color{
+    constexpr operator native_t() const {
+        return ( native_t{
             .r = red,
             .g = green,
             .b = blue,
@@ -39,10 +53,10 @@ using color_t = struct color {
 
     explicit constexpr operator SDL_FColor() const {
         return ( SDL_FColor{
-            .r = ( static_cast< float >( red ) / 0xFF ),
-            .g = ( static_cast< float >( green ) / 0xFF ),
-            .b = ( static_cast< float >( blue ) / 0xFF ),
-            .a = ( static_cast< float >( alpha ) / 0xFF ),
+            .r = ( static_cast< float >( red ) / g_maxValue ),
+            .g = ( static_cast< float >( green ) / g_maxValue ),
+            .b = ( static_cast< float >( blue ) / g_maxValue ),
+            .a = ( static_cast< float >( alpha ) / g_maxValue ),
         } );
     }
 

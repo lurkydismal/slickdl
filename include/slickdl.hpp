@@ -36,8 +36,7 @@ template < typename T >
 using volume_t = volume< T >;
 
 // Helpers
-template < typename T >
-    requires is_int_or_float< T >
+template < is_int_or_float T >
 [[nodiscard]] constexpr auto inRange1D( T _point, T _min, T _max ) -> bool {
     return ( ( _point >= _min ) && ( _point < _max ) );
 }

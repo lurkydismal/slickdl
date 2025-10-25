@@ -905,33 +905,6 @@ using surface_t = struct surface {
         return ( l_color );
     }
 
-#if 0
-    // TODO: Decide
-    /**
- * Retrieves a single pixel from a surface.
- *
- * This function prioritizes correctness over speed: it is suitable for unit
- * tests, but is not intended for use in a game engine.
- *
- * \param surface the surface to read.
- * \param x the horizontal coordinate, 0 <= x < width.
- * \param y the vertical coordinate, 0 <= y < height.
- * \param r a pointer filled in with the red channel, normally in the range
- *          0-1, or NULL to ignore this channel.
- * \param g a pointer filled in with the green channel, normally in the range
- *          0-1, or NULL to ignore this channel.
- * \param b a pointer filled in with the blue channel, normally in the range
- *          0-1, or NULL to ignore this channel.
- * \param a a pointer filled in with the alpha channel, normally in the range
- *          0-1, or NULL to ignore this channel.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * Not thread safe.
- */
-bool ReadSurfacePixelFloat(SDL_Surface *surface, int x, int y, float *r, float *g, float *b, float *a);
-#endif
-
     // Writes a single pixel to a surface.
     //
     // This function prioritizes correctness over speed: it is suitable for unit
@@ -949,28 +922,23 @@ bool ReadSurfacePixelFloat(SDL_Surface *surface, int x, int y, float *r, float *
         assert( l_result );
     }
 
-#if 0
-    // TODO: Decide
-    /**
- * Writes a single pixel to a surface.
- *
- * This function prioritizes correctness over speed: it is suitable for unit
- * tests, but is not intended for use in a game engine.
- *
- * \param surface the surface to write.
- * \param x the horizontal coordinate, 0 <= x < width.
- * \param y the vertical coordinate, 0 <= y < height.
- * \param r the red channel value, normally in the range 0-1.
- * \param g the green channel value, normally in the range 0-1.
- * \param b the blue channel value, normally in the range 0-1.
- * \param a the alpha channel value, normally in the range 0-1.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * Not thread safe.
- */
-bool WriteSurfacePixelFloat(SDL_Surface *surface, int x, int y, float r, float g, float b, float a);
-#endif
+    // Writes a single pixel to a surface.
+    //
+    // This function prioritizes correctness over speed: it is suitable for unit
+    // tests, but is not intended for use in a game engine.
+    //
+    // Channel value is normally in the range 0-1.
+    //
+    // Not thread safe.
+    void write( point_t< float > _point, color_t _color ) {
+        const auto l_color = static_cast< SDL_FColor >( _color );
+
+        const bool l_result =
+            SDL_WriteSurfacePixelFloat( _data, _point.x, _point.y, l_color.r,
+                                        l_color.g, l_color.b, l_color.a );
+
+        assert( l_result );
+    }
 
     // Helpers
     // TODO: Make protected
