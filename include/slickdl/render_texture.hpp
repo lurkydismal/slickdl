@@ -17,7 +17,32 @@
 namespace slickdl {
 
 using vertex_t = struct vertex {
-    [[nodiscard]] constexpr operator SDL_Vertex() const {
+    using native_t = SDL_Vertex;
+
+    vertex() = default;
+
+    constexpr vertex( const native_t& _other )
+        : position( _other.position ),
+          color( _other.color ),
+          textureCoordinate( _other.tex_coord ) {}
+
+    vertex( const vertex& ) = default;
+    vertex( vertex&& ) = default;
+
+#if 0
+    template < typename OtherType >
+        requires std::is_convertible_v< OtherType, native_t >
+    constexpr vertex( OtherType&& _other )
+        : position( _other.position ),
+          color( _other.color ),
+          textureCoordinate( _other.tex_coord ) {}
+#endif
+
+    ~vertex() = default;
+    auto operator=( const vertex& ) -> vertex& = default;
+    auto operator=( vertex&& ) -> vertex& = default;
+
+    [[nodiscard]] constexpr operator native_t() const {
         return ( SDL_Vertex{
             position,
             static_cast< SDL_FColor >( color ),
@@ -164,6 +189,8 @@ using vsyncUnderlying_t = std::underlying_type_t< vsync_t >;
 }
 
 using renderer_t = struct renderer {
+    using native_t = SDL_Renderer*;
+
     static constexpr std::string_view g_createNameString =
         "SDL.renderer.create.name";
     static constexpr std::string_view g_createWindowPointer =
@@ -320,7 +347,7 @@ using renderer_t = struct renderer {
     renderer( renderer&& ) = default;
 
     template < typename OtherType >
-        requires std::is_convertible_v< OtherType, SDL_Renderer* >
+        requires std::is_convertible_v< OtherType, native_t >
     constexpr renderer( OtherType&& _other )
         : _data( std::forward< OtherType >( _other ) ) {}
 
@@ -329,7 +356,7 @@ using renderer_t = struct renderer {
     auto operator=( const renderer& ) -> renderer& = delete;
     auto operator=( renderer&& ) -> renderer& = default;
 
-    constexpr operator SDL_Renderer*() const { return ( _data ); }
+    constexpr operator native_t() const { return ( _data ); }
 
     [[nodiscard]] auto window() const -> window_t {
         return ( SDL_GetRenderWindow( _data ) );
@@ -1505,7 +1532,7 @@ using renderer_t = struct renderer {
 
     // Variables
 private:
-    gsl::not_null< SDL_Renderer* > _data;
+    gsl::not_null< native_t > _data;
 #if 0
     GPUDevice_t _GPUDevice;
 #endif

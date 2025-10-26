@@ -435,6 +435,18 @@ using format_t = enum class format {
 
 using formatUnderlying_t = std::underlying_type_t< format_t >;
 
+[[nodiscard]] constexpr auto toLegacy( format_t _value ) -> SDL_PixelFormat {
+    return ( static_cast< SDL_PixelFormat >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( format_t* _value ) -> SDL_PixelFormat* {
+    return ( std::bit_cast< SDL_PixelFormat* >( _value ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_PixelFormat _value ) -> format_t {
+    return ( static_cast< format_t >( _value ) );
+}
+
 using pixel_t = enum class pixel : uint8_t {
     unknown,
     index1,
@@ -642,13 +654,15 @@ using packedLayoutUnderlying_t = std::underlying_type_t< packedLayout_t >;
 // FourCC formats do their best here, but many of them don't have a
 // *meaningful* measurement of bytes per pixel
 [[nodiscard]] constexpr auto bytes( format_t _format ) -> uint8_t {
-    return ( isFourCC( _format ) ? ( ( ( _format == format_t::fYUY2 ) ||
-                                       ( _format == format_t::fUYVY ) ||
-                                       ( _format == format_t::fYVYU ) ||
-                                       ( _format == format_t::fP010 ) )
-                                         ? ( 2 )
-                                         : ( 1 ) )
-                                 : ( bits( _format ) ) );
+    return ( isFourCC( _format )
+                 ? ( ( ( _format == format_t::fYUY2 ) ||
+                       ( _format == format_t::fUYVY ) ||
+                       ( _format == format_t::fYVYU ) ||
+                       ( _format == format_t::fP010 ) )
+                         ? ( 2 )
+                         : ( 1 ) )
+                 // TODO :Improve
+                 : ( ( ( toLegacy( _format ) ) >> 0 ) & 0xFF ) );
 }
 
 [[nodiscard]] constexpr auto isIndexed( format_t _format ) -> bool {
@@ -1567,19 +1581,6 @@ using mask_t = struct mask {
     }
 
     return ( format_t::unknown );
-}
-
-// Legacy
-[[nodiscard]] constexpr auto toLegacy( format_t _value ) -> SDL_PixelFormat {
-    return ( static_cast< SDL_PixelFormat >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( format_t* _value ) -> SDL_PixelFormat* {
-    return ( std::bit_cast< SDL_PixelFormat* >( _value ) );
-}
-
-[[nodiscard]] constexpr auto fromLegacy( SDL_PixelFormat _value ) -> format_t {
-    return ( static_cast< format_t >( _value ) );
 }
 
 // Pixels

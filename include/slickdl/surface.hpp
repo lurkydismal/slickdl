@@ -4,7 +4,6 @@
 
 #include <gsl/pointers>
 #include <type_traits>
-#include <utility>
 
 #include "slickdl/blend.hpp"
 #include "slickdl/clipping_zone.hpp"
@@ -82,7 +81,7 @@ using flipUnderlying_t = std::underlying_type_t< flip_t >;
 // When a surface holds MJPG format data, pixels points at the compressed JPEG
 // image and pitch is the length of that data
 using surface_t = struct surface {
-    using native_t = SDL_Surface;
+    using native_t = SDL_Surface*;
 
     using flag_t = enum class flag : uint8_t {
         preallocated = 0x1u, // Surface uses preallocated pixel memory
@@ -106,7 +105,7 @@ using surface_t = struct surface {
     surface( surface&& ) = default;
 
     template < typename OtherType >
-        requires std::is_convertible_v< OtherType, native_t* >
+        requires std::is_convertible_v< OtherType, native_t >
     constexpr surface( OtherType&& _other )
         : _data( std::forward< OtherType >( _other ) ) {}
 
@@ -152,7 +151,7 @@ using surface_t = struct surface {
     auto operator=( const surface& ) -> surface& = delete;
     auto operator=( surface&& ) -> surface& = default;
 
-    constexpr operator native_t*() const { return ( _data ); }
+    constexpr operator native_t() const { return ( _data ); }
 
     // Evaluates to true if the surface needs to be locked before access
     [[nodiscard]] constexpr auto mustLock() const -> bool {
@@ -982,7 +981,7 @@ private:
 
     // Variables
 private:
-    gsl::not_null< native_t* > _data;
+    gsl::not_null< native_t > _data;
 };
 
 #if 0

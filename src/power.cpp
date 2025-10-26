@@ -13,7 +13,7 @@ namespace slickdl::power {
         fromLegacy( SDL_GetPowerInfo( std::bit_cast< int* >( &l_seconds ),
                                       std::bit_cast< int* >( &l_percent ) ) );
 
-    assert( l_result == state_t::error );
+    assert( l_result != state_t::error );
 
     if ( l_result == state_t::noBattery ) {
         return {

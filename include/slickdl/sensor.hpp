@@ -17,20 +17,6 @@
 // load appropriate drivers.
 namespace slickdl::sensors {
 
-// This is a unique ID for a sensor for the time it is connected to the
-// system, and is never reused for the lifetime of the application.
-//
-// The value 0 is an invalid ID.
-using id_t = uint32_t;
-
-// A constant to represent standard gravity for accelerometer sensors.
-//
-// The accelerometer returns the current acceleration in SI meters per
-// second squared. This measurement includes the force of gravity, so a
-// device at rest will have an value of SDL_STANDARD_GRAVITY away from the
-// center of the earth, which is a positive Y value.
-constexpr float g_standardGravity = 9.80665f;
-
 // The different sensors defined by SDL.
 //
 // Additional sensors may be available, using platform dependent semantics.
@@ -105,115 +91,167 @@ using typeUnderlying_t = std::underlying_type_t< type_t >;
     return ( static_cast< type_t >( _value ) );
 }
 
+// This is a unique ID for a sensor for the time it is connected to the
+// system, and is never reused for the lifetime of the application.
+//
+// The value 0 is an invalid ID.
+using id_t = struct id {
+    using native_t = uint32_t;
+
+    id() = default;
+
+    id( uint32_t _data ) : _data( _data ) {}
+
+    id( const id& ) = default;
+    id( id&& ) = default;
+
+    template < typename OtherType >
+        requires std::is_convertible_v< OtherType, native_t >
+    constexpr id( OtherType&& _other )
+        : _data( std::forward< OtherType >( _other ) ) {}
+
+    ~id() = default;
+    auto operator=( const id& ) -> id& = default;
+    auto operator=( id&& ) -> id& = default;
+
+    [[nodiscard]] constexpr operator native_t() const { return ( _data ); }
+
+    // Get a list of currently connected sensors.
+    [[nodiscard]] static auto all() -> std::vector< id >;
+
+    // Get the platform dependent type of a sensor.
+    //
+    // This can be called before any sensors are opened.
+    [[nodiscard]] inline auto nonPortableType() -> int {
+        const int l_result = SDL_GetSensorNonPortableTypeForID( _data );
+
+        assert( l_result != -1 );
+
+        return ( l_result );
+    }
+
+    // Get the implementation dependent name of a sensor.
+    //
+    // This can be called before any sensors are opened.
+    [[nodiscard]] inline auto name() -> std::string_view {
+        return { gsl::make_not_null( SDL_GetSensorNameForID( _data ) ) };
+    }
+
+    // Get the type of a sensor.
+    //
+    // This can be called before any sensors are opened.
+    [[nodiscard]] inline auto type() -> type_t {
+        const type_t l_result = fromLegacy( SDL_GetSensorTypeForID( _data ) );
+
+        assert( l_result != type_t::invalid );
+
+        return ( l_result );
+    }
+
+    // Variables
+private:
+    native_t _data;
+};
+
+// A constant to represent standard gravity for accelerometer sensors.
+//
+// The accelerometer returns the current acceleration in SI meters per
+// second squared. This measurement includes the force of gravity, so a
+// device at rest will have an value of SDL_STANDARD_GRAVITY away from the
+// center of the earth, which is a positive Y value.
+constexpr float g_standardGravity = 9.80665f;
+
 // The opaque structure used to identify an opened SDL sensor.
-using sensor_t = gsl::not_null< SDL_Sensor* >;
+using sensor_t = struct sensor {
+    using native_t = SDL_Sensor*;
 
-// Get a list of currently connected sensors.
-[[nodiscard]] auto all() -> std::vector< id_t >;
+    sensor() = delete;
 
-// Get the instance ID of a sensor.
-[[nodiscard]] inline auto id( sensor_t _sensor ) -> id_t {
-    const id_t l_result = SDL_GetSensorID( _sensor );
+    // Open a sensor for use.
+    sensor( id_t _id ) : _data( SDL_OpenSensor( _id ) ) {}
 
-    assert( l_result );
+    sensor( const sensor& ) = default;
+    sensor( sensor&& ) = default;
 
-    return ( l_result );
-}
+    template < typename OtherType >
+        requires std::is_convertible_v< OtherType, native_t >
+    constexpr sensor( OtherType&& _other )
+        : _data( std::forward< OtherType >( _other ) ) {}
 
-// Open a sensor for use.
-[[nodiscard]] inline auto open( id_t _id ) -> sensor_t {
-    return { SDL_OpenSensor( _id ) };
-}
+    // Close a sensor previously opened with SDL_OpenSensor().
+    ~sensor() { SDL_CloseSensor( _data ); }
+
+    auto operator=( const sensor& ) -> sensor& = default;
+    auto operator=( sensor&& ) -> sensor& = default;
+
+    [[nodiscard]] constexpr operator native_t() const { return ( _data ); }
+
+    // Get the instance ID of a sensor.
+    [[nodiscard]] auto id() -> id_t {
+        const id_t l_result = SDL_GetSensorID( _data );
+
+        assert( l_result );
+
+        return ( l_result );
+    }
+
+    // Get the properties associated with a sensor.
+    [[nodiscard]] auto properties() -> properties::id_t {
+        const properties::id_t l_result = SDL_GetSensorProperties( _data );
+
+        assert( l_result );
+
+        return ( l_result );
+    }
+
+    // Get the implementation dependent name of a sensor.
+    [[nodiscard]] auto name() -> std::string_view {
+        return { gsl::make_not_null( SDL_GetSensorName( _data ) ) };
+    }
+
+    // Get the type of a sensor.
+    [[nodiscard]] auto type() -> type_t {
+        const type_t l_result = fromLegacy( SDL_GetSensorType( _data ) );
+
+        assert( l_result != type_t::invalid );
+
+        return ( l_result );
+    }
+
+    // Get the platform dependent type of a sensor.
+    [[nodiscard]] auto nonPortableType() -> int {
+        const int l_result = SDL_GetSensorNonPortableType( _data );
+
+        assert( l_result != -1 );
+
+        return ( l_result );
+    }
+
+    // Get the current state of an opened sensor.
+    //
+    // The number of values and interpretation of the data is sensor dependent.
+    //
+    // Amount of values to write to data.
+    template < size_t N >
+        requires( N > 0 )
+    [[nodiscard]] auto data() -> std::array< float, N > {
+        std::array< float, N > l_data{};
+
+        const bool l_result = SDL_GetSensorData( _data, l_data.data(), N );
+
+        assert( l_result );
+
+        return ( l_data );
+    }
+
+    // Variables
+private:
+    gsl::not_null< native_t > _data;
+};
 
 // Return the SDL_Sensor associated with an instance ID.
 [[nodiscard]] inline auto fromId( id_t _id ) -> sensor_t {
     return { SDL_GetSensorFromID( _id ) };
-}
-
-// Get the properties associated with a sensor.
-[[nodiscard]] inline auto properties( sensor_t _sensor ) -> properties::id_t {
-    const properties::id_t l_result = SDL_GetSensorProperties( _sensor );
-
-    assert( l_result );
-
-    return ( l_result );
-}
-
-// Get the implementation dependent name of a sensor.
-//
-// This can be called before any sensors are opened.
-//
-// \param instance_id the sensor instance ID.
-// \returns the sensor name, or NULL if `instance_id` is not valid.
-[[nodiscard]] inline auto name( id_t _id ) -> std::string_view {
-    return { gsl::make_not_null( SDL_GetSensorNameForID( _id ) ) };
-}
-
-// Get the implementation dependent name of a sensor.
-[[nodiscard]] inline auto name( sensor_t _sensor ) -> std::string_view {
-    return { gsl::make_not_null( SDL_GetSensorName( _sensor ) ) };
-}
-
-// Get the type of a sensor.
-//
-// This can be called before any sensors are opened.
-[[nodiscard]] inline auto type( id_t _id ) -> type_t {
-    const type_t l_result = fromLegacy( SDL_GetSensorTypeForID( _id ) );
-
-    assert( l_result != type_t::invalid );
-
-    return ( l_result );
-}
-
-// Get the type of a sensor.
-[[nodiscard]] inline auto type( sensor_t _sensor ) -> type_t {
-    const type_t l_result = fromLegacy( SDL_GetSensorType( _sensor ) );
-
-    assert( l_result != type_t::invalid );
-
-    return ( l_result );
-}
-
-// Get the platform dependent type of a sensor.
-//
-// This can be called before any sensors are opened.
-[[nodiscard]] inline auto nonPortableType( id_t _id ) -> int {
-    const int l_result = SDL_GetSensorNonPortableTypeForID( _id );
-
-    assert( l_result != -1 );
-
-    return ( l_result );
-}
-
-// Get the platform dependent type of a sensor.
-[[nodiscard]] inline auto nonPortableType( sensor_t _sensor ) -> int {
-    const int l_result = SDL_GetSensorNonPortableType( _sensor );
-
-    assert( l_result != -1 );
-
-    return ( l_result );
-}
-
-// Get the current state of an opened sensor.
-//
-// The number of values and interpretation of the data is sensor dependent.
-//
-// Amount of values to write to data.
-template < size_t N >
-    requires( N > 0 )
-[[nodiscard]] inline auto data( sensor_t _sensor ) -> std::array< float, N > {
-    std::array< float, N > l_data{};
-
-    const bool l_result = SDL_GetSensorData( _sensor, l_data.data(), N );
-
-    assert( l_result );
-
-    return ( l_data );
-}
-
-// Close a sensor previously opened with SDL_OpenSensor().
-inline void close( sensor_t _sensor ) {
-    SDL_CloseSensor( _sensor );
 }
 
 // Update the current state of the open sensors.
