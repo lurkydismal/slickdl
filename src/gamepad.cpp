@@ -29,9 +29,9 @@ namespace slickdl::gamepad {
     return { l_result.get() };
 }
 
-[[nodiscard]] auto mapping( gamepad_t _gamepad ) -> std::string {
+[[nodiscard]] auto gamepad_t::mapping() -> std::string {
     std::unique_ptr< char, void ( * )( void* ) > l_result(
-        SDL_GetGamepadMapping( _gamepad ), SDL_free );
+        SDL_GetGamepadMapping( _data ), SDL_free );
 
     assert( l_result.get() );
 
@@ -59,11 +59,11 @@ namespace slickdl::gamepad {
     return { l_result.get() };
 }
 
-[[nodiscard]] auto bindings( gamepad_t _gamepad ) -> std::vector< binding_t > {
+[[nodiscard]] auto gamepad_t::bindings() -> std::vector< binding_t > {
     size_t l_amount = 0;
 
     std::unique_ptr< SDL_GamepadBinding*, void ( * )( void* ) > l_result(
-        SDL_GetGamepadBindings( _gamepad, std::bit_cast< int* >( &l_amount ) ),
+        SDL_GetGamepadBindings( _data, std::bit_cast< int* >( &l_amount ) ),
         SDL_free );
 
     assert( l_result.get() );

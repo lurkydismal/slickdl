@@ -45,12 +45,50 @@ namespace slickdl::mouse {
 // If the mouse is disconnected and reconnected, it will get a new ID.
 //
 // The value 0 is an invalid ID.
-using id_t = uint32_t;
+using id_t = struct id {
+    using native_t = uint32_t;
 
-// The structure used to identify an SDL cursor.
-//
-// This is opaque data.
-using cursor_t = gsl::not_null< SDL_Cursor* >;
+    id() = default;
+
+    id( uint32_t _data ) : _data( _data ) {}
+
+    id( const id& ) = default;
+    id( id&& ) = default;
+
+    template < typename OtherType >
+        requires std::is_convertible_v< OtherType, native_t >
+    constexpr id( OtherType&& _other )
+        : _data( std::forward< OtherType >( _other ) ) {}
+
+    ~id() = default;
+    auto operator=( const id& ) -> id& = default;
+    auto operator=( id&& ) -> id& = default;
+
+    [[nodiscard]] constexpr operator native_t() const { return ( _data ); }
+
+    // Get a list of currently connected mice.
+    //
+    // Note that this will include any device or virtual driver that includes
+    // mouse functionality, including some game controllers, KVM switches, etc.
+    // You should wait for input from a device before you consider it actively
+    // in use.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] static auto all() -> std::vector< id >;
+
+    // Get the name of a mouse.
+    //
+    // This function returns "" if the mouse doesn't have a name.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] auto name() -> std::string_view {
+        return { gsl::make_not_null( SDL_GetMouseNameForID( _data ) ) };
+    }
+
+    // Variables
+private:
+    native_t _data;
+};
 
 // Cursor types for SDL_CreateSystemCursor().
 using systemCursor_t = enum class systemCursor : uint8_t {
@@ -162,9 +200,9 @@ using buttonFlagsUnderlying_t = std::underlying_type_t< buttonFlags_t >;
     return ( static_cast< buttonFlags_t >( _value ) );
 }
 
-[[nodiscard]] constexpr auto mask( buttonFlags_t _x )
+[[nodiscard]] constexpr auto mask( buttonFlags_t _flags )
     -> buttonFlagsUnderlying_t {
-    return ( 1u << ( static_cast< buttonFlagsUnderlying_t >( _x ) - 1 ) );
+    return ( 1U << ( static_cast< buttonFlagsUnderlying_t >( _flags ) - 1 ) );
 }
 
 constexpr size_t g_leftMask = mask( buttonFlags_t::left );
@@ -172,6 +210,180 @@ constexpr size_t g_middleMask = mask( buttonFlags_t::middle );
 constexpr size_t g_rightMask = mask( buttonFlags_t::right );
 constexpr size_t g_x1Mask = mask( buttonFlags_t::x1 );
 constexpr size_t g_x2Mask = mask( buttonFlags_t::x2 );
+
+// The structure used to identify an SDL cursor.
+//
+// This is opaque data.
+using cursor_t = struct cursor {
+    using native_t = SDL_Cursor*;
+
+    cursor() = delete;
+
+    // Create a cursor using the specified bitmap data and mask (in MSB format).
+    //
+    // `mask` has to be in MSB (Most Significant Bit) format.
+    //
+    // The cursor width (`w`) must be a multiple of 8 bits.
+    //
+    // The cursor is created in black and white according to the following:
+    //
+    // - data=0, mask=1: white
+    // - data=1, mask=1: black
+    // - data=0, mask=0: transparent
+    // - data=1, mask=0: inverted color if possible, black if not.
+    //
+    // Cursors created with this function must be freed with
+    // SDL_DestroyCursor().
+    //
+    // If you want to have a color cursor, or create your cursor from an
+    // SDL_Surface, you should use SDL_CreateColorCursor(). Alternately, you can
+    // hide the cursor and draw your own as part of your game's rendering, but
+    // it will be bound to the framerate.
+    //
+    // Also, SDL_CreateSystemCursor() is available, which provides several
+    // readily-available system cursors to pick from.
+    //
+    // The color value for each pixel of the cursor.
+    // The mask value for each pixel of the cursor.
+    //
+    // The x-axis offset from the left of the cursor image to the mouse x
+    // position, in the range of 0 to `w` - 1.
+    //
+    // The y-axis offset from the top of the cursor image to the mouse y
+    // position, in the range of 0 to `h` - 1.
+    //
+    // Should only be called on the main thread.
+    cursor( std::span< const uint8_t > _data,
+            std::span< const uint8_t > _mask,
+            volume_t< int > _volume,
+            point_t< int > _hotPoint )
+        : _data( SDL_CreateCursor( _data.data(),
+                                   _mask.data(),
+                                   _volume.width,
+                                   _volume.height,
+                                   _hotPoint.x,
+                                   _hotPoint.y ) ) {}
+
+    // Create a color cursor.
+    //
+    // If this function is passed a surface with alternate representations, the
+    // surface will be interpreted as the content to be used for 100% display
+    // scale, and the alternate representations will be used for high DPI
+    // situations. For example, if the original surface is 32x32, then on a 2x
+    // macOS display or 200% display scale on Windows, a 64x64 version of the
+    // image will be used, if available. If a matching version of the image
+    // isn't available, the closest larger size image will be downscaled to the
+    // appropriate size and be used instead, if available. Otherwise, the
+    // closest smaller image will be upscaled and be used instead.
+    //
+    // Surface representing the cursor image.
+    //
+    // Should only be called on the main thread.
+    cursor( const surface_t& _surface, point_t< int > _hotPoint )
+        : _data( SDL_CreateColorCursor( _surface, _hotPoint.x, _hotPoint.y ) ) {
+    }
+
+    // Create a system cursor.
+    //
+    // Should only be called on the main thread.
+    cursor( systemCursor_t _id )
+        : _data( SDL_CreateSystemCursor( toLegacy( _id ) ) ) {}
+
+    cursor( const cursor& ) = default;
+    cursor( cursor&& ) = default;
+
+    template < typename OtherType >
+        requires std::is_convertible_v< OtherType, native_t >
+    constexpr cursor( OtherType&& _other )
+        : _data( std::forward< OtherType >( _other ) ) {}
+
+    // Free a previously-created cursor.
+    //
+    // Use this function to free cursor resources created with
+    // SDL_CreateCursor(), SDL_CreateColorCursor() or SDL_CreateSystemCursor().
+    //
+    // Should only be called on the main thread.
+    ~cursor() { SDL_DestroyCursor( _data ); }
+
+    auto operator=( const cursor& ) -> cursor& = default;
+    auto operator=( cursor&& ) -> cursor& = default;
+
+    [[nodiscard]] constexpr operator native_t() const { return ( _data ); }
+
+    // Set the active cursor.
+    //
+    // This function sets the currently active cursor to the specified one. If
+    // the cursor is currently visible, the change will be immediately
+    // represented on the display. SDL_SetCursor(NULL) can be used to force
+    // cursor redraw, if this is desired for any reason.
+    //
+    // Should only be called on the main thread.
+    void set() {
+        const bool l_result = SDL_SetCursor( _data );
+
+        assert( l_result );
+    }
+
+    // Get the active cursor.
+    //
+    // This function returns a pointer to the current cursor which is owned by
+    // the library. It is not necessary to free the cursor with
+    // SDL_DestroyCursor().
+    //
+    // NULL if there is no mouse.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] static auto active() -> std::optional< cursor > {
+        SDL_Cursor* l_cursor = SDL_GetCursor();
+
+        if ( l_cursor ) {
+            return ( l_cursor );
+
+        } else {
+            return ( std::nullopt );
+        }
+    }
+
+    // Get the default cursor.
+    //
+    // You do not have to call SDL_DestroyCursor() on the return value, but it
+    // is safe to do so.
+    //
+    // Should only be called on the main thread.
+    // TODO: Rename
+    [[nodiscard]] static auto inaction() -> cursor {
+        return ( SDL_GetDefaultCursor() );
+    }
+
+    // Show the cursor.
+    //
+    // Should only be called on the main thread.
+    static void show() {
+        const bool l_result = SDL_ShowCursor();
+
+        assert( l_result );
+    }
+
+    // Hide the cursor.
+    //
+    // Should only be called on the main thread.
+    static void hide() {
+        const bool l_result = SDL_HideCursor();
+
+        assert( l_result );
+    }
+
+    // Return whether the cursor is currently being shown.
+    //
+    // Should only be called on the main thread.
+    [[nodiscard]] static auto isVisible() -> bool {
+        return ( SDL_CursorVisible() );
+    }
+
+    // Variables
+private:
+    gsl::not_null< native_t > _data;
+};
 
 // A callback used to transform mouse motion delta from raw values.
 //
@@ -205,25 +417,6 @@ using motionTransformCallback_t =
 // Should only be called on the main thread.
 [[nodiscard]] inline auto hasAny() -> bool {
     return ( SDL_HasMouse() );
-}
-
-// Get a list of currently connected mice.
-//
-// Note that this will include any device or virtual driver that includes
-// mouse functionality, including some game controllers, KVM switches, etc.
-// You should wait for input from a device before you consider it actively in
-// use.
-//
-// Should only be called on the main thread.
-[[nodiscard]] auto all() -> std::vector< id_t >;
-
-// Get the name of a mouse.
-//
-// This function returns "" if the mouse doesn't have a name.
-//
-// Should only be called on the main thread.
-[[nodiscard]] inline auto name( id_t _id ) -> std::string_view {
-    return { gsl::make_not_null( SDL_GetMouseNameForID( _id ) ) };
 }
 
 // Get the window which currently has mouse focus.
@@ -450,157 +643,6 @@ inline void relativeModeToggle( window_t _window, bool _isEnabled ) {
 // Should only be called on the main thread.
 inline void capture( bool _isEnabled ) {
     const bool l_result = SDL_CaptureMouse( _isEnabled );
-
-    assert( l_result );
-}
-
-// Create a cursor using the specified bitmap data and mask (in MSB format).
-//
-// `mask` has to be in MSB (Most Significant Bit) format.
-//
-// The cursor width (`w`) must be a multiple of 8 bits.
-//
-// The cursor is created in black and white according to the following:
-//
-// - data=0, mask=1: white
-// - data=1, mask=1: black
-// - data=0, mask=0: transparent
-// - data=1, mask=0: inverted color if possible, black if not.
-//
-// Cursors created with this function must be freed with
-// SDL_DestroyCursor().
-//
-// If you want to have a color cursor, or create your cursor from an
-// SDL_Surface, you should use SDL_CreateColorCursor(). Alternately, you can
-// hide the cursor and draw your own as part of your game's rendering, but
-// it will be bound to the framerate.
-//
-// Also, SDL_CreateSystemCursor() is available, which provides several
-// readily-available system cursors to pick from.
-//
-// The color value for each pixel of the cursor.
-// The mask value for each pixel of the cursor.
-//
-// The x-axis offset from the left of the cursor image to the mouse x position,
-// in the range of 0 to `w` - 1.
-//
-// The y-axis offset from the top of the cursor image to the mouse y position,
-// in the range of 0 to `h` - 1.
-//
-// Should only be called on the main thread.
-[[nodiscard]] inline auto create( std::span< const uint8_t > _data,
-                                  std::span< const uint8_t > _mask,
-                                  volume_t< int > _volume,
-                                  point_t< int > _hotPoint ) -> cursor_t {
-    return ( SDL_CreateCursor( _data.data(), _mask.data(), _volume.width,
-                               _volume.height, _hotPoint.x, _hotPoint.y ) );
-}
-
-// Create a color cursor.
-//
-// If this function is passed a surface with alternate representations, the
-// surface will be interpreted as the content to be used for 100% display
-// scale, and the alternate representations will be used for high DPI
-// situations. For example, if the original surface is 32x32, then on a 2x
-// macOS display or 200% display scale on Windows, a 64x64 version of the
-// image will be used, if available. If a matching version of the image
-// isn't available, the closest larger size image will be downscaled to the
-// appropriate size and be used instead, if available. Otherwise, the
-// closest smaller image will be upscaled and be used instead.
-//
-// Surface representing the cursor image.
-//
-// Should only be called on the main thread.
-[[nodiscard]] inline auto create( surface_t _surface, point_t< int > _hotPoint )
-    -> cursor_t {
-    return ( SDL_CreateColorCursor( _surface, _hotPoint.x, _hotPoint.y ) );
-}
-
-// Create a system cursor.
-//
-// Should only be called on the main thread.
-[[nodiscard]] inline auto create( systemCursor_t _id ) -> cursor_t {
-    return ( SDL_CreateSystemCursor( toLegacy( _id ) ) );
-}
-
-// Set the active cursor.
-//
-// This function sets the currently active cursor to the specified one. If
-// the cursor is currently visible, the change will be immediately
-// represented on the display. SDL_SetCursor(NULL) can be used to force
-// cursor redraw, if this is desired for any reason.
-//
-// Should only be called on the main thread.
-inline void set( cursor_t _cursor ) {
-    const bool l_result = SDL_SetCursor( _cursor );
-
-    assert( l_result );
-}
-
-// Get the active cursor.
-//
-// This function returns a pointer to the current cursor which is owned by
-// the library. It is not necessary to free the cursor with
-// SDL_DestroyCursor().
-//
-// NULL if there is no mouse.
-//
-// Should only be called on the main thread.
-[[nodiscard]] inline auto active() -> std::optional< cursor_t > {
-    SDL_Cursor* l_cursor = SDL_GetCursor();
-
-    if ( l_cursor ) {
-        return ( l_cursor );
-
-    } else {
-        return ( std::nullopt );
-    }
-}
-
-// Get the default cursor.
-//
-// You do not have to call SDL_DestroyCursor() on the return value, but it
-// is safe to do so.
-//
-// Should only be called on the main thread.
-// TODO: Rename
-[[nodiscard]] inline auto inaction() -> cursor_t {
-    return ( SDL_GetDefaultCursor() );
-}
-
-// Free a previously-created cursor.
-//
-// Use this function to free cursor resources created with
-// SDL_CreateCursor(), SDL_CreateColorCursor() or SDL_CreateSystemCursor().
-//
-// Should only be called on the main thread.
-inline void destroy( cursor_t _cursor ) {
-    SDL_DestroyCursor( _cursor );
-}
-
-// Show the cursor.
-//
-// Should only be called on the main thread.
-inline void show() {
-    const bool l_result = SDL_ShowCursor();
-
-    assert( l_result );
-}
-
-// Hide the cursor.
-//
-// Should only be called on the main thread.
-inline void hide() {
-    const bool l_result = SDL_HideCursor();
-
-    assert( l_result );
-}
-
-// Return whether the cursor is currently being shown.
-//
-// Should only be called on the main thread.
-inline void isVisible() {
-    const bool l_result = SDL_CursorVisible();
 
     assert( l_result );
 }

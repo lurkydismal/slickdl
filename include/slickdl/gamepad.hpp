@@ -64,8 +64,6 @@
 // come in at some point after you've started processing events.
 namespace slickdl::gamepad {
 
-using gamepad_t = gsl::not_null< SDL_Gamepad* >;
-
 // Standard gamepad types.
 //
 // This type does not necessarily map to first-party controllers from
@@ -291,6 +289,485 @@ using bindingTypeUnderlying_t = std::underlying_type_t< bindingType_t >;
 // of these structs to make it easier to operate on the data.
 using binding_t = gsl::not_null< SDL_GamepadBinding* >;
 
+#if 0
+// TODO: Rename
+namespace cap {
+
+constexpr auto g_monoLEDBoolean = joystick::cap::g_monoLEDBoolean;
+constexpr auto g_LEDRGBBoolean = joystick::cap::g_LEDRGBBoolean;
+constexpr auto g_playerLEDBoolean = joystick::cap::g_playerLEDBoolean;
+constexpr auto g_rumbleBoolean = joystick::cap::g_rumbleBoolean;
+constexpr auto g_rumbleTriggerBoolean = joystick::cap::g_rumbleTriggerBoolean;
+
+} // namespace cap
+#endif
+
+using gamepad_t = struct gamepad {
+    using native_t = SDL_Gamepad*;
+
+    gamepad() = delete;
+
+    // Open a gamepad for use.
+    //
+    // Get the SDL_Gamepad associated with a joystick instance ID, if it has
+    // been opened.
+    gamepad( joystick::id_t _id, bool _isOpened = false )
+        : _data( ( _isOpened ) ? ( SDL_OpenGamepad( _id ) )
+                               : ( SDL_GetGamepadFromID( _id ) ) ) {}
+
+    // Get the SDL_Gamepad associated with a player index.
+    gamepad( size_t _playerIndex )
+        : _data( SDL_GetGamepadFromPlayerIndex( _playerIndex ) ) {}
+
+    gamepad( const gamepad& ) = default;
+    gamepad( gamepad&& ) = default;
+
+    template < typename OtherType >
+        requires std::is_convertible_v< OtherType, native_t >
+    constexpr gamepad( OtherType&& _other )
+        : _data( std::forward< OtherType >( _other ) ) {}
+
+    ~gamepad() = default;
+    auto operator=( const gamepad& ) -> gamepad& = default;
+    auto operator=( gamepad&& ) -> gamepad& = default;
+
+    [[nodiscard]] constexpr operator native_t() const { return ( _data ); }
+
+    // Get the current mapping of a gamepad.
+    //
+    // Details about mappings are discussed with SDL_AddGamepadMapping().
+    [[nodiscard]] auto mapping() -> std::string;
+
+    // Get the properties associated with an opened gamepad.
+    //
+    // These properties are shared with the underlying joystick object.
+    //
+    // The following read-only properties are provided by SDL:
+    //
+    // - `SDL_PROP_GAMEPAD_CAP_MONO_LED_BOOLEAN`: true if this gamepad has an
+    // LED that has adjustable brightness
+    // - `SDL_PROP_GAMEPAD_CAP_RGB_LED_BOOLEAN`: true if this gamepad has an LED
+    //   that has adjustable color
+    // - `SDL_PROP_GAMEPAD_CAP_PLAYER_LED_BOOLEAN`: true if this gamepad has a
+    //   player LED
+    // - `SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN`: true if this gamepad has
+    //   left/right rumble
+    // - `SDL_PROP_GAMEPAD_CAP_TRIGGER_RUMBLE_BOOLEAN`: true if this gamepad has
+    //   simple trigger rumble
+    [[nodiscard]] auto properties() -> properties::id_t {
+        const properties::id_t l_result = SDL_GetGamepadProperties( _data );
+
+        assert( l_result );
+
+        return ( l_result );
+    }
+
+    // Get the instance ID of an opened gamepad.
+    [[nodiscard]] auto id() -> joystick::id_t {
+        const joystick::id_t l_result = SDL_GetGamepadID( _data );
+
+        assert( l_result );
+
+        return ( l_result );
+    }
+
+    // Get the implementation-dependent name for an opened gamepad.
+    [[nodiscard]] auto name() -> std::string_view {
+        return { gsl::make_not_null( SDL_GetGamepadName( _data ) ) };
+    }
+
+    // Get the implementation-dependent path for an opened gamepad.
+    [[nodiscard]] auto path() -> std::string_view {
+        return { gsl::make_not_null( SDL_GetGamepadPath( _data ) ) };
+    }
+
+    // Get the type of an opened gamepad.
+    [[nodiscard]] auto type() -> type_t {
+        const type_t l_result = fromLegacy( SDL_GetGamepadType( _data ) );
+
+        assert( l_result != type_t::unknown );
+
+        return ( l_result );
+    }
+
+    // Get the type of an opened gamepad, ignoring any mapping override.
+    [[nodiscard]] auto realType() -> type_t {
+        const type_t l_result = fromLegacy( SDL_GetRealGamepadType( _data ) );
+
+        assert( l_result != type_t::unknown );
+
+        return ( l_result );
+    }
+
+    // Get the player index of an opened gamepad.
+    //
+    // For XInput gamepads this returns the XInput user index.
+    //
+    // -1 if it's not available.
+    [[nodiscard]] auto playerIndex() -> size_t {
+        const ssize_t l_result = SDL_GetGamepadPlayerIndex( _data );
+
+        assert( l_result );
+
+        return ( l_result );
+    }
+
+    // Set the player index of an opened gamepad.
+    //
+    // NULL to clear the player index and turn off player LEDs.
+    void playerIndex( std::optional< size_t > _playerIndex ) {
+        bool l_result = false;
+
+        if ( _playerIndex ) {
+            l_result = SDL_SetGamepadPlayerIndex( _data, _playerIndex.value() );
+
+        } else {
+            l_result = SDL_SetGamepadPlayerIndex( _data, -1 );
+        }
+
+        assert( l_result );
+    }
+
+    // Get the USB vendor ID of an opened gamepad, if available.
+    //
+    // If the vendor ID isn't available this function returns 0.
+    //
+    // 0 if unavailable.
+    [[nodiscard]] auto vendor() -> uint16_t {
+        return ( SDL_GetGamepadVendor( _data ) );
+    }
+
+    // Get the USB product ID of an opened gamepad, if available.
+    //
+    // If the product ID isn't available this function returns 0.
+    //
+    // 0 if unavailable.
+    [[nodiscard]] auto product() -> uint16_t {
+        return ( SDL_GetGamepadProduct( _data ) );
+    }
+
+    // Get the product version of an opened gamepad, if available.
+    //
+    // If the product version isn't available this function returns 0.
+    //
+    // 0 if unavailable.
+    [[nodiscard]] auto etGamepadProductVersion() -> uint16_t {
+        return ( SDL_GetGamepadProductVersion( _data ) );
+    }
+
+    // Get the firmware version of an opened gamepad, if available.
+    //
+    // If the firmware version isn't available this function returns 0.
+    //
+    // 0 if unavailable.
+    [[nodiscard]] auto firmwareVersion() -> uint16_t {
+        return ( SDL_GetGamepadFirmwareVersion( _data ) );
+    }
+
+    // Get the serial number of an opened gamepad, if available.
+    //
+    // Returns the serial number of the gamepad, or NULL if it is not available.
+    [[nodiscard]] auto serial() -> std::optional< std::string_view > {
+        const char* l_result = SDL_GetGamepadSerial( _data );
+
+        if ( l_result ) {
+            return ( l_result );
+
+        } else {
+            return ( std::nullopt );
+        }
+    }
+
+    // Get the Steam Input handle of an opened gamepad, if available.
+    //
+    // Returns an InputHandle_t for the gamepad that can be used with Steam
+    // Input API: https://partner.steamgames.com/doc/api/ISteamInput
+    //
+    // 0 if unavailable.
+    [[nodiscard]] auto steamHandle() -> uint64_t {
+        return ( SDL_GetGamepadSteamHandle( _data ) );
+    }
+
+    // Get the connection state of a gamepad.
+    [[nodiscard]] auto etGamepadConnectionState()
+        -> joystick::connectionState_t {
+        const joystick::connectionState_t l_result =
+            joystick::fromLegacy( SDL_GetGamepadConnectionState( _data ) );
+
+        assert( l_result != joystick::connectionState_t::invalid );
+
+        return ( l_result );
+    }
+
+    // Get the battery state of a gamepad.
+    //
+    // You should never take a battery status as absolute truth. Batteries
+    // (especially failing batteries) are delicate hardware, and the values
+    // reported here are best estimates based on what that hardware reports.
+    // It's not uncommon for older batteries to lose stored power much faster
+    // than it reports, or completely drain when reporting it has 20 percent
+    // left, etc.
+    //
+    // The percentage of battery life left, between 0 and 100.
+    // This will be filled in with -1 we can't determine a value or there is no
+    // battery.
+    [[nodiscard]] auto powerInfo() -> std::pair< power::state_t, ssize_t > {
+        ssize_t l_percent = 0;
+
+        const power::state_t l_result =
+            power::fromLegacy( SDL_GetGamepadPowerInfo(
+                _data, std::bit_cast< int* >( &l_percent ) ) );
+
+        assert( l_result != power::state_t::error );
+
+        return { l_result, l_percent };
+    }
+
+    // Check if a gamepad has been opened and is currently connected.
+    [[nodiscard]] auto isConnected() -> bool {
+        return ( SDL_GamepadConnected( _data ) );
+    }
+
+    // Get the underlying joystick from a gamepad.
+    //
+    // This function will give you a SDL_Joystick object, which allows you to
+    // use the SDL_Joystick functions with a SDL_Gamepad object. This would be
+    // useful for getting a joystick's position at any given time, even if it
+    // hasn't moved (moving it would produce an event, which would have the
+    // axis' value).
+    //
+    // The pointer returned is owned by the SDL_Gamepad. You should not call
+    // SDL_CloseJoystick() on it, for example, since doing so will likely cause
+    // SDL to crash.
+    [[nodiscard]] auto joystick() -> joystick::joystick_t {
+        return ( SDL_GetGamepadJoystick( _data ) );
+    }
+
+    // Get the SDL joystick layer bindings for a gamepad.
+    [[nodiscard]] auto bindings() -> std::vector< binding_t >;
+
+    // Query whether a gamepad has a given axis.
+    //
+    // This merely reports whether the gamepad's mapping defined this axis, as
+    // that is all the information SDL has about the physical device.
+    [[nodiscard]] auto hasAxis( axis_t _axis ) -> bool {
+        return ( SDL_GamepadHasAxis( _data, toLegacy( _axis ) ) );
+    }
+
+    // Get the current state of an axis control on a gamepad.
+    //
+    // The axis indices start at index 0.
+    //
+    // For thumbsticks, the state is a value ranging from -32768 (up/left) to
+    // 32767 (down/right).
+    //
+    // Triggers range from 0 when released to 32767 when fully pressed, and
+    // never return a negative value. Note that this differs from the value
+    // reported by the lower-level SDL_GetJoystickAxis(), which normally uses
+    // the full range.
+    //
+    // Note that for invalid gamepads or axes, this will return 0. Zero is also
+    // a valid value in normal operation; usually it means a centered axis.
+    [[nodiscard]] auto axis( axis_t _axis ) -> int16_t {
+        return ( SDL_GetGamepadAxis( _data, toLegacy( _axis ) ) );
+    }
+
+    // Query whether a gamepad has a given button.
+    //
+    // This merely reports whether the gamepad's mapping defined this button, as
+    // that is all the information SDL has about the physical device.
+    [[nodiscard]] auto hasButton( button_t _button ) -> bool {
+        return ( SDL_GamepadHasButton( _data, toLegacy( _button ) ) );
+    }
+
+    // Get the current state of a button on a gamepad.
+    [[nodiscard]] auto isPressed( button_t _button ) -> bool {
+        return ( SDL_GetGamepadButton( _data, toLegacy( _button ) ) );
+    }
+
+    // Get the label of a button on a gamepad.
+    [[nodiscard]] auto buttonLabel( button_t _button ) -> buttonLabel_t {
+        return ( fromLegacy(
+            SDL_GetGamepadButtonLabel( _data, toLegacy( _button ) ) ) );
+    }
+
+    // Get the number of touchpads on a gamepad.
+    [[nodiscard]] auto touchpadsAmount() -> ssize_t {
+        return ( SDL_GetNumGamepadTouchpads( _data ) );
+    }
+
+    // Get the number of supported simultaneous fingers on a touchpad on a game
+    // gamepad.
+    [[nodiscard]] auto touchpadFingers( ssize_t _touchpad ) -> ssize_t {
+        return ( SDL_GetNumGamepadTouchpadFingers( _data, _touchpad ) );
+    }
+
+    // Get the current state of a finger on a touchpad on a gamepad.
+    //
+    // Position, normalized 0 to 1, with the origin in the upper left.
+    [[nodiscard]] auto touchpadFinger( ssize_t _touchpad, ssize_t _finger )
+        -> std::tuple< bool, point_t< float >, float > {
+        bool l_isDown = false;
+        point_t< float > l_point;
+        float l_pressure = NAN;
+
+        const bool l_result =
+            SDL_GetGamepadTouchpadFinger( _data, _touchpad, _finger, &l_isDown,
+                                          &l_point.x, &l_point.y, &l_pressure );
+
+        assert( l_result );
+
+        return { l_isDown, l_point, l_pressure };
+    }
+
+    // Return whether a gamepad has a particular sensor.
+    [[nodiscard]] auto hasSensor( sensors::type_t _type ) -> bool {
+        return ( SDL_GamepadHasSensor( _data, sensors::toLegacy( _type ) ) );
+    }
+
+    // Set whether data reporting for a gamepad sensor is enabled.
+    void sensorToggle( sensors::type_t _type, bool _isEnabled ) {
+        const bool l_result = SDL_SetGamepadSensorEnabled(
+            _data, sensors::toLegacy( _type ), _isEnabled );
+
+        assert( l_result );
+    }
+
+    // Query whether sensor data reporting is enabled for a gamepad.
+    [[nodiscard]] auto isEnabled( sensors::type_t _type ) -> bool {
+        return (
+            SDL_GamepadSensorEnabled( _data, sensors::toLegacy( _type ) ) );
+    }
+
+    // Get the data rate (number of events per second) of a gamepad sensor.
+    //
+    // 0.0f if the data rate is not available.
+    [[nodiscard]] auto sensorDataRate( sensors::type_t _type ) -> float {
+        return SDL_GetGamepadSensorDataRate( _data,
+                                             sensors::toLegacy( _type ) );
+    }
+
+    // Get the current state of a gamepad sensor.
+    //
+    // The number of values and interpretation of the data is sensor dependent.
+    // See SDL_sensor.h for the details for each type of sensor.
+    //
+    // The number of values to write to data.
+    template < size_t N >
+        requires( N > 0 )
+    [[nodiscard]] auto sensorData( sensors::type_t _type )
+        -> std::array< float, N > {
+        std::array< float, N > l_data{};
+
+        const bool l_result = SDL_GetGamepadSensorData(
+            _data, sensors::toLegacy( _type ), l_data.data(), l_data.size() );
+
+        assert( l_result );
+
+        return ( l_data );
+    }
+
+    // Start a rumble effect on a gamepad.
+    //
+    // Each call to this function cancels any previous rumble effect, and
+    // calling it with 0 intensity stops any rumbling.
+    //
+    // This function requires you to process SDL events or call
+    // SDL_UpdateJoysticks() to update rumble state.
+    //
+    // The intensity of the low frequency (left) rumble motor, from 0 to 0xFFFF.
+    //
+    // The intensity of the high frequency (right) rumble motor, from 0 to
+    // 0xFFFF.
+    //
+    // The duration of the rumble effect, in milliseconds.
+    void rumble( uint16_t _lowFrequencyRumble,
+                 uint16_t _highFrequencyRumble,
+                 std::chrono::milliseconds _duration ) {
+        const bool l_result =
+            SDL_RumbleGamepad( _data, _lowFrequencyRumble, _highFrequencyRumble,
+                               _duration.count() );
+
+        assert( l_result );
+    }
+
+    // Start a rumble effect in the gamepad's triggers.
+    //
+    // Each call to this function cancels any previous trigger rumble effect,
+    // and calling it with 0 intensity stops any rumbling.
+    //
+    // Note that this is rumbling of the _triggers_ and not the gamepad as a
+    // whole. This is currently only supported on Xbox One gamepads. If you want
+    // the (more common) whole-gamepad rumble, use SDL_RumbleGamepad() instead.
+    //
+    // This function requires you to process SDL events or call
+    // SDL_UpdateJoysticks() to update rumble state.
+    //
+    // The intensity of the left trigger rumble motor, from 0 to 0xFFFF.
+    //
+    // The intensity of the right trigger rumble motor, from 0 to 0xFFFF.
+    //
+    // The duration of the rumble effect, in milliseconds.
+    void rumbleTriggers( uint16_t _leftRumble,
+                         uint16_t _rightRumble,
+                         std::chrono::milliseconds _duration ) {
+        const bool l_result = SDL_RumbleGamepadTriggers(
+            _data, _leftRumble, _rightRumble, _duration.count() );
+
+        assert( l_result );
+    }
+
+    // Update a gamepad's LED color.
+    //
+    // An example of a joystick LED is the light on the back of a PlayStation
+    // 4's DualShock 4 controller.
+    //
+    // For gamepads with a single color LED, the maximum of the RGB values will
+    // be used as the LED brightness.
+    //
+    // Alpha is ignored.
+    void LED( color_t _color ) {
+        const bool l_result =
+            SDL_SetGamepadLED( _data, _color.red, _color.green, _color.blue );
+
+        assert( l_result );
+    }
+
+    // Send a gamepad specific effect packet.
+    void effect( std::span< const std::byte > _effect ) {
+        SDL_SendGamepadEffect( _data, _effect.data(), _effect.size() );
+    }
+
+    // Close a gamepad previously opened with SDL_OpenGamepad().
+    void close() { SDL_CloseGamepad( _data ); }
+
+    struct appleSfSymbols {
+        // Return the sfSymbolsName for a given button on a gamepad on Apple
+        // platforms.
+        [[nodiscard]] auto name( const gamepad& _gamepad, button_t _button )
+            -> std::string_view {
+            return {
+                gsl::make_not_null( SDL_GetGamepadAppleSFSymbolsNameForButton(
+                    _gamepad, toLegacy( _button ) ) ) };
+        }
+
+        // Return the sfSymbolsName for a given axis on a gamepad on Apple
+        // platforms.
+        [[nodiscard]] auto name( const gamepad& _gamepad, axis_t _axis )
+            -> std::string_view {
+            return {
+                gsl::make_not_null( SDL_GetGamepadAppleSFSymbolsNameForAxis(
+                    _gamepad, toLegacy( _axis ) ) ) };
+        }
+    };
+
+    friend struct appleSfSymbols;
+
+    // Variables
+private:
+    gsl::not_null< native_t > _data;
+};
+
 // Add support for gamepads that SDL is unaware of or change the binding of an
 // existing gamepad.
 //
@@ -393,11 +870,6 @@ inline void reloadMappings() {
 
 // Get the gamepad mapping string for a given GUID.
 [[nodiscard]] auto mapping( GUID_t _GUID ) -> std::string;
-
-// Get the current mapping of a gamepad.
-//
-// Details about mappings are discussed with SDL_AddGamepadMapping().
-[[nodiscard]] auto mapping( gamepad_t _gamepad ) -> std::string;
 
 // Set the current mapping of a joystick or gamepad.
 //
@@ -521,244 +993,6 @@ inline void mapping(
 // This can be called before any gamepads are opened.
 [[nodiscard]] auto mapping( joystick::id_t _id ) -> std::string;
 
-// Open a gamepad for use.
-[[nodiscard]] inline auto open( joystick::id_t _id ) -> gamepad_t {
-    return ( SDL_OpenGamepad( _id ) );
-}
-
-// Get the SDL_Gamepad associated with a joystick instance ID, if it has
-// been opened.
-[[nodiscard]] inline auto get( joystick::id_t _id ) -> gamepad_t {
-    return SDL_GetGamepadFromID( _id );
-}
-
-// Get the SDL_Gamepad associated with a player index.
-[[nodiscard]] inline auto get( size_t _playerIndex ) -> gamepad_t {
-    return SDL_GetGamepadFromPlayerIndex( _playerIndex );
-}
-
-// Get the properties associated with an opened gamepad.
-//
-// These properties are shared with the underlying joystick object.
-//
-// The following read-only properties are provided by SDL:
-//
-// - `SDL_PROP_GAMEPAD_CAP_MONO_LED_BOOLEAN`: true if this gamepad has an
-// LED that has adjustable brightness
-// - `SDL_PROP_GAMEPAD_CAP_RGB_LED_BOOLEAN`: true if this gamepad has an LED
-//   that has adjustable color
-// - `SDL_PROP_GAMEPAD_CAP_PLAYER_LED_BOOLEAN`: true if this gamepad has a
-//   player LED
-// - `SDL_PROP_GAMEPAD_CAP_RUMBLE_BOOLEAN`: true if this gamepad has
-//   left/right rumble
-// - `SDL_PROP_GAMEPAD_CAP_TRIGGER_RUMBLE_BOOLEAN`: true if this gamepad has
-//   simple trigger rumble
-[[nodiscard]] inline auto properties( gamepad_t _gamepad ) -> properties::id_t {
-    const properties::id_t l_result = SDL_GetGamepadProperties( _gamepad );
-
-    assert( l_result );
-
-    return ( l_result );
-}
-
-// TODO: Rename
-namespace cap {
-
-constexpr auto g_monoLEDBoolean = joystick::cap::g_monoLEDBoolean;
-constexpr auto g_LEDRGBBoolean = joystick::cap::g_LEDRGBBoolean;
-constexpr auto g_playerLEDBoolean = joystick::cap::g_playerLEDBoolean;
-constexpr auto g_rumbleBoolean = joystick::cap::g_rumbleBoolean;
-constexpr auto g_rumbleTriggerBoolean = joystick::cap::g_rumbleTriggerBoolean;
-
-} // namespace cap
-
-// Get the instance ID of an opened gamepad.
-[[nodiscard]] inline auto id( gamepad_t _gamepad ) -> joystick::id_t {
-    const joystick::id_t l_result = SDL_GetGamepadID( _gamepad );
-
-    assert( l_result );
-
-    return ( l_result );
-}
-
-// Get the implementation-dependent name for an opened gamepad.
-[[nodiscard]] inline auto name( gamepad_t _gamepad ) -> std::string_view {
-    return { gsl::make_not_null( SDL_GetGamepadName( _gamepad ) ) };
-}
-
-// Get the implementation-dependent path for an opened gamepad.
-[[nodiscard]] inline auto path( gamepad_t _gamepad ) -> std::string_view {
-    return { gsl::make_not_null( SDL_GetGamepadPath( _gamepad ) ) };
-}
-
-// Get the type of an opened gamepad.
-[[nodiscard]] inline auto type( gamepad_t _gamepad ) -> type_t {
-    const type_t l_result = fromLegacy( SDL_GetGamepadType( _gamepad ) );
-
-    assert( l_result != type_t::unknown );
-
-    return ( l_result );
-}
-
-// Get the type of an opened gamepad, ignoring any mapping override.
-[[nodiscard]] inline auto realType( gamepad_t _gamepad ) -> type_t {
-    const type_t l_result = fromLegacy( SDL_GetRealGamepadType( _gamepad ) );
-
-    assert( l_result != type_t::unknown );
-
-    return ( l_result );
-}
-
-// Get the player index of an opened gamepad.
-//
-// For XInput gamepads this returns the XInput user index.
-//
-// -1 if it's not available.
-[[nodiscard]] inline auto playerIndex( gamepad_t _gamepad ) -> size_t {
-    const ssize_t l_result = SDL_GetGamepadPlayerIndex( _gamepad );
-
-    assert( l_result );
-
-    return ( l_result );
-}
-
-// Set the player index of an opened gamepad.
-//
-// NULL to clear the player index and turn off player LEDs.
-inline void playerIndex( gamepad_t _gamepad,
-                         std::optional< size_t > _playerIndex = std::nullopt ) {
-    bool l_result = false;
-
-    if ( _playerIndex ) {
-        l_result = SDL_SetGamepadPlayerIndex( _gamepad, _playerIndex.value() );
-
-    } else {
-        l_result = SDL_SetGamepadPlayerIndex( _gamepad, -1 );
-    }
-
-    assert( l_result );
-}
-
-// Get the USB vendor ID of an opened gamepad, if available.
-//
-// If the vendor ID isn't available this function returns 0.
-//
-// 0 if unavailable.
-[[nodiscard]] inline auto vendor( gamepad_t _gamepad ) -> uint16_t {
-    return ( SDL_GetGamepadVendor( _gamepad ) );
-}
-
-// Get the USB product ID of an opened gamepad, if available.
-//
-// If the product ID isn't available this function returns 0.
-//
-// 0 if unavailable.
-[[nodiscard]] inline auto product( gamepad_t _gamepad ) -> uint16_t {
-    return ( SDL_GetGamepadProduct( _gamepad ) );
-}
-
-// Get the product version of an opened gamepad, if available.
-//
-// If the product version isn't available this function returns 0.
-//
-// 0 if unavailable.
-[[nodiscard]] inline auto etGamepadProductVersion( gamepad_t _gamepad )
-    -> uint16_t {
-    return ( SDL_GetGamepadProductVersion( _gamepad ) );
-}
-
-// Get the firmware version of an opened gamepad, if available.
-//
-// If the firmware version isn't available this function returns 0.
-//
-// 0 if unavailable.
-[[nodiscard]] inline auto firmwareVersion( gamepad_t _gamepad ) -> uint16_t {
-    return ( SDL_GetGamepadFirmwareVersion( _gamepad ) );
-}
-
-// Get the serial number of an opened gamepad, if available.
-//
-// Returns the serial number of the gamepad, or NULL if it is not available.
-//
-// NULL if unavailable.
-[[nodiscard]] inline auto serial( gamepad_t _gamepad )
-    -> std::optional< std::string_view > {
-    const char* l_result = SDL_GetGamepadSerial( _gamepad );
-
-    if ( l_result ) {
-        return ( l_result );
-
-    } else {
-        return ( std::nullopt );
-    }
-}
-
-// Get the Steam Input handle of an opened gamepad, if available.
-//
-// Returns an InputHandle_t for the gamepad that can be used with Steam
-// Input API: https://partner.steamgames.com/doc/api/ISteamInput
-//
-// 0 if unavailable.
-[[nodiscard]] inline auto steamHandle( gamepad_t _gamepad ) -> uint64_t {
-    return ( SDL_GetGamepadSteamHandle( _gamepad ) );
-}
-
-// Get the connection state of a gamepad.
-[[nodiscard]] inline auto etGamepadConnectionState( gamepad_t _gamepad )
-    -> joystick::connectionState_t {
-    const joystick::connectionState_t l_result =
-        joystick::fromLegacy( SDL_GetGamepadConnectionState( _gamepad ) );
-
-    assert( l_result != joystick::connectionState_t::invalid );
-
-    return ( l_result );
-}
-
-// Get the battery state of a gamepad.
-//
-// You should never take a battery status as absolute truth. Batteries
-// (especially failing batteries) are delicate hardware, and the values
-// reported here are best estimates based on what that hardware reports.
-// It's not uncommon for older batteries to lose stored power much faster
-// than it reports, or completely drain when reporting it has 20 percent
-// left, etc.
-//
-// The percentage of battery life left, between 0 and 100.
-// This will be filled in with -1 we can't determine a value or there is no
-// battery.
-[[nodiscard]] inline auto powerInfo( gamepad_t _gamepad )
-    -> std::pair< power::state_t, ssize_t > {
-    ssize_t l_percent = 0;
-
-    const power::state_t l_result = power::fromLegacy( SDL_GetGamepadPowerInfo(
-        _gamepad, std::bit_cast< int* >( &l_percent ) ) );
-
-    assert( l_result != power::state_t::error );
-
-    return { l_result, l_percent };
-}
-
-// Check if a gamepad has been opened and is currently connected.
-[[nodiscard]] inline auto isConnected( gamepad_t _gamepad ) -> bool {
-    return ( SDL_GamepadConnected( _gamepad ) );
-}
-
-// Get the underlying joystick from a gamepad.
-//
-// This function will give you a SDL_Joystick object, which allows you to
-// use the SDL_Joystick functions with a SDL_Gamepad object. This would be
-// useful for getting a joystick's position at any given time, even if it
-// hasn't moved (moving it would produce an event, which would have the
-// axis' value).
-//
-// The pointer returned is owned by the SDL_Gamepad. You should not call
-// SDL_CloseJoystick() on it, for example, since doing so will likely cause
-// SDL to crash.
-[[nodiscard]] inline auto joystick( gamepad_t _gamepad )
-    -> joystick::joystick_t {
-    return ( SDL_GetGamepadJoystick( _gamepad ) );
-}
-
 // Set the state of gamepad event processing.
 //
 // If gamepad events are disabled, you must call SDL_UpdateGamepads()
@@ -776,9 +1010,6 @@ inline void eventsToggle( bool _isEnabled ) {
 [[nodiscard]] inline auto areEventsEnabled() -> bool {
     return ( SDL_GamepadEventsEnabled() );
 }
-
-// Get the SDL joystick layer bindings for a gamepad.
-[[nodiscard]] auto bindings( gamepad_t _gamepad ) -> std::vector< binding_t >;
 
 // Manually pump gamepad updates if not using the loop.
 //
@@ -846,32 +1077,6 @@ inline void update() {
         SDL_GetGamepadStringForAxis( toLegacy( _axis ) ) ) };
 }
 
-// Query whether a gamepad has a given axis.
-//
-// This merely reports whether the gamepad's mapping defined this axis, as
-// that is all the information SDL has about the physical device.
-[[nodiscard]] inline auto hasAxis( gamepad_t _gamepad, axis_t _axis ) -> bool {
-    return ( SDL_GamepadHasAxis( _gamepad, toLegacy( _axis ) ) );
-}
-
-// Get the current state of an axis control on a gamepad.
-//
-// The axis indices start at index 0.
-//
-// For thumbsticks, the state is a value ranging from -32768 (up/left) to
-// 32767 (down/right).
-//
-// Triggers range from 0 when released to 32767 when fully pressed, and
-// never return a negative value. Note that this differs from the value
-// reported by the lower-level SDL_GetJoystickAxis(), which normally uses
-// the full range.
-//
-// Note that for invalid gamepads or axes, this will return 0. Zero is also
-// a valid value in normal operation; usually it means a centered axis.
-[[nodiscard]] inline auto axis( gamepad_t _gamepad, axis_t _axis ) -> int16_t {
-    return ( SDL_GetGamepadAxis( _gamepad, toLegacy( _axis ) ) );
-}
-
 // Convert a string into an button_t enum.
 //
 // This function is called internally to translate SDL_Gamepad mapping
@@ -895,213 +1100,11 @@ inline void update() {
         SDL_GetGamepadStringForButton( toLegacy( _button ) ) ) };
 }
 
-// Query whether a gamepad has a given button.
-//
-// This merely reports whether the gamepad's mapping defined this button, as
-// that is all the information SDL has about the physical device.
-[[nodiscard]] inline auto hasButton( gamepad_t _gamepad, button_t _button )
-    -> bool {
-    return ( SDL_GamepadHasButton( _gamepad, toLegacy( _button ) ) );
-}
-
-// Get the current state of a button on a gamepad.
-[[nodiscard]] inline auto isPressed( gamepad_t _gamepad, button_t _button )
-    -> bool {
-    return ( SDL_GetGamepadButton( _gamepad, toLegacy( _button ) ) );
-}
-
 // Get the label of a button on a gamepad.
 [[nodiscard]] inline auto butotnLabel( type_t _type, button_t _button )
     -> buttonLabel_t {
     return ( fromLegacy( SDL_GetGamepadButtonLabelForType(
         toLegacy( _type ), toLegacy( _button ) ) ) );
 }
-
-// Get the label of a button on a gamepad.
-[[nodiscard]] inline auto buttonLabel( gamepad_t _gamepad, button_t _button )
-    -> buttonLabel_t {
-    return ( fromLegacy(
-        SDL_GetGamepadButtonLabel( _gamepad, toLegacy( _button ) ) ) );
-}
-
-// Get the number of touchpads on a gamepad.
-[[nodiscard]] inline auto touchpadsAmount( gamepad_t _gamepad ) -> ssize_t {
-    return ( SDL_GetNumGamepadTouchpads( _gamepad ) );
-}
-
-// Get the number of supported simultaneous fingers on a touchpad on a game
-// gamepad.
-[[nodiscard]] inline auto touchpadFingers( gamepad_t _gamepad,
-                                           ssize_t _touchpad ) -> ssize_t {
-    return ( SDL_GetNumGamepadTouchpadFingers( _gamepad, _touchpad ) );
-}
-
-// Get the current state of a finger on a touchpad on a gamepad.
-//
-// Position, normalized 0 to 1, with the origin in the upper left.
-[[nodiscard]] inline auto touchpadFinger( gamepad_t _gamepad,
-                                          ssize_t _touchpad,
-                                          ssize_t _finger )
-    -> std::tuple< bool, point_t< float >, float > {
-    bool l_isDown = false;
-    point_t< float > l_point;
-    float l_pressure = NAN;
-
-    const bool l_result =
-        SDL_GetGamepadTouchpadFinger( _gamepad, _touchpad, _finger, &l_isDown,
-                                      &l_point.x, &l_point.y, &l_pressure );
-
-    assert( l_result );
-
-    return { l_isDown, l_point, l_pressure };
-}
-
-// Return whether a gamepad has a particular sensor.
-[[nodiscard]] inline auto hasSensor( gamepad_t _gamepad, sensors::type_t _type )
-    -> bool {
-    return ( SDL_GamepadHasSensor( _gamepad, sensors::toLegacy( _type ) ) );
-}
-
-// Set whether data reporting for a gamepad sensor is enabled.
-inline void sensorToggle( gamepad_t _gamepad,
-                          sensors::type_t _type,
-                          bool _isEnabled ) {
-    const bool l_result = SDL_SetGamepadSensorEnabled(
-        _gamepad, sensors::toLegacy( _type ), _isEnabled );
-
-    assert( l_result );
-}
-
-// Query whether sensor data reporting is enabled for a gamepad.
-[[nodiscard]] inline auto isEnabled( gamepad_t _gamepad, sensors::type_t _type )
-    -> bool {
-    return ( SDL_GamepadSensorEnabled( _gamepad, sensors::toLegacy( _type ) ) );
-}
-
-// Get the data rate (number of events per second) of a gamepad sensor.
-//
-// 0.0f if the data rate is not available.
-[[nodiscard]] inline auto sensorDataRate( gamepad_t _gamepad,
-                                          sensors::type_t _type ) -> float {
-    return SDL_GetGamepadSensorDataRate( _gamepad, sensors::toLegacy( _type ) );
-}
-
-// Get the current state of a gamepad sensor.
-//
-// The number of values and interpretation of the data is sensor dependent.
-// See SDL_sensor.h for the details for each type of sensor.
-//
-// The number of values to write to data.
-template < size_t N >
-    requires( N > 0 )
-[[nodiscard]] inline auto sensorData( gamepad_t _gamepad,
-                                      sensors::type_t _type )
-    -> std::array< float, N > {
-    std::array< float, N > l_data{};
-
-    const bool l_result = SDL_GetGamepadSensorData(
-        _gamepad, sensors::toLegacy( _type ), l_data.data(), l_data.size() );
-
-    assert( l_result );
-
-    return ( l_data );
-}
-
-// Start a rumble effect on a gamepad.
-//
-// Each call to this function cancels any previous rumble effect, and
-// calling it with 0 intensity stops any rumbling.
-//
-// This function requires you to process SDL events or call
-// SDL_UpdateJoysticks() to update rumble state.
-//
-// The intensity of the low frequency (left) rumble motor, from 0 to 0xFFFF.
-//
-// The intensity of the high frequency (right) rumble motor, from 0 to 0xFFFF.
-//
-// The duration of the rumble effect, in milliseconds.
-inline void rumble( gamepad_t _gamepad,
-                    uint16_t _lowFrequencyRumble,
-                    uint16_t _highFrequencyRumble,
-                    std::chrono::milliseconds _duration ) {
-    const bool l_result =
-        SDL_RumbleGamepad( _gamepad, _lowFrequencyRumble, _highFrequencyRumble,
-                           _duration.count() );
-
-    assert( l_result );
-}
-
-// Start a rumble effect in the gamepad's triggers.
-//
-// Each call to this function cancels any previous trigger rumble effect,
-// and calling it with 0 intensity stops any rumbling.
-//
-// Note that this is rumbling of the _triggers_ and not the gamepad as a
-// whole. This is currently only supported on Xbox One gamepads. If you want
-// the (more common) whole-gamepad rumble, use SDL_RumbleGamepad() instead.
-//
-// This function requires you to process SDL events or call
-// SDL_UpdateJoysticks() to update rumble state.
-//
-// The intensity of the left trigger rumble motor, from 0 to 0xFFFF.
-//
-// The intensity of the right trigger rumble motor, from 0 to 0xFFFF.
-//
-// The duration of the rumble effect, in milliseconds.
-inline void rumbleTriggers( gamepad_t _gamepad,
-                            uint16_t _leftRumble,
-                            uint16_t _rightRumble,
-                            std::chrono::milliseconds _duration ) {
-    const bool l_result = SDL_RumbleGamepadTriggers(
-        _gamepad, _leftRumble, _rightRumble, _duration.count() );
-
-    assert( l_result );
-}
-
-// Update a gamepad's LED color.
-//
-// An example of a joystick LED is the light on the back of a PlayStation
-// 4's DualShock 4 controller.
-//
-// For gamepads with a single color LED, the maximum of the RGB values will
-// be used as the LED brightness.
-//
-// Alpha is ignored.
-inline void LED( gamepad_t _gamepad, color_t _color ) {
-    const bool l_result =
-        SDL_SetGamepadLED( _gamepad, _color.red, _color.green, _color.blue );
-
-    assert( l_result );
-}
-
-// Send a gamepad specific effect packet.
-inline void effect( gamepad_t _gamepad, std::span< const std::byte > _data ) {
-    SDL_SendGamepadEffect( _gamepad, _data.data(), _data.size() );
-}
-
-// Close a gamepad previously opened with SDL_OpenGamepad().
-inline void close( gamepad_t _gamepad ) {
-    SDL_CloseGamepad( _gamepad );
-}
-
-namespace apple_sf_symbols {
-
-// Return the sfSymbolsName for a given button on a gamepad on Apple
-// platforms.
-[[nodiscard]] inline auto name( gamepad_t _gamepad, button_t _button )
-    -> std::string_view {
-    return { gsl::make_not_null( SDL_GetGamepadAppleSFSymbolsNameForButton(
-        _gamepad, toLegacy( _button ) ) ) };
-}
-
-// Return the sfSymbolsName for a given axis on a gamepad on Apple
-// platforms.
-[[nodiscard]] inline auto name( gamepad_t _gamepad, axis_t _axis )
-    -> std::string_view {
-    return { gsl::make_not_null( SDL_GetGamepadAppleSFSymbolsNameForAxis(
-        _gamepad, toLegacy( _axis ) ) ) };
-}
-
-} // namespace apple_sf_symbols
 
 } // namespace slickdl::gamepad
