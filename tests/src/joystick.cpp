@@ -65,7 +65,8 @@ TEST_F( joystickTest, UpdateAndHasAny ) {
 TEST_F( joystickTest, IsVirtualWithInvalidId ) {
     // Using an improbable id should be safe and return false
     EXPECT_NO_FATAL_FAILURE( {
-        bool l_v = isVirtual( static_cast< id_t >( 0xDEADBEEF ) );
+        slickdl::joystick::id_t l_id = 0xDEADBEEF;
+        bool l_v = l_id.isVirtual();
         ( void )l_v;
     } );
 }
