@@ -100,7 +100,9 @@ using id_t = struct id {
 
     id() = default;
 
-    id( uint32_t _data ) : _data( _data ) {}
+    constexpr id( const native_t& _other ) : _data( _other ) {
+        assert( _data );
+    }
 
     id( const id& ) = default;
     id( id&& ) = default;
@@ -108,7 +110,9 @@ using id_t = struct id {
     template < typename OtherType >
         requires std::is_convertible_v< OtherType, native_t >
     constexpr id( OtherType&& _other )
-        : _data( std::forward< OtherType >( _other ) ) {}
+        : _data( std::forward< OtherType >( _other ) ) {
+        assert( _data );
+    }
 
     ~id() = default;
     auto operator=( const id& ) -> id& = default;

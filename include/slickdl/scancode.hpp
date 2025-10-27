@@ -8,7 +8,8 @@
 
 namespace slickdl {
 
-using scancode_t = enum class scancode : uint16_t {
+// NOTE: Needs to be ::keyboard::code size
+using scancode_t = enum class scancode : uint32_t {
     unknown = 0,
 
     //  These values are from usage page 0x07 (USB keyboard page)

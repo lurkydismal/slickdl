@@ -311,9 +311,9 @@ using gamepad_t = struct gamepad {
     //
     // Get the SDL_Gamepad associated with a joystick instance ID, if it has
     // been opened.
-    gamepad( joystick::id_t _id, bool _isOpened = false )
-        : _data( ( _isOpened ) ? ( SDL_OpenGamepad( _id ) )
-                               : ( SDL_GetGamepadFromID( _id ) ) ) {}
+    gamepad( joystick::id_t _id, bool _isOpened )
+        : _data( ( _isOpened ) ? ( SDL_GetGamepadFromID( _id ) )
+                               : ( SDL_OpenGamepad( _id ) ) ) {}
 
     // Get the SDL_Gamepad associated with a player index.
     gamepad( size_t _playerIndex )

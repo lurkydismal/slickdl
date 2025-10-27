@@ -202,12 +202,13 @@ struct box {
         result->h = Amax - Amin;
 #endif
 
-            const box l_composite = composite( _box );
+            const auto l_composite = composite( _box );
 
-            if ( ( l_composite ) &&
-                 ( ( l_composite.x < l_composite.width ) &&
-                   ( l_composite.y < l_composite.height ) ) ) {
-                l_returnValue = l_composite;
+            if ( const auto& l_temp = l_composite.value() ) {
+                if ( ( l_temp.x < l_temp.width ) &&
+                     ( l_temp.y < l_temp.height ) ) {
+                    l_returnValue = l_temp;
+                }
             }
         } while ( false );
 
@@ -284,22 +285,28 @@ struct box {
     // TODO :Improve return
     [[nodiscard]] constexpr auto encloses(
         std::span< const point_t< T > > _points,
-        std::optional< const box >& _clippingZone = std::nullopt ) const
+        const std::optional< box >& _clippingZone = std::nullopt ) const
         -> auto {
-        if ( _clippingZone.empty() ) {
-            return ( std::views::empty< const box > );
-        }
+        clippingZone_t l_clippingZone;
 
-        clippingZone_t l_clippingZone = {
-            _clippingZone.x,
-            _clippingZone.y,
-            _right( _clippingZone ),  // - ENCLOSEPOINTS_EPSILON
-            _bottom( _clippingZone ), // - ENCLOSEPOINTS_EPSILON
-        };
+        if ( !_clippingZone ) {
+            const auto& l_temp = _clippingZone.value();
+
+            l_clippingZone = {
+                l_temp.x,
+                l_temp.y,
+                _right( l_temp ),  // - ENCLOSEPOINTS_EPSILON
+                _bottom( l_temp ), // - ENCLOSEPOINTS_EPSILON
+            };
+        }
 
         return (
             _points |
             std::views::filter( [ & ]( const point_t< T >& _point ) -> bool {
+                if ( l_clippingZone.empty() ) {
+                    return ( false );
+                }
+
                 return ( inRange2D( _point, l_clippingZone ) );
             } ) );
     }
@@ -307,7 +314,7 @@ struct box {
     // Calculate a minimal box enclosing a set of points
     [[nodiscard]] constexpr auto enclosing(
         std::span< const point_t< T > > _points,
-        std::optional< const box >& _clippingZone = std::nullopt ) const
+        const std::optional< box >& _clippingZone = std::nullopt ) const
         -> std::optional< box > {
         std::optional< box > l_returnValue = std::nullopt;
 
@@ -317,7 +324,7 @@ struct box {
                 break;
             }
 
-            constexpr auto l_tryExpandClippingZone =
+            auto l_tryExpandClippingZone =
                 []( const clippingZone_t& _clippingZone,
                     const point_t< T >& _point ) -> clippingZone_t {
                 return ( clippingZone_t{
@@ -328,17 +335,17 @@ struct box {
                 } );
             };
 
-            std::optional< clippingZone_t > l_clippingZone;
+            clippingZone_t l_clippingZone;
 
             if ( _clippingZone ) {
                 l_clippingZone = std::ranges::fold_left(
-                    encloses( _points, _clippingZone ),
-                    std::optional< clippingZone_t >{},
-                    []( const std::optional< clippingZone_t >& _accumulator,
+                    encloses( _points, _clippingZone ), clippingZone_t{},
+                    [ &l_tryExpandClippingZone ](
+                        const clippingZone_t& _accumulator,
                         const point_t< T >& _point ) -> clippingZone_t {
                         clippingZone_t l_returnValue;
 
-                        if ( !_accumulator ) {
+                        if ( _accumulator.empty() ) [[unlikely]] {
                             // First point initializes the box
                             l_returnValue = {
                                 _point.x,
@@ -371,15 +378,15 @@ struct box {
                                             l_tryExpandClippingZone );
             }
 
-            if ( l_clippingZone ) {
-                l_returnValue.x = l_clippingZone.minX;
-                l_returnValue.y = l_clippingZone.minY;
-                l_returnValue.w =
+            if ( !l_clippingZone.empty() ) {
+                l_returnValue = box< T >{
+                    l_clippingZone.minX,
+                    l_clippingZone.minY,
                     ( l_clippingZone.maxX -
-                      l_clippingZone.minX ); // + ENCLOSEPOINTS_EPSILON
-                l_returnValue.h =
+                      l_clippingZone.minX ), // + ENCLOSEPOINTS_EPSILON
                     ( l_clippingZone.maxY -
-                      l_clippingZone.minY ); // + ENCLOSEPOINTS_EPSILON
+                      l_clippingZone.minY ), // + ENCLOSEPOINTS_EPSILON
+                };
             }
         } while ( false );
 
@@ -398,13 +405,13 @@ struct box {
 
         using bigT_t = isIntOrFloat_t< T, int64_t, double >;
 
-        const size_t l_enclosePointsEpsilon =
+        constexpr uint8_t l_enclosePointsEpsilon =
             ( ( std::is_integral_v< T > ) ? ( 1 ) : ( 0 ) );
 
-        const size_t l_bottom = 1;
-        const size_t l_top = 2;
-        const size_t l_left = 4;
-        const size_t l_right = 8;
+        const ssize_t l_bottom = 1;
+        const ssize_t l_top = 2;
+        const ssize_t l_left = 4;
+        const ssize_t l_right = 8;
 
         // Cohen-Sutherland algorithm for line clipping
         auto l_computeOutCode = [ & ]( T _x, T _y ) -> size_t {
@@ -447,7 +454,7 @@ struct box {
              ( l_line.end.x >= l_rectx1 ) && ( l_line.end.x <= l_rectx2 ) &&
              ( l_line.start.y >= l_recty1 ) && ( l_line.start.y <= l_recty2 ) &&
              ( l_line.end.y >= l_recty1 ) && ( l_line.end.y <= l_recty2 ) ) {
-            return ( true );
+            return ( _line );
         }
 
         // Check to see if entire line is to one side of rect
@@ -456,7 +463,7 @@ struct box {
              ( ( l_line.start.y < l_recty1 ) && ( l_line.end.y < l_recty1 ) ) ||
              ( ( l_line.start.y > l_recty2 ) &&
                ( l_line.end.y > l_recty2 ) ) ) {
-            return ( false );
+            return ( std::nullopt );
         }
 
         // Horizontal line, easy to clip
@@ -475,7 +482,7 @@ struct box {
                 l_line.end.x = l_rectx2;
             }
 
-            return ( true );
+            return ( _line );
         }
 
         // Vertical line, easy to clip
@@ -494,7 +501,7 @@ struct box {
                 l_line.end.y = l_recty2;
             }
 
-            return ( true );
+            return ( _line );
         }
 
         // More complicated Cohen-Sutherland algorithm
@@ -503,7 +510,7 @@ struct box {
 
         while ( l_outcode1 || l_outcode2 ) {
             if ( l_outcode1 & l_outcode2 ) {
-                return ( false );
+                return ( std::nullopt );
             }
 
             if ( l_outcode1 ) {
@@ -612,10 +619,14 @@ struct box {
     [[nodiscard]] constexpr auto points() const
         -> std::array< point_t< T >, g_pointsAmount > {
         return {
-            x,
-            y,
-            ( x + width ),
-            ( y + height ),
+            point_t< T >{
+                x,
+                y,
+            },
+            point_t< T >{
+                ( x + width ),
+                ( y + height ),
+            },
         };
     }
 
