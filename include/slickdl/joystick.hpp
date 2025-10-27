@@ -126,7 +126,8 @@ using virtualDescription_t = gsl::not_null< SDL_VirtualJoystickDesc* >;
 using virtualDescription_t = struct virtualDescription {
     using native_t = SDL_VirtualJoystickDesc;
 
-    constexpr operator native_t*() const { return ( _data ); }
+    constexpr operator native_t*() { return ( _data ); }
+    constexpr operator const native_t*() const { return ( _data ); }
 
     // Variables
 private:

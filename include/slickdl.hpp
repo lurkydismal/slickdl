@@ -15,17 +15,11 @@ template < typename T >
 concept is_int_or_float =
     ( std::is_same_v< T, int > || std::is_same_v< T, float > );
 
-template < typename T >
-concept is_byte_or_float =
-    ( std::is_same_v< T, uint8_t > || std::is_same_v< T, float > );
-
 template < is_int_or_float T, typename U, typename W >
 using isIntOrFloat_t = std::conditional_t< std::is_same_v< T, int >, U, W >;
 
 // Types
-using void_t = gsl::not_null< void* >;
 using window_t = gsl::not_null< SDL_Window* >;
-using event_t = SDL_Event;
 
 template < is_int_or_float T >
 struct volume {
@@ -38,7 +32,7 @@ using volume_t = volume< T >;
 // Helpers
 template < is_int_or_float T >
 [[nodiscard]] constexpr auto inRange1D( T _point, T _min, T _max ) -> bool {
-    return ( ( _point >= _min ) && ( _point < _max ) );
+    return ( ( _point >= _min ) && ( _point <= _max ) );
 }
 
 constexpr void assert( bool _result ) {

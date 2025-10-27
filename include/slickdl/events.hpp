@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SDL3/SDL_events.h>
-#include <SDL3/SDL_video.h>
 
 #include <bit>
 #include <chrono>
@@ -9,6 +8,7 @@
 #include <type_traits>
 
 #include "slickdl.hpp"
+#include "slickdl/video.hpp"
 
 // Event queue management.
 //
@@ -326,9 +326,9 @@ public:
     SDL_EventType type; /**< SDL_DISPLAYEVENT_* */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_DisplayID displayID; /**< The associated display */
-    int32_t data1;           /**< event dependent data */
-    int32_t data2;           /**< event dependent data */
+    video::display::id_t displayID; /**< The associated display */
+    int32_t data1;                  /**< event dependent data */
+    int32_t data2;                  /**< event dependent data */
 };
 
 // Window state change event data (event.window.*)
@@ -340,9 +340,9 @@ public:
     SDL_EventType type; /**< SDL_EVENT_WINDOW_* */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The associated window */
-    int32_t data1;         /**< event dependent data */
-    int32_t data2;         /**< event dependent data */
+    video::window::id_t windowID; /**< The associated window */
+    int32_t data1;                /**< event dependent data */
+    int32_t data2;                /**< event dependent data */
 };
 
 namespace keyboard {
@@ -375,7 +375,7 @@ public:
     SDL_EventType type; /**< SDL_EVENT_KEY_DOWN or SDL_EVENT_KEY_UP */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with keyboard focus, if any */
+    video::window::id_t windowID; /**< The window with keyboard focus, if any */
     SDL_KeyboardID
         which; /**< The keyboard instance id, or 0 if unknown or virtual */
     SDL_Scancode scancode; /**< SDL physical key code */
@@ -399,8 +399,8 @@ public:
     SDL_EventType type; /**< SDL_EVENT_TEXT_EDITING */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with keyboard focus, if any */
-    const char* text;      /**< The editing text */
+    video::window::id_t windowID; /**< The window with keyboard focus, if any */
+    const char* text;             /**< The editing text */
     int32_t start; /**< The start cursor of selected editing text, or -1 if not
                      set */
     int32_t
@@ -416,7 +416,7 @@ public:
     SDL_EventType type; /**< SDL_EVENT_TEXT_EDITING_CANDIDATES */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with keyboard focus, if any */
+    video::window::id_t windowID; /**< The window with keyboard focus, if any */
     const char* const* candidates; /**< The list of candidates, or NULL if there
                                       are no candidates available */
     int32_t num_candidates;        /**< The number of strings in `candidates` */
@@ -441,8 +441,8 @@ public:
     SDL_EventType type; /**< SDL_EVENT_TEXT_INPUT */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with keyboard focus, if any */
-    const char* text;      /**< The input text, UTF-8 encoded */
+    video::window::id_t windowID; /**< The window with keyboard focus, if any */
+    const char* text;             /**< The input text, UTF-8 encoded */
 };
 
 } // namespace keyboard
@@ -470,14 +470,14 @@ public:
     SDL_EventType type; /**< SDL_EVENT_MOUSE_MOTION */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID;      /**< The window with mouse focus, if any */
-    SDL_MouseID which;          /**< The mouse instance id in relative mode,
-                                   SDL_TOUCH_MOUSEID for touch events, or 0 */
-    SDL_MouseButtonFlags state; /**< The current button state */
-    float x;                    /**< X coordinate, relative to window */
-    float y;                    /**< Y coordinate, relative to window */
-    float xrel;                 /**< The relative motion in the X direction */
-    float yrel;                 /**< The relative motion in the Y direction */
+    video::window::id_t windowID; /**< The window with mouse focus, if any */
+    SDL_MouseID which;            /**< The mouse instance id in relative mode,
+                                     SDL_TOUCH_MOUSEID for touch events, or 0 */
+    SDL_MouseButtonFlags state;   /**< The current button state */
+    float x;                      /**< X coordinate, relative to window */
+    float y;                      /**< Y coordinate, relative to window */
+    float xrel;                   /**< The relative motion in the X direction */
+    float yrel;                   /**< The relative motion in the Y direction */
 };
 
 // Mouse button event structure (event.button.*)
@@ -490,12 +490,12 @@ public:
         type; /**< SDL_EVENT_MOUSE_BUTTON_DOWN or SDL_EVENT_MOUSE_BUTTON_UP */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;     /**< The mouse instance id in relative mode,
-                              SDL_TOUCH_MOUSEID for touch events, or 0 */
-    uint8_t button;        /**< The mouse button index */
-    bool down;             /**< true if the button is pressed */
-    uint8_t clicks;        /**< 1 for single-click, 2 for double-click, etc. */
+    video::window::id_t windowID; /**< The window with mouse focus, if any */
+    SDL_MouseID which;            /**< The mouse instance id in relative mode,
+                                     SDL_TOUCH_MOUSEID for touch events, or 0 */
+    uint8_t button;               /**< The mouse button index */
+    bool down;                    /**< true if the button is pressed */
+    uint8_t clicks; /**< 1 for single-click, 2 for double-click, etc. */
     uint8_t padding;
     float x; /**< X coordinate, relative to window */
     float y; /**< Y coordinate, relative to window */
@@ -510,8 +510,8 @@ public:
     SDL_EventType type; /**< SDL_EVENT_MOUSE_WHEEL */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_MouseID which;     /**< The mouse instance id in relative mode or 0 */
+    video::window::id_t windowID; /**< The window with mouse focus, if any */
+    SDL_MouseID which; /**< The mouse instance id in relative mode or 0 */
     float x; /**< The amount scrolled horizontally, positive to the right and
                 negative to the left */
     float y; /**< The amount scrolled vertically, positive away from the user
@@ -794,7 +794,7 @@ public:
                  SDL_EVENT_RENDER_DEVICE_RESET, SDL_EVENT_RENDER_DEVICE_LOST */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID
+    video::window::id_t
         windowID; /**< The window containing the renderer in question. */
 };
 
@@ -825,12 +825,13 @@ public:
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
     SDL_TouchID touchID; /**< The touch device id */
     SDL_FingerID fingerID;
-    float x;               /**< Normalized in the range 0...1 */
-    float y;               /**< Normalized in the range 0...1 */
-    float dx;              /**< Normalized in the range -1...1 */
-    float dy;              /**< Normalized in the range -1...1 */
-    float pressure;        /**< Normalized in the range 0...1 */
-    SDL_WindowID windowID; /**< The window underneath the finger, if any */
+    float x;        /**< Normalized in the range 0...1 */
+    float y;        /**< Normalized in the range 0...1 */
+    float dx;       /**< Normalized in the range -1...1 */
+    float dy;       /**< Normalized in the range -1...1 */
+    float pressure; /**< Normalized in the range 0...1 */
+    video::window::id_t
+        windowID; /**< The window underneath the finger, if any */
 };
 
 namespace pen {
@@ -855,8 +856,8 @@ public:
         type; /**< SDL_EVENT_PEN_PROXIMITY_IN or SDL_EVENT_PEN_PROXIMITY_OUT */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with pen focus, if any */
-    SDL_PenID which;       /**< The pen instance id */
+    video::window::id_t windowID; /**< The window with pen focus, if any */
+    SDL_PenID which;              /**< The pen instance id */
 };
 
 // Pressure-sensitive pen motion event structure (event.pmotion.*)
@@ -874,8 +875,8 @@ public:
     SDL_EventType type; /**< SDL_EVENT_PEN_MOTION */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with pen focus, if any */
-    SDL_PenID which;       /**< The pen instance id */
+    video::window::id_t windowID; /**< The window with pen focus, if any */
+    SDL_PenID which;              /**< The pen instance id */
     SDL_PenInputFlags
         pen_state; /**< Complete pen input state at time of event */
     float x;       /**< X coordinate, relative to window */
@@ -894,8 +895,8 @@ public:
     SDL_EventType type; /**< SDL_EVENT_PEN_DOWN or SDL_EVENT_PEN_UP */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with pen focus, if any */
-    SDL_PenID which;       /**< The pen instance id */
+    video::window::id_t windowID; /**< The window with pen focus, if any */
+    SDL_PenID which;              /**< The pen instance id */
     SDL_PenInputFlags
         pen_state; /**< Complete pen input state at time of event */
     float x;       /**< X coordinate, relative to window */
@@ -918,8 +919,8 @@ public:
         type; /**< SDL_EVENT_PEN_BUTTON_DOWN or SDL_EVENT_PEN_BUTTON_UP */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with mouse focus, if any */
-    SDL_PenID which;       /**< The pen instance id */
+    video::window::id_t windowID; /**< The window with mouse focus, if any */
+    SDL_PenID which;              /**< The pen instance id */
     SDL_PenInputFlags
         pen_state;  /**< Complete pen input state at time of event */
     float x;        /**< X coordinate, relative to window */
@@ -940,8 +941,8 @@ public:
     SDL_EventType type; /**< SDL_EVENT_PEN_AXIS */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window with pen focus, if any */
-    SDL_PenID which;       /**< The pen instance id */
+    video::window::id_t windowID; /**< The window with pen focus, if any */
+    SDL_PenID which;              /**< The pen instance id */
     SDL_PenInputFlags
         pen_state;    /**< Complete pen input state at time of event */
     float x;          /**< X coordinate, relative to window */
@@ -966,7 +967,7 @@ public:
                            SDL_EVENT_DROP_POSITION */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The window that was dropped on, if any */
+    video::window::id_t windowID; /**< The window that was dropped on, if any */
     float x;            /**< X coordinate, relative to window (not on begin) */
     float y;            /**< Y coordinate, relative to window (not on begin) */
     const char* source; /**< The source app that sent this drop event, or NULL
@@ -1037,10 +1038,10 @@ public:
                     because these are not in the SDL_EventType enumeration */
     uint32_t reserved;
     uint64_t timestamp; /**< In nanoseconds, populated using SDL_GetTicksNS() */
-    SDL_WindowID windowID; /**< The associated window if any */
-    int32_t code;          /**< User defined event code */
-    void* data1;           /**< User defined data pointer */
-    void* data2;           /**< User defined data pointer */
+    video::window::id_t windowID; /**< The associated window if any */
+    int32_t code;                 /**< User defined event code */
+    void* data1;                  /**< User defined data pointer */
+    void* data2;                  /**< User defined data pointer */
 };
 
 // The structure for all events in SDL.

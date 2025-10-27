@@ -2265,8 +2265,8 @@ SDL_Surface* SDL_GetWindowSurface( window_t window );
  */
 bool SDL_SetWindowSurfaceVSync( window_t window, int vsync );
 
-#define SDL_WINDOW_SURFACE_VSYNC_DISABLED 0
-#define SDL_WINDOW_SURFACE_VSYNC_ADAPTIVE ( -1 )
+constexpr int WINDOW_SURFACE_VSYNC_DISABLED = 0;
+constexpr int WINDOW_SURFACE_VSYNC_ADAPTIVE = ( -1 );
 
 /**
  * Get VSync for the window surface.

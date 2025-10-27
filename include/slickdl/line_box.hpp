@@ -78,7 +78,13 @@ struct box {
         return ( std::bit_cast< native_t >( *this ) );
     }
 
-    [[nodiscard]] constexpr operator native_t*() const {
+    [[nodiscard]] constexpr operator native_t*() {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
+    }
+
+    [[nodiscard]] constexpr operator const native_t*() const {
         static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
 
         return ( std::bit_cast< native_t* >( this ) );
@@ -89,7 +95,7 @@ struct box {
     // A box is considered "empty" for this function if
     // its width and/ or height are <= 0
     [[nodiscard]] constexpr auto empty() const -> bool {
-        return ( !height || !height );
+        return ( !width || !height );
     }
 
     // Determine whether a point resides inside a box
@@ -107,7 +113,7 @@ struct box {
     // Determine whether a box resides inside a box
     [[nodiscard]] constexpr auto contains( const box& _box ) const -> bool {
         return ( ( x <= _box.x ) && ( y <= _box.y ) &&
-                 ( _right( *this ) >= _rigth( _box ) ) &&
+                 ( _right( *this ) >= _right( _box ) ) &&
                  ( _bottom( *this ) >= _bottom( _box ) ) );
     }
 
@@ -202,14 +208,27 @@ struct box {
         result->h = Amax - Amin;
 #endif
 
+#if 0
             const auto l_composite = composite( _box );
+#endif
 
+            T l_x1 = std::max( x, _box.x );
+            T l_y1 = std::max( y, _box.y );
+            T l_x2 = std::min( _right( *this ), _right( _box ) );
+            T l_y2 = std::min( _bottom( *this ), _bottom( _box ) );
+            if ( l_x2 > l_x1 && l_y2 > l_y1 ) {
+                l_returnValue =
+                    box{ l_x1, l_y1, ( l_x2 - l_x1 ), ( l_y2 - l_y1 ) };
+            }
+
+#if 0
             if ( const auto& l_temp = l_composite.value() ) {
                 if ( ( l_temp.x < l_temp.width ) &&
                      ( l_temp.y < l_temp.height ) ) {
                     l_returnValue = l_temp;
                 }
             }
+#endif
         } while ( false );
 
         return ( l_returnValue );
@@ -218,21 +237,18 @@ struct box {
     // Calculate the composite of two boxs
     [[nodiscard]] constexpr auto composite( const box& _box ) const
         -> std::optional< box > {
-        std::optional< box > l_returnValue = std::nullopt;
+        // TODO: Maybe improve all IFs
+        if ( empty() && _box.empty() ) {
+            return ( std::nullopt );
+        }
 
-        do {
-            // TODO: Maybe improve all IFs
-            if ( empty() && _box.empty() ) {
-                break;
-            }
+        if ( !empty() && _box.empty() ) {
+            return ( *this );
+        }
 
-            if ( !empty() && _box.empty() ) {
-                l_returnValue = *this;
-            }
-
-            if ( empty() && !_box.empty() ) {
-                l_returnValue = _box;
-            }
+        if ( empty() && !_box.empty() ) {
+            return ( _box );
+        }
 
 #if 0
             // FIX: CHeck if my is the same
@@ -265,20 +281,17 @@ struct box {
             result->h = Amax - Amin;
 #endif
 
-            T l_x1 = std::min( x, _box.x );
-            T l_y1 = std::min( y, _box.y );
-            T l_x2 = std::max( _right( *this ), _right( _box ) );
-            T l_y2 = std::max( _bottom( *this ), _bottom( _box ) );
+        T l_x1 = std::min( x, _box.x );
+        T l_y1 = std::min( y, _box.y );
+        T l_x2 = std::max( _right( *this ), _right( _box ) );
+        T l_y2 = std::max( _bottom( *this ), _bottom( _box ) );
 
-            l_returnValue = {
-                l_x1,
-                l_y1,
-                ( l_x2 - l_x1 ),
-                ( l_y2 - l_y1 ),
-            };
-        } while ( false );
-
-        return ( l_returnValue );
+        return ( box{
+            l_x1,
+            l_y1,
+            ( l_x2 - l_x1 ),
+            ( l_y2 - l_y1 ),
+        } );
     }
 
     // View of points inside a clipping zone
@@ -289,20 +302,47 @@ struct box {
         -> auto {
         clippingZone_t l_clippingZone;
 
-        if ( !_clippingZone ) {
+        if ( _clippingZone ) {
             const auto& l_temp = _clippingZone.value();
 
-            l_clippingZone = {
+            T l_clipMinX = std::max( x, l_temp.x );
+            T l_clipMinY = std::max( y, l_temp.y );
+            T l_clipMaxX = std::min( _right( *this ), _right( l_temp ) );
+            T l_clipMaxY = std::min( _bottom( *this ), _bottom( l_temp ) );
+
+            if ( ( l_clipMaxX <= l_clipMinX ) ||
+                 ( l_clipMaxY <= l_clipMinY ) ) {
+                // no overlap -> empty clipping zone (filter will reject all)
+                l_clippingZone = clippingZone_t{};
+            } else {
+                l_clippingZone = clippingZone_t{
+                    l_clipMinX,
+                    l_clipMinY,
+                    l_clipMaxX,
+                    l_clipMaxY,
+                };
+            }
+
+#if 0
+            l_clippingZone = clippingZone_t{
                 l_temp.x,
                 l_temp.y,
                 _right( l_temp ),  // - ENCLOSEPOINTS_EPSILON
                 _bottom( l_temp ), // - ENCLOSEPOINTS_EPSILON
             };
+#endif
+        } else {
+            l_clippingZone = clippingZone_t{
+                x,
+                y,
+                _right( *this ),
+                _bottom( *this ),
+            };
         }
 
         return (
             _points |
-            std::views::filter( [ & ]( const point_t< T >& _point ) -> bool {
+            std::views::filter( [ = ]( const point_t< T >& _point ) -> bool {
                 if ( l_clippingZone.empty() ) {
                     return ( false );
                 }
@@ -347,7 +387,7 @@ struct box {
 
                         if ( _accumulator.empty() ) [[unlikely]] {
                             // First point initializes the box
-                            l_returnValue = {
+                            l_returnValue = clippingZone_t{
                                 _point.x,
                                 _point.y,
                                 _point.x,
@@ -482,7 +522,7 @@ struct box {
                 l_line.end.x = l_rectx2;
             }
 
-            return ( _line );
+            return ( l_line );
         }
 
         // Vertical line, easy to clip
@@ -501,7 +541,7 @@ struct box {
                 l_line.end.y = l_recty2;
             }
 
-            return ( _line );
+            return ( l_line );
         }
 
         // More complicated Cohen-Sutherland algorithm

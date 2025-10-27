@@ -17,7 +17,7 @@ struct point {
     constexpr point( const native_t& _rectangle )
         : x( _rectangle.x ), y( _rectangle.y ) {}
 
-    [[nodiscard]] constexpr auto operator<=>( const point< T >& _box ) const =
+    [[nodiscard]] constexpr auto operator<=>( const point& _box ) const =
         default;
 
     template < typename U >
@@ -34,7 +34,13 @@ struct point {
         return ( std::bit_cast< native_t >( *this ) );
     }
 
-    [[nodiscard]] constexpr operator native_t*() const {
+    [[nodiscard]] constexpr operator native_t*() {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
+    }
+
+    [[nodiscard]] constexpr operator const native_t*() const {
         static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
 
         return ( std::bit_cast< native_t* >( this ) );

@@ -16,22 +16,23 @@ struct clippingZone {
     constexpr clippingZone( T _minX, T _minY, T _maxX, T _maxY )
         : minX( _minX ), minY( _minY ), maxX( _maxX ), maxY( _maxY ) {}
 
-    constexpr clippingZone( native_t& _rectangle )
-        : minX( _rectangle.x ),
-          minY( _rectangle.y ),
-          maxX( minX + _rectangle.w ),
-          maxY( minY + _rectangle.h ) {}
+    constexpr clippingZone( const native_t& _rectangle )
+        : clippingZone( _rectangle.x,
+                        _rectangle.y,
+                        ( _rectangle.x + _rectangle.w ),
+                        ( _rectangle.y + _rectangle.h ) ) {}
 
     [[nodiscard]] constexpr auto operator<=>( const clippingZone& _box ) const =
         default;
 
-    constexpr auto operator=( native_t& _rectangle ) -> clippingZone& {
+    constexpr auto operator=( const native_t& _rectangle ) -> clippingZone& {
         *this = clippingZone( _rectangle );
 
         return ( *this );
     }
 
     template < typename U >
+        requires( !std::is_same_v< T, U > )
     [[nodiscard]] constexpr operator clippingZone< U >() const {
         return ( clippingZone< U >{
             static_cast< U >( minX ),
@@ -57,8 +58,14 @@ struct clippingZone {
     [[nodiscard]] constexpr auto points() const
         -> std::array< point_t< T >, g_pointsAmount > {
         return {
-            point_t< T >( minX, minY ),
-            point_t< T >( maxX, maxY ),
+            point_t< T >{
+                minX,
+                minY,
+            },
+            point_t< T >{
+                maxX,
+                maxY,
+            },
         };
     }
 

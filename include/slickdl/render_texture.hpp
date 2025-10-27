@@ -9,6 +9,7 @@
 
 #include "slickdl.hpp"
 #include "slickdl/blend.hpp"
+#include "slickdl/events.hpp"
 #include "slickdl/line_box.hpp"
 #include "slickdl/pixels_palette.hpp"
 #include "slickdl/surface.hpp"
@@ -715,8 +716,8 @@ using renderer_t = struct renderer {
     // Once converted, coordinates may be outside the rendering area.
     //
     // Should only be called on the main thread.
-    [[nodiscard]] auto coordinatesFromEvent() const -> event_t {
-        event_t l_event;
+    [[nodiscard]] auto coordinatesFromEvent() const -> events::event_t {
+        events::event_t l_event;
 
         const bool l_result =
             SDL_ConvertEventToRenderCoordinates( _data, &l_event );
@@ -2081,8 +2082,8 @@ using texture_t = struct texture {
     // TODO: Implement
     void render(
         renderer_t& _renderer,
-        const std::optional< box_t< float > >& _source = std::nullopt,
-        const std::optional< box_t< float > >& _destination = std::nullopt ) {
+        const std::optional< box_t< float > >& _destination = std::nullopt,
+        const std::optional< box_t< float > >& _source = std::nullopt ) const {
         const bool l_result = SDL_RenderTexture(
             _renderer, _data, _source.value(), _destination.value() );
 
@@ -2105,10 +2106,10 @@ using texture_t = struct texture {
     void renderRotated(
         renderer_t& _renderer,
         double _angle,
-        const std::optional< box_t< float > >& _source = std::nullopt,
         const std::optional< box_t< float > >& _destination = std::nullopt,
+        flip_t _flip = flip_t::none,
         const std::optional< point_t< float > >& _center = std::nullopt,
-        flip_t _flip = flip_t::none ) {
+        const std::optional< box_t< float > >& _source = std::nullopt ) const {
         const bool l_result = SDL_RenderTextureRotated(
             _renderer, _data, _source.value(), _destination.value(), _angle,
             _center.value(), toLegacy( _flip ) );
@@ -2133,10 +2134,10 @@ using texture_t = struct texture {
     // TODO: Implement
     void renderAffine(
         renderer_t& _renderer,
-        const std::optional< box_t< float > >& _source = std::nullopt,
         const std::optional< point_t< float > >& _origin = std::nullopt,
         const std::optional< point_t< float > >& _right = std::nullopt,
-        const std::optional< point_t< float > >& _down = std::nullopt ) {
+        const std::optional< point_t< float > >& _down = std::nullopt,
+        const std::optional< box_t< float > >& _source = std::nullopt ) const {
         const bool l_result = SDL_RenderTextureAffine(
             _renderer, _data, _source.value(), _origin.value(), _right.value(),
             _down.value() );
@@ -2159,7 +2160,7 @@ using texture_t = struct texture {
         renderer_t& _renderer,
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< box_t< float > >& _source = std::nullopt,
-        float _scale = 0 ) {
+        float _scale = 0 ) const {
         const bool l_result = SDL_RenderTextureTiled(
             _renderer, _data, _source.value(), _scale, _destination.value() );
 
@@ -2190,7 +2191,7 @@ using texture_t = struct texture {
         float _bottomHeight,
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< box_t< float > >& _source = std::nullopt,
-        float _scale = 0 ) {
+        float _scale = 0 ) const {
         const bool l_result = SDL_RenderTexture9Grid(
             _renderer, _data, _source.value(), _leftWidth, _rightWidth,
             _topHeight, _bottomHeight, _scale, _destination.value() );
@@ -2226,7 +2227,7 @@ using texture_t = struct texture {
         float _tileScale = 1,
         const std::optional< box_t< float > >& _destination = std::nullopt,
         const std::optional< box_t< float > >& _source = std::nullopt,
-        float _scale = 0 ) {
+        float _scale = 0 ) const {
         const bool l_result = SDL_RenderTexture9GridTiled(
             _renderer, _data, _source.value(), _leftWidth, _rightWidth,
             _topHeight, _bottomHeight, _scale, _destination.value(),
@@ -2246,7 +2247,7 @@ using texture_t = struct texture {
     void renderGeometry( renderer_t& _renderer,
                          std::span< const vertex_t > _vertexes,
                          const std::optional< std::span< const size_t > >&
-                             _indexes = std::nullopt ) {
+                             _indexes = std::nullopt ) const {
         const auto l_vertexes =
             stdfunc::spanToVector< vertex_t, SDL_Vertex >( _vertexes );
 
@@ -2285,16 +2286,16 @@ using texture_t = struct texture {
     // Should only be called on the main thread.
     template < std::unsigned_integral U = uint32_t >
         requires( sizeof( U ) <= sizeof( uint32_t ) )
-    void renderGeometry(
-        renderer_t& _renderer,
-        point_t< float > _position,
-        color_t _color,
-        point_t< float > _uv,
-        size_t _vertexesAmount,
-        size_t _positionStride = sizeof( _position ),
-        size_t _colorStride = sizeof( _color ),
-        size_t _uvStride = sizeof( _uv ),
-        const std::optional< std::span< const U > >& _indexes = std::nullopt ) {
+    void renderGeometry( renderer_t& _renderer,
+                         point_t< float > _position,
+                         color_t _color,
+                         point_t< float > _uv,
+                         size_t _vertexesAmount,
+                         size_t _positionStride = sizeof( _position ),
+                         size_t _colorStride = sizeof( _color ),
+                         size_t _uvStride = sizeof( _uv ),
+                         const std::optional< std::span< const U > >& _indexes =
+                             std::nullopt ) const {
         const std::array l_position = { _position.x, _position.y };
         const auto l_color = static_cast< SDL_FColor >( _color );
         const std::array l_uv = { _uv.x, _uv.y };

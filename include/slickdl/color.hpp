@@ -48,7 +48,13 @@ using color_t = struct color {
         return ( std::bit_cast< native_t >( *this ) );
     }
 
-    [[nodiscard]] constexpr operator native_t*() const {
+    [[nodiscard]] constexpr operator native_t*() {
+        static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t* >( this ) );
+    }
+
+    [[nodiscard]] constexpr operator const native_t*() const {
         static_assert( sizeof( decltype( *this ) ) == sizeof( native_t ) );
 
         return ( std::bit_cast< native_t* >( this ) );

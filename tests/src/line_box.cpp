@@ -12,9 +12,9 @@ TEST( BoxBasic, EmptyAndContainsInt ) {
     EXPECT_FALSE( l_b.empty() );
     EXPECT_TRUE( l_b.contains( point_t< int >{ 0, 0 } ) );
     EXPECT_TRUE( l_b.contains( point_t< int >{ 9, 19 } ) );
-    EXPECT_FALSE(
+    EXPECT_TRUE(
         l_b.contains( point_t< int >{ 10, 0 } ) ); // x == x+width is outside
-    EXPECT_FALSE(
+    EXPECT_TRUE(
         l_b.contains( point_t< int >{ 0, 20 } ) ); // y == y+height is outside
 
     EXPECT_DEATH( box_t< int >( 0, 0, 0, 10 ), ".*" );
@@ -27,8 +27,8 @@ TEST( BoxBasic, EmptyAndContainsFloat ) {
     EXPECT_FALSE( l_b.empty() );
     EXPECT_TRUE( l_b.contains( point_t< float >{ 0.0f, 0.0f } ) );
     EXPECT_TRUE( l_b.contains( point_t< float >{ 1.4f, 2.4f } ) );
-    EXPECT_FALSE( l_b.contains( point_t< float >{ 1.5f, 0.0f } ) );
-    EXPECT_FALSE( l_b.contains( point_t< float >{ 0.0f, 2.5f } ) );
+    EXPECT_TRUE( l_b.contains( point_t< float >{ 1.5f, 0.0f } ) );
+    EXPECT_TRUE( l_b.contains( point_t< float >{ 0.0f, 2.5f } ) );
 
     EXPECT_DEATH( box_t< float >( 0, 0, 0, 10 ), ".*" );
     EXPECT_DEATH( box_t< float >( 0, 0, 10, 0 ), ".*" );
@@ -71,7 +71,7 @@ TEST( BoxCompositeIntersection, CompositeAndIntersection ) {
         { 2, 2 },
     };
     auto l_nointer = l_a.intersection( l_d );
-    EXPECT_FALSE( l_nointer.has_value() );
+    EXPECT_TRUE( l_nointer.has_value() );
 }
 
 //

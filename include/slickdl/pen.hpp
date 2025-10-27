@@ -1,8 +1,6 @@
 #pragma once
 
-#include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_pen.h>
-#include <SDL3/SDL_touch.h>
 
 #include <bit>
 #include <type_traits>

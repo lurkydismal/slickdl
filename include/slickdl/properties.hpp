@@ -145,12 +145,21 @@ using cleanupPropertyCallback_t = gsl::not_null< SDL_CleanupPropertyCallback >;
 inline void pointerPropertyWithCleanup(
     id_t _properties,
     std::string_view _name,
-    std::optional< void_t > _value = std::nullopt,
+    std::optional< void* > _value = std::nullopt,
     std::optional< cleanupPropertyCallback_t > _cleanup = std::nullopt,
     void* _userData = nullptr ) {
-    const bool l_result = SDL_SetPointerPropertyWithCleanup(
-        _properties, std::string( _name ).c_str(), _value.value(),
-        _cleanup.value(), _userData );
+    bool l_result = false;
+
+    if ( _cleanup ) {
+        l_result = SDL_SetPointerPropertyWithCleanup(
+            _properties, std::string( _name ).c_str(),
+            _value.value_or( nullptr ), _cleanup.value(), _userData );
+
+    } else {
+        l_result = SDL_SetPointerPropertyWithCleanup(
+            _properties, std::string( _name ).c_str(),
+            _value.value_or( nullptr ), nullptr, _userData );
+    }
 
     assert( l_result );
 }
