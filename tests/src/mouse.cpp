@@ -91,6 +91,5 @@ TEST_F( mouseTest, WarpWindowNoWindowAndRelativeTransformNull ) {
     ASSERT_NO_THROW( mouse::warpWindow( { 10.0f, 20.0f } ) );
 
     // Setting relative transform to null (default) should be allowed.
-    ASSERT_NO_THROW(
-        mouse::relativeTransformHandler( std::nullopt, std::nullopt ) );
+    ASSERT_NO_THROW( mouse::relativeTransformHandler( std::nullopt, nullptr ) );
 }

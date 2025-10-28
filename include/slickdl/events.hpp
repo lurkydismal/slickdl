@@ -1484,9 +1484,9 @@ using filter_t = gsl::not_null< SDL_EventFilter >;
 // this function does not change the filter permanently, it only uses the
 // supplied filter until this function returns.
 inline void filter( filter_t _filter,
-                    void* _userData,
                     bool _overwrite = true,
-                    bool _runNow = false ) {
+                    bool _runNow = false,
+                    void* _userData = nullptr ) {
     if ( _runNow ) {
         SDL_FilterEvents( _filter, _userData );
 
@@ -1523,7 +1523,7 @@ inline void filter( filter_t _filter,
 //
 // This function takes the same input as SDL_AddEventWatch() to identify and
 // delete the corresponding callback.
-inline void removeFilter( filter_t _filter, void* _userData ) {
+inline void removeFilter( filter_t _filter, void* _userData = nullptr ) {
     SDL_RemoveEventWatch( _filter, _userData );
 }
 

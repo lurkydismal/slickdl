@@ -21,7 +21,7 @@ TEST( MainThreadTest, RunCallbackOnMainThreadImmediate ) {
     };
 
     bool l_result =
-        runOnMainThread( l_callback, gsl::not_null( &l_called ), true );
+        runOnMainThread( l_callback, true, gsl::not_null( &l_called ) );
 
     EXPECT_TRUE( l_result );
     EXPECT_TRUE( l_called.load() );
@@ -35,7 +35,7 @@ TEST( MainThreadTest, RunCallbackFromOtherThread ) {
             auto l_flag = static_cast< std::atomic< bool >* >( _userdata );
             l_flag->store( true );
         };
-        runOnMainThread( l_callback, gsl::not_null( &l_called ), true );
+        runOnMainThread( l_callback, true, gsl::not_null( &l_called ) );
     } );
 
     l_worker.join();

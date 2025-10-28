@@ -4,8 +4,6 @@
 
 #include <gsl/pointers>
 
-#include "stdconcepts.hpp"
-
 namespace slickdl::thread::main {
 
 // Whether this is the main thread
@@ -20,15 +18,16 @@ inline auto is() -> bool {
     return ( SDL_IsMainThread() );
 }
 
+using callback_t = gsl::not_null< SDL_MainThreadCallback >;
+
 // Call a function on the main thread during event processing
 //
 // If this is called on the main thread, the callback is executed immediately
 // If this is called on another thread, this callback is queued for execution
 // on the main thread during event processing
-template < typename Lambda >
-    requires stdfunc::is_lambda< Lambda, void, void* >
-inline auto runOnMainThread( Lambda _callback, void* _userdata, bool _wait )
-    -> bool {
+inline auto runOnMainThread( callback_t _callback,
+                             bool _wait,
+                             void* _userdata = nullptr ) -> bool {
     return ( SDL_RunOnMainThread( _callback, _userdata, _wait ) );
 }
 

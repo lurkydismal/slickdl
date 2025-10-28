@@ -97,7 +97,7 @@ private:
 // Cursor types for SDL_CreateSystemCursor().
 using systemCursor_t = enum class systemCursor : uint8_t {
     // TODO: Rename
-    inaction,  /**< Default cursor. Usually an arrow. */
+    based,     /**< Default cursor. Usually an arrow. */
     text,      /**< Text selection. Usually an I-beam. */
     wait,      /**< Wait. Usually an hourglass or watch or spinning
                   ball. */
@@ -355,7 +355,7 @@ using cursor_t = struct cursor {
     //
     // Should only be called on the main thread.
     // TODO: Rename
-    [[nodiscard]] static auto inaction() -> cursor {
+    [[nodiscard]] static auto based() -> cursor {
         return ( SDL_GetDefaultCursor() );
     }
 
@@ -564,18 +564,17 @@ inline void warpGlobal( point_t< float > _point ) {
 // behavior.
 //
 // Should only be called on the main thread.
-// TODO: Implement nullopt for _userData
 inline void relativeTransformHandler(
     std::optional< motionTransformCallback_t > _callback = std::nullopt,
-    std::optional< void* > _userData = std::nullopt ) {
+    void* _userData = nullptr ) {
     bool l_result = false;
 
     if ( _callback ) {
-        l_result = SDL_SetRelativeMouseTransform( _callback.value(),
-                                                  _userData.value() );
+        l_result =
+            SDL_SetRelativeMouseTransform( _callback.value(), _userData );
 
     } else {
-        l_result = SDL_SetRelativeMouseTransform( nullptr, nullptr );
+        l_result = SDL_SetRelativeMouseTransform( nullptr, _userData );
     }
 
     assert( l_result );

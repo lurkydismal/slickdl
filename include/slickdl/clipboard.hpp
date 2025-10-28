@@ -143,8 +143,8 @@ using cleanupCallback_t = gsl::not_null< SDL_ClipboardCleanupCallback >;
 // Should only be called on the main thread.
 inline void data( dataCallback_t _callback,
                   cleanupCallback_t _cleanup,
-                  void* _userData,
-                  std::span< const char* > _mimeTypes ) {
+                  std::span< const char* > _mimeTypes,
+                  void* _userData = nullptr ) {
     const bool l_result = SDL_SetClipboardData(
         _callback, _cleanup, _userData, _mimeTypes.data(), _mimeTypes.size() );
 
