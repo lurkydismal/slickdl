@@ -72,6 +72,16 @@ namespace window {
              std::ranges::to< std::vector >() );
 }
 
+void updateSurface( window_t _window, std::span< const box_t< int > > _boxes ) {
+    const auto l_boxes =
+        stdfunc::spanToVector< box_t< int >, SDL_Rect >( _boxes );
+
+    const bool l_result =
+        SDL_UpdateWindowSurfaceRects( _window, l_boxes.data(), l_boxes.size() );
+
+    assert( l_result );
+}
+
 } // namespace window
 
 } // namespace slickdl::video

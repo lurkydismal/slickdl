@@ -122,7 +122,7 @@ TEST( LineIntersection, HorizontalLineClipped ) {
     // clipped to left/right edges
     EXPECT_EQ( l_r->start.x, 0 );
     EXPECT_EQ( l_r->start.y, 5 );
-    EXPECT_EQ( l_r->end.x, 10 );
+    EXPECT_EQ( l_r->end.x, 9 );
     EXPECT_EQ( l_r->end.y, 5 );
 }
 
@@ -135,7 +135,7 @@ TEST( LineIntersection, VerticalLineClipped ) {
     EXPECT_EQ( l_r->start.x, 5 );
     EXPECT_EQ( l_r->start.y, 0 );
     EXPECT_EQ( l_r->end.x, 5 );
-    EXPECT_EQ( l_r->end.y, 10 );
+    EXPECT_EQ( l_r->end.y, 9 );
 }
 
 TEST( LineIntersection, LineCompletelyOutside ) {

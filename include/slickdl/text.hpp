@@ -46,6 +46,12 @@ using font_t = struct font {
     auto operator=( const font& ) -> font& = default;
     auto operator=( font&& ) -> font& = default;
 
+    [[nodiscard]] constexpr operator native_t() {
+        static_assert( sizeof( decltype( _data ) ) == sizeof( native_t ) );
+
+        return ( std::bit_cast< native_t >( _data ) );
+    }
+
     [[nodiscard]] constexpr operator native_t() const {
         static_assert( sizeof( decltype( _data ) ) == sizeof( native_t ) );
 

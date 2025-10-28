@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SDL3/SDL_rect.h>
+
 #include <algorithm>
 #include <gsl/pointers>
 #include <optional>
@@ -441,6 +443,20 @@ struct box {
     // both ends will be clipped to the boundary of the box
     [[nodiscard]] constexpr auto intersection( const line_t< T >& _line ) const
         -> std::optional< line_t< T > > {
+        line_t< T > l_line = _line;
+
+        const bool l_result = SDL_GetRectAndLineIntersection(
+            *this, &l_line.start.x, &l_line.start.y, &l_line.end.x,
+            &l_line.end.y );
+
+        if ( l_result ) {
+            return ( l_line );
+
+        } else {
+            return ( std::nullopt );
+        }
+
+#if 0
         std::optional< line_t< T > > l_returnValue = std::nullopt;
 
         using bigT_t = isIntOrFloat_t< T, int64_t, double >;
@@ -654,6 +670,7 @@ struct box {
         l_returnValue = l_line;
 
         return ( l_returnValue );
+#endif
     }
 
     [[nodiscard]] constexpr auto points() const

@@ -1402,7 +1402,8 @@ inline void aspectRatio( window_t _window,
 // supported.
 //
 // Should only be called on the main thread.
-[[nodiscard]] inline auto borders( window_t _window ) -> std::tuple< int > {
+[[nodiscard]] inline auto borders( window_t _window )
+    -> std::tuple< int, int, int, int > {
     int l_top = 0;
     int l_left = 0;
     int l_bottom = 0;
@@ -1413,7 +1414,7 @@ inline void aspectRatio( window_t _window,
 
     assert( l_result );
 
-    return std::make_tuple( l_top, l_left, l_bottom, l_right );
+    return { l_top, l_left, l_bottom, l_right };
 }
 
 // Get the size of a window's client area, in pixels.
@@ -1664,9 +1665,7 @@ inline void fullscreen( window_t _window, bool _isFullscreen ) {
 //
 // Should only be called on the main thread.
 [[nodiscard]] inline auto hasSurface( window_t _window ) -> bool {
-    const bool l_result = SDL_WindowHasSurface( _window );
-
-    assert( l_result );
+    return ( SDL_WindowHasSurface( _window ) );
 }
 
 // Get the SDL surface associated with the window.
@@ -1749,16 +1748,7 @@ inline void updateSurface( window_t _window ) {
 // SDL uses to send pixels to the system.
 //
 // Should only be called on the main thread.
-inline void updateSurface( window_t _window,
-                           std::span< const box_t< int > > _boxes ) {
-    const auto l_boxes =
-        stdfunc::spanToVector< box_t< int >, SDL_Rect >( _boxes );
-
-    const bool l_result =
-        SDL_UpdateWindowSurfaceRects( _window, l_boxes.data(), l_boxes.size() );
-
-    assert( l_result );
-}
+void updateSurface( window_t _window, std::span< const box_t< int > > _boxes );
 
 // Destroy the surface associated with the window.
 //
