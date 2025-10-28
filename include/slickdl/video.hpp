@@ -1,12 +1,17 @@
 #pragma once
 
 #include <SDL3/SDL_video.h>
+#include <math.h>
 
+#include <algorithm>
+#include <ranges>
 #include <vector>
 
 #include "slickdl.hpp"
 #include "slickdl/line_box.hpp"
+#include "slickdl/pixels_palette.hpp"
 #include "slickdl/properties.hpp"
+#include "slickdl/surface.hpp"
 
 // SDL's video subsystem is largely interested in abstracting window
 // management from the underlying operating system. You can create windows,
@@ -288,6 +293,52 @@ inline void closestFullscreenMode( id_t _id,
     return ( SDL_GetDesktopDisplayMode( _id ) );
 }
 
+// Get information about the current display mode.
+//
+// There's a difference between this function and SDL_GetDesktopDisplayMode()
+// when SDL runs fullscreen and has changed the resolution. In that case this
+// function will return the current display mode, and not the previous native
+// display mode.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto currentMode( id_t _id )
+    -> gsl::not_null< const mode_t* > {
+    return ( SDL_GetCurrentDisplayMode( _id ) );
+}
+
+// Get the display containing a point.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto get( const point_t< int >& _point ) -> id_t {
+    const id_t l_result = SDL_GetDisplayForPoint( _point );
+
+    assert( l_result );
+
+    return ( l_result );
+}
+
+// Get the display primarily containing a rect.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto get( const box_t< int >& _box ) -> id_t {
+    const id_t l_result = SDL_GetDisplayForRect( _box );
+
+    assert( l_result );
+
+    return ( l_result );
+}
+
+// Get the display associated with a window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto get( window_t _window ) -> id_t {
+    const id_t l_result = SDL_GetDisplayForWindow( _window );
+
+    assert( l_result );
+
+    return ( l_result );
+}
+
 } // namespace display
 
 namespace window {
@@ -298,7 +349,9 @@ namespace window {
 using id_t = uint32_t;
 
 // The struct used as an opaque handle to a window.
+#if 0
 using window_t = SDL_Window;
+#endif
 
 // The flags on a window.
 //
@@ -463,2032 +516,1341 @@ using progressStateUnderlying_t = std::underlying_type_t< progressState_t >;
     return ( static_cast< progressState_t >( _value ) );
 }
 
-} // namespace window
-
-// An opaque handle to an OpenGL context.
-using contextGL_t = gsl::not_null< gsl::not_null< SDL_GLContextState* >* >;
-
-// Opaque type for an EGL display.
-using displayEGL_t = gsl::not_null< void* >;
-
-// Opaque type for an EGL config.
-using configEGL_t = gsl::not_null< void* >;
-
-// Opaque type for an EGL surface.
-using surfaceEGL_t = gsl::not_null< void* >;
-
-// An EGL attribute, used when creating an EGL context.
-using attributeEGL_t = intptr_t;
-
-// An EGL integer attribute, used when creating an EGL surface.
-using intEGL_t = int;
-
-// EGL platform attribute initialization callback.
+// Get the pixel density of a window.
 //
-// This is called when SDL is attempting to create an EGL context, to let the
-// app add extra attributes to its eglGetPlatformDisplay() call.
-//
-// The callback should return a pointer to an EGL attribute array terminated
-// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
-// process will fail gracefully.
-//
-// The returned pointer should be allocated with SDL_malloc() and will be
-// passed to SDL_free().
-//
-// The arrays returned by each callback will be appended to the existing
-// attribute arrays defined by SDL.
-using attributeEGLArrayCallback_t = gsl::not_null< SDL_EGLAttribArrayCallback >;
-
-// EGL surface/context attribute initialization callback types.
-//
-// This is called when SDL is attempting to create an EGL surface, to let the
-// app add extra attributes to its eglCreateWindowSurface() or
-// eglCreateContext calls.
-//
-// For convenience, the EGLDisplay and EGLConfig to use are provided to the
-// callback.
-//
-// The callback should return a pointer to an EGL attribute array terminated
-// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
-// process will fail gracefully.
-//
-// The returned pointer should be allocated with SDL_malloc() and will be
-// passed to SDL_free().
-//
-// The arrays returned by each callback will be appended to the existing
-// attribute arrays defined by SDL.
-using intEGLArrayCallback_t = gsl::not_null< SDL_EGLIntArrayCallback >;
-
-// An enumeration of OpenGL configuration attributes.
-//
-// While you can set most OpenGL attributes normally, the attributes listed
-// above must be known before SDL creates the window that will be used with
-// the OpenGL context. These attributes are set and read with
-// SDL_GL_SetAttribute() and SDL_GL_GetAttribute().
-//
-// In some cases, these attributes are minimum requests; the GL does not
-// promise to give you exactly what you asked for. It's possible to ask for a
-// 16-bit depth buffer and get a 24-bit one instead, for example, or to ask
-// for no stencil buffer and still have one available. Context creation should
-// fail if the GL can't provide your requested attributes at a minimum, but
-// you should check to see exactly what you got.
-using attributeGL_t = enum class attributeGL : uint8_t {
-    redSize,        /**< the minimum number of bits for the red channel of the
-                               color buffer; defaults to 8. */
-    greenSize,      /**< the minimum number of bits for the green channel of
-                               the color buffer; defaults to 8. */
-    blueSize,       /**< the minimum number of bits for the blue channel of
-                               the color buffer; defaults to 8. */
-    alphaSize,      /**< the minimum number of bits for the alpha channel of
-                               the color buffer; defaults to 8. */
-    bufferSize,     /**< the minimum number of bits for frame buffer size;
-                               defaults to 0. */
-    doublebuffer,   /**< whether the output is single or double buffered;
-                              defaults to double buffering on. */
-    depthSize,      /**< the minimum number of bits in the depth buffer;
-                               defaults to 16. */
-    stencilSize,    /**< the minimum number of bits in the stencil buffer;
-                               defaults to 0. */
-    accumRedSize,   /**< the minimum number of bits for the red channel
-                                of the accumulation buffer; defaults to 0. */
-    accumGreenSize, /**< the minimum number of bits for the green
-                                channel of the accumulation buffer; defaults to
-                                0. */
-    accumBlueSize,  /**< the minimum number of bits for the blue channel
-                                of the accumulation buffer; defaults to 0. */
-    accumAlphaSize, /**< the minimum number of bits for the alpha
-                                channel of the accumulation buffer; defaults to
-                                0. */
-    stereo,         /**< whether the output is stereo 3D; defaults to off. */
-    multiSampleBuffers,  /**< the number of buffers used for multisample
-                                   anti-aliasing; defaults to 0. */
-    multiSampleSamples,  /**< the number of samples used around the
-                                   current pixel used for multisample
-                                   anti-aliasing. */
-    acceleratedVisual,   /**< set to 1 to require hardware acceleration,
-                                    set to 0 to force software rendering; defaults
-                                    to allow either. */
-    retainedBacking,     /**< not used (deprecated). */
-    contextMajorVersion, /**< OpenGL context major version. */
-    contextMinorVersion, /**< OpenGL context minor version. */
-    contextFlags,        /**< some combination of 0 or more of elements of the
-                                    SDL_GLContextFlag enumeration; defaults to 0. */
-    contextProfileMask,  /**< type of GL context (Core, Compatibility,
-                                     ES). See SDL_GLProfile; default value
-                                     depends on platform. */
-    shareWithCurrentContext, /**< OpenGL context sharing; defaults to 0. */
-    framebufferSrgbCapable, /**< requests sRGB capable visual; defaults to 0. */
-    contextReleaseBehavior, /**< sets context the release behavior. See
-                                        SDL_GLContextReleaseFlag; defaults to
-                                        FLUSH. */
-    contextResetNotification, /**< set context reset notification. See
-                                          SDL_GLContextResetNotification;
-                                          defaults to NO_NOTIFICATION. */
-    contextNoError,
-    floatBuffers,
-    platformEGL,
-};
-
-// Possible values to be set for the SDL_GL_CONTEXT_PROFILE_MASK attribute.
-using profileGL_t = enum class profileGL : uint8_t {
-    core = 0x1,        /**< OpenGL Core Profile context */
-    compatibility = 2, /**< OpenGL Compatibility Profile context */
-    es = 0x4,          /**< GLX_CONTEXT_ES2_PROFILE_BIT_EXT \ */
-};
-
-// Possible flags to be set for the SDL_GL_CONTEXT_FLAGS attribute.
-using contextGLFlag_t = enum class contextGLFlag : uint8_t {
-    debug = 0x1,
-    forwardCompatible = 0x2,
-    robustAccess = 0x4,
-    resetIsolation = 0x8,
-};
-
-// Possible values to be set for the SDL_GL_CONTEXT_RELEASE_BEHAVIOR
-// attribute.
-using contextGLReleaseFlag_t = enum class contextGLReleaseFlag : uint8_t {
-    none = 0,
-    flush = 0x1,
-};
-
-// Possible values to be set SDL_GL_CONTEXT_RESET_NOTIFICATION attribute.
-using contextGLResetNotification_t =
-    enum class contextGLResetNotification : uint8_t {
-        noNotification = 0,
-        loseContext = 0x1,
-    };
-
-namespace driver {
-
-// Get the number of video drivers compiled into SDL.
+// This is a ratio of pixel size to window size. For example, if the window is
+// 1920x1080 and it has a high density back buffer of 3840x2160 pixels, it
+// would have a pixel density of 2.0.
 //
 // Should only be called on the main thread.
-[[nodiscard]] inline auto all() -> size_t {
-    return ( SDL_GetNumVideoDrivers() );
+[[nodiscard]] inline auto pixelDensity( window_t _window ) -> float {
+    const float l_result = SDL_GetWindowPixelDensity( _window );
+
+    assert( l_result );
+
+    return ( l_result );
 }
 
-// Get the name of a built in video driver.
+// Get the content display scale relative to a window's pixel size.
 //
-// The video drivers are presented in the order in which they are normally
-// checked during initialization.
+// This is a combination of the window pixel density and the display content
+// scale, and is the expected scale for displaying content in this window. For
+// example, if a 3840x2160 window had a display scale of 2.0, the user expects
+// the content to take twice as many pixels and be the same physical size as
+// if it were being displayed in a 1920x1080 window with a display scale of
+// 1.0.
 //
-// The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
-// "x11" or "windows". These never have Unicode characters, and are not meant
-// to be proper names.
-//
-// Should only be called on the main thread.
-[[nodiscard]] inline auto name( size_t _index ) -> std::string_view {
-    return ( SDL_GetVideoDriver( _index ) );
-}
-
-// Get the name of the currently initialized video driver.
-//
-// The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
-// "x11" or "windows". These never have Unicode characters, and are not meant
-// to be proper names.
-//
-// The name of the current video driver or assert if no driver has been
-// initialized.
+// Conceptually this value corresponds to the scale display setting, and is
+// updated when that setting is changed, or the window moves to a display with
+// a different scale setting.
 //
 // Should only be called on the main thread.
-[[nodiscard]] inline auto current() -> std::string_view {
-    return { gsl::make_not_null( SDL_GetCurrentVideoDriver() ) };
+[[nodiscard]] inline auto displayScale( window_t _window ) -> float {
+    const float l_result = SDL_GetWindowDisplayScale( _window );
+
+    assert( l_result );
+
+    return ( l_result );
 }
 
-} // namespace driver
-
-namespace system_theme {
-
-// System theme.
-using type_t = enum class type : uint8_t {
-    unknown, /**< Unknown system theme */
-    light,   /**< Light colored system theme */
-    dark,    /**< Dark colored system theme */
-};
-
-using typeUnderlying_t = std::underlying_type_t< type_t >;
-
-[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_SystemTheme {
-    return ( static_cast< SDL_SystemTheme >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_SystemTheme* {
-    return ( std::bit_cast< SDL_SystemTheme* >( _value ) );
-}
-
-[[nodiscard]] constexpr auto fromLegacy( SDL_SystemTheme _value ) -> type_t {
-    return ( static_cast< type_t >( _value ) );
-}
-
-// Get the current system theme.
+// Set the display mode to use when a window is visible and fullscreen.
+//
+// This only affects the display mode used when the window is fullscreen. To
+// change the window size when the window is not fullscreen, use
+// SDL_SetWindowSize().
+//
+// If the window is currently in the fullscreen state, this request is
+// asynchronous on some windowing systems and the new mode dimensions may not
+// be applied immediately upon the return of this function. If an immediate
+// change is required, call SDL_SyncWindow() to block until the changes have
+// taken effect.
+//
+// When the new mode takes effect, an SDL_EVENT_WINDOW_RESIZED and/or an
+// SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED event will be emitted with the new mode
+// dimensions.
 //
 // Should only be called on the main thread.
-[[nodiscard]] inline auto current() -> type_t {
-    return ( fromLegacy( SDL_GetSystemTheme() ) );
+inline void fullscreenMode(
+    window_t _window,
+    const std::optional< display::mode_t >& _mode = std::nullopt ) {
+    bool l_result = false;
+
+    if ( _mode ) {
+        l_result = SDL_SetWindowFullscreenMode( _window, &_mode.value() );
+
+    } else {
+        l_result = SDL_SetWindowFullscreenMode( _window, nullptr );
+    }
+
+    assert( l_result );
 }
 
-} // namespace system_theme
+// Query the display mode to use when a window is visible at fullscreen.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto fullscreenMode( window_t _window )
+    -> std::optional< gsl::not_null< const display::mode_t* > > {
+    const display::mode_t* l_mode = SDL_GetWindowFullscreenMode( _window );
 
-/**
- * Get information about the current display mode.
- *
- * There's a difference between this function and SDL_GetDesktopDisplayMode()
- * when SDL runs fullscreen and has changed the resolution. In that case this
- * function will return the current display mode, and not the previous native
- * display mode.
- *
- * \param displayID the instance ID of the display to query.
- * \returns a pointer to the desktop display mode or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDesktopDisplayMode
- * \sa SDL_GetDisplays
- */
-const SDL_DisplayMode* SDL_GetCurrentDisplayMode( id_t _id );
+    if ( l_mode ) {
+        return ( l_mode );
 
-/**
- * Get the display containing a point.
- *
- * \param point the point to query.
- * \returns the instance ID of the display containing the point or 0 on
- *          failure; call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplayBounds
- * \sa SDL_GetDisplays
- */
-SDL_DisplayID SDL_GetDisplayForPoint( const SDL_Point* point );
+    } else {
+        return ( std::nullopt );
+    }
+}
 
-/**
- * Get the display primarily containing a rect.
- *
- * \param rect the rect to query.
- * \returns the instance ID of the display entirely containing the rect or
- *          closest to the center of the rect on success or 0 on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplayBounds
- * \sa SDL_GetDisplays
- */
-SDL_DisplayID SDL_GetDisplayForRect( const SDL_Rect* rect );
+// Get the raw ICC profile data for the screen the window is currently on.
+//
+// Should only be called on the main thread.
+[[nodiscard]] auto getWindowICCProfile( window_t _window )
+    -> std::vector< std::byte >;
 
-/**
- * Get the display associated with a window.
- *
- * \param window the window to query.
- * \returns the instance ID of the display containing the center of the window
- *          on success or 0 on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetDisplayBounds
- * \sa SDL_GetDisplays
- */
-SDL_DisplayID SDL_GetDisplayForWindow( window_t window );
+// Get the pixel format associated with the window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto pixelFormat( window_t _window ) -> pixels::format_t {
+    const pixels::format_t l_result =
+        pixels::fromLegacy( SDL_GetWindowPixelFormat( _window ) );
 
-/**
- * Get the pixel density of a window.
- *
- * This is a ratio of pixel size to window size. For example, if the window is
- * 1920x1080 and it has a high density back buffer of 3840x2160 pixels, it
- * would have a pixel density of 2.0.
- *
- * \param window the window to query.
- * \returns the pixel density or 0.0f on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowDisplayScale
- */
-float SDL_GetWindowPixelDensity( window_t window );
+    assert( l_result != pixels::format_t::unknown );
 
-/**
- * Get the content display scale relative to a window's pixel size.
- *
- * This is a combination of the window pixel density and the display content
- * scale, and is the expected scale for displaying content in this window. For
- * example, if a 3840x2160 window had a display scale of 2.0, the user expects
- * the content to take twice as many pixels and be the same physical size as
- * if it were being displayed in a 1920x1080 window with a display scale of
- * 1.0.
- *
- * Conceptually this value corresponds to the scale display setting, and is
- * updated when that setting is changed, or the window moves to a display with
- * a different scale setting.
- *
- * \param window the window to query.
- * \returns the display scale, or 0.0f on failure; call SDL_GetError() for
- *          more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-float SDL_GetWindowDisplayScale( window_t window );
+    return ( l_result );
+}
 
-/**
- * Set the display mode to use when a window is visible and fullscreen.
- *
- * This only affects the display mode used when the window is fullscreen. To
- * change the window size when the window is not fullscreen, use
- * SDL_SetWindowSize().
- *
- * If the window is currently in the fullscreen state, this request is
- * asynchronous on some windowing systems and the new mode dimensions may not
- * be applied immediately upon the return of this function. If an immediate
- * change is required, call SDL_SyncWindow() to block until the changes have
- * taken effect.
- *
- * When the new mode takes effect, an SDL_EVENT_WINDOW_RESIZED and/or an
- * SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED event will be emitted with the new mode
- * dimensions.
- *
- * \param window the window to affect.
- * \param mode a pointer to the display mode to use, which can be NULL for
- *             borderless fullscreen desktop mode, or one of the fullscreen
- *             modes returned by SDL_GetFullscreenDisplayModes() to set an
- *             exclusive fullscreen mode.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowFullscreenMode
- * \sa SDL_SetWindowFullscreen
- * \sa SDL_SyncWindow
- */
-bool SDL_SetWindowFullscreenMode( window_t window,
-                                  const SDL_DisplayMode* mode );
+// Get a list of valid windows.
+//
+// Should only be called on the main thread.
+[[nodiscard]] auto all() -> std::vector< window_t >;
 
-/**
- * Query the display mode to use when a window is visible at fullscreen.
- *
- * \param window the window to query.
- * \returns a pointer to the exclusive fullscreen mode to use or NULL for
- *          borderless fullscreen desktop mode.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowFullscreenMode
- * \sa SDL_SetWindowFullscreen
- */
-const SDL_DisplayMode* SDL_GetWindowFullscreenMode( window_t window );
+// Create a window with the specified dimensions and flags.
+//
+// The window size is a request and may be different than expected based on
+// the desktop layout and window manager policies. Your application should be
+// prepared to handle a window of any size.
+//
+// `flags` may be any of the following OR'd together:
+//
+// - `SDL_WINDOW_FULLSCREEN`: fullscreen window at desktop resolution
+// - `SDL_WINDOW_OPENGL`: window usable with an OpenGL context
+// - `SDL_WINDOW_OCCLUDED`: window partially or completely obscured by another
+//   window
+// - `SDL_WINDOW_HIDDEN`: window is not visible
+// - `SDL_WINDOW_BORDERLESS`: no window decoration
+// - `SDL_WINDOW_RESIZABLE`: window can be resized
+// - `SDL_WINDOW_MINIMIZED`: window is minimized
+// - `SDL_WINDOW_MAXIMIZED`: window is maximized
+// - `SDL_WINDOW_MOUSE_GRABBED`: window has grabbed mouse focus
+// - `SDL_WINDOW_INPUT_FOCUS`: window has input focus
+// - `SDL_WINDOW_MOUSE_FOCUS`: window has mouse focus
+// - `SDL_WINDOW_EXTERNAL`: window not created by SDL
+// - `SDL_WINDOW_MODAL`: window is modal
+// - `SDL_WINDOW_HIGH_PIXEL_DENSITY`: window uses high pixel density back
+//   buffer if possible
+// - `SDL_WINDOW_MOUSE_CAPTURE`: window has mouse captured (unrelated to
+//   MOUSE_GRABBED)
+// - `SDL_WINDOW_ALWAYS_ON_TOP`: window should always be above others
+// - `SDL_WINDOW_UTILITY`: window should be treated as a utility window, not
+//   showing in the task bar and window list
+// - `SDL_WINDOW_TOOLTIP`: window should be treated as a tooltip and does not
+//   get mouse or keyboard focus, requires a parent window
+// - `SDL_WINDOW_POPUP_MENU`: window should be treated as a popup menu,
+//   requires a parent window
+// - `SDL_WINDOW_KEYBOARD_GRABBED`: window has grabbed keyboard input
+// - `SDL_WINDOW_VULKAN`: window usable with a Vulkan instance
+// - `SDL_WINDOW_METAL`: window usable with a Metal instance
+// - `SDL_WINDOW_TRANSPARENT`: window with transparent buffer
+// - `SDL_WINDOW_NOT_FOCUSABLE`: window should not be focusable
+//
+// The SDL_Window is implicitly shown if SDL_WINDOW_HIDDEN is not set.
+//
+// On Apple's macOS, you **must** set the NSHighResolutionCapable Info.plist
+// property to YES, otherwise you will not receive a High-DPI OpenGL canvas.
+//
+// The window pixel size may differ from its window coordinate size if the
+// window is on a high pixel density display. Use SDL_GetWindowSize() to query
+// the client area's size in window coordinates, and
+// SDL_GetWindowSizeInPixels() or SDL_GetRenderOutputSize() to query the
+// drawable size in pixels. Note that the drawable size can vary after the
+// window is created and should be queried again if you get an
+// SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED event.
+//
+// If the window is created with any of the SDL_WINDOW_OPENGL or
+// SDL_WINDOW_VULKAN flags, then the corresponding LoadLibrary function
+// (SDL_GL_LoadLibrary or SDL_Vulkan_LoadLibrary) is called and the
+// corresponding UnloadLibrary function is called by SDL_DestroyWindow().
+//
+// If SDL_WINDOW_VULKAN is specified and there isn't a working Vulkan driver,
+// SDL_CreateWindow() will fail, because SDL_Vulkan_LoadLibrary() will fail.
+//
+// If SDL_WINDOW_METAL is specified on an OS that does not support Metal,
+// SDL_CreateWindow() will fail.
+//
+// If you intend to use this window with an SDL_Renderer, you should use
+// SDL_CreateWindowAndRenderer() instead of this function, to avoid window
+// flicker.
+//
+// On non-Apple devices, SDL requires you to either not link to the Vulkan
+// loader or link to a dynamic library version. This limitation may be removed
+// in a future version of SDL.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto create( std::string_view _title,
+                                  volume_t< int > _volume,
+                                  flags_t _flags ) -> window_t {
+    return ( SDL_CreateWindow( std::string( _title ).c_str(), _volume.width,
+                               _volume.height, toLegacy( _flags ) ) );
+}
 
-/**
- * Get the raw ICC profile data for the screen the window is currently on.
- *
- * \param window the window to query.
- * \param size the size of the ICC profile.
- * \returns the raw ICC profile data on success or NULL on failure; call
- *          SDL_GetError() for more information. This should be freed with
- *          SDL_free() when it is no longer needed.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-void* SDL_GetWindowICCProfile( window_t window, size_t* size );
+// Create a child popup window of the specified parent window.
+//
+// The window size is a request and may be different than expected based on
+// the desktop layout and window manager policies. Your application should be
+// prepared to handle a window of any size.
+//
+// The flags parameter **must** contain at least one of the following:
+//
+// - `SDL_WINDOW_TOOLTIP`: The popup window is a tooltip and will not pass any
+//   input events.
+// - `SDL_WINDOW_POPUP_MENU`: The popup window is a popup menu. The topmost
+//   popup menu will implicitly gain the keyboard focus.
+//
+// The following flags are not relevant to popup window creation and will be
+// ignored:
+//
+// - `SDL_WINDOW_MINIMIZED`
+// - `SDL_WINDOW_MAXIMIZED`
+// - `SDL_WINDOW_FULLSCREEN`
+// - `SDL_WINDOW_BORDERLESS`
+//
+// The following flags are incompatible with popup window creation and will
+// cause it to fail:
+//
+// - `SDL_WINDOW_UTILITY`
+// - `SDL_WINDOW_MODAL`
+//
+// The parent parameter **must** be non-null and a valid window. The parent of
+// a popup window can be either a regular, toplevel window, or another popup
+// window.
+//
+// Popup windows cannot be minimized, maximized, made fullscreen, raised,
+// flash, be made a modal window, be the parent of a toplevel window, or grab
+// the mouse and/or keyboard. Attempts to do so will fail.
+//
+// Popup windows implicitly do not have a border/decorations and do not appear
+// on the taskbar/dock or in lists of windows such as alt-tab menus.
+//
+// By default, popup window positions will automatically be constrained to
+// keep the entire window within display bounds. This can be overridden with
+// the `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN` property.
+//
+// By default, popup menus will automatically grab keyboard focus from the
+// parent when shown. This behavior can be overridden by setting the
+// `SDL_WINDOW_NOT_FOCUSABLE` flag, setting the
+// `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN` property to false, or toggling
+// it after creation via the `SDL_SetWindowFocusable()` function.
+//
+// If a parent window is hidden or destroyed, any child popup windows will be
+// recursively hidden or destroyed as well. Child popup windows not explicitly
+// hidden will be restored when the parent is shown.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto createPopup( window_t _parent,
+                                       point_t< int > _offset,
+                                       volume_t< int > _volume,
+                                       flags_t _flags ) -> window_t {
+    return ( SDL_CreatePopupWindow( _parent, _offset.x, _offset.y,
+                                    _volume.width, _volume.height,
+                                    toLegacy( _flags ) ) );
+}
 
-/**
- * Get the pixel format associated with the window.
- *
- * \param window the window to query.
- * \returns the pixel format of the window on success or
- *          SDL_PIXELFORMAT_UNKNOWN on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_PixelFormat SDL_GetWindowPixelFormat( window_t window );
+// Create a window with the specified properties.
+//
+// The window size is a request and may be different than expected based on
+// the desktop layout and window manager policies. Your application should be
+// prepared to handle a window of any size.
+//
+// These are the supported properties:
+//
+// - `SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN`: true if the window should
+//   be always on top
+// - `SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN`: true if the window has no
+//   window decoration
+// - `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN`: true if the "tooltip"
+//   and "menu" window types should be automatically constrained to be
+//   entirely within display bounds (default), false if no constraints on the
+//   position are desired.
+// - `SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN`: true if the
+//   window will be used with an externally managed graphics context.
+// - `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN`: true if the window should
+//   accept keyboard input (defaults true)
+// - `SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN`: true if the window should
+//   start in fullscreen mode at desktop resolution
+// - `SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER`: the height of the window
+// - `SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN`: true if the window should start
+//   hidden
+// - `SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN`: true if the window
+//   uses a high pixel density buffer if possible
+// - `SDL_PROP_WINDOW_CREATE_MAXIMIZED_BOOLEAN`: true if the window should
+//   start maximized
+// - `SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN`: true if the window is a popup menu
+// - `SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN`: true if the window will be used
+//   with Metal rendering
+// - `SDL_PROP_WINDOW_CREATE_MINIMIZED_BOOLEAN`: true if the window should
+//   start minimized
+// - `SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN`: true if the window is modal to
+//   its parent
+// - `SDL_PROP_WINDOW_CREATE_MOUSE_GRABBED_BOOLEAN`: true if the window starts
+//   with grabbed mouse focus
+// - `SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN`: true if the window will be used
+//   with OpenGL rendering
+// - `SDL_PROP_WINDOW_CREATE_PARENT_POINTER`: an SDL_Window that will be the
+//   parent of this window, required for windows with the "tooltip", "menu",
+//   and "modal" properties
+// - `SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN`: true if the window should be
+//   resizable
+// - `SDL_PROP_WINDOW_CREATE_TITLE_STRING`: the title of the window, in UTF-8
+//   encoding
+// - `SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN`: true if the window show
+//   transparent in the areas with alpha of 0
+// - `SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN`: true if the window is a tooltip
+// - `SDL_PROP_WINDOW_CREATE_UTILITY_BOOLEAN`: true if the window is a utility
+//   window, not showing in the task bar and window list
+// - `SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN`: true if the window will be used
+//   with Vulkan rendering
+// - `SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER`: the width of the window
+// - `SDL_PROP_WINDOW_CREATE_X_NUMBER`: the x position of the window, or
+//   `SDL_WINDOWPOS_CENTERED`, defaults to `SDL_WINDOWPOS_UNDEFINED`. This is
+//   relative to the parent for windows with the "tooltip" or "menu" property
+//   set.
+// - `SDL_PROP_WINDOW_CREATE_Y_NUMBER`: the y position of the window, or
+//   `SDL_WINDOWPOS_CENTERED`, defaults to `SDL_WINDOWPOS_UNDEFINED`. This is
+//   relative to the parent for windows with the "tooltip" or "menu" property
+//   set.
+//
+// These are additional supported properties on macOS:
+//
+// - `SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER`: the
+//   `(__unsafe_unretained)` NSWindow associated with the window, if you want
+//   to wrap an existing window.
+// - `SDL_PROP_WINDOW_CREATE_COCOA_VIEW_POINTER`: the `(__unsafe_unretained)`
+//   NSView associated with the window, defaults to `[window contentView]`
+//
+// These are additional supported properties on Wayland:
+//
+// - `SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN` - true if
+//   the application wants to use the Wayland surface for a custom role and
+//   does not want it attached to an XDG toplevel window. See
+//   [README-wayland](README-wayland) for more information on using custom
+//   surfaces.
+// - `SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN` - true if the
+//   application wants an associated `wl_egl_window` object to be created and
+//   attached to the window, even if the window does not have the OpenGL
+//   property or `SDL_WINDOW_OPENGL` flag set.
+// - `SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER` - the wl_surface
+//   associated with the window, if you want to wrap an existing window. See
+//   [README-wayland](README-wayland) for more information.
+//
+// These are additional supported properties on Windows:
+//
+// - `SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER`: the HWND associated with the
+//   window, if you want to wrap an existing window.
+// - `SDL_PROP_WINDOW_CREATE_WIN32_PIXEL_FORMAT_HWND_POINTER`: optional,
+//   another window to share pixel format with, useful for OpenGL windows
+//
+// These are additional supported properties with X11:
+//
+// - `SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER`: the X11 Window associated
+//   with the window, if you want to wrap an existing window.
+//
+// The window is implicitly shown if the "hidden" property is not set.
+//
+// These are additional supported properties with Emscripten:
+//
+// - `SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_CANVAS_ID_STRING`: the id given to the
+//   canvas element. This should start with a '#' sign
+// - `SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING`: override the
+//   binding element for keyboard inputs for this canvas. The variable can be
+//   one of:
+// - "#window": the javascript window object (default)
+// - "#document": the javascript document object
+// - "#screen": the javascript window.screen object
+// - "#canvas": the WebGL canvas element
+// - "#none": Don't bind anything at all
+// - any other string without a leading # sign applies to the element on the
+//   page with that ID. Windows with the "tooltip" and "menu" properties are
+//   popup windows and have the behaviors and guidelines outlined in
+//   SDL_CreatePopupWindow().
+//
+// If this window is being created to be used with an SDL_Renderer, you should
+// not add a graphics API specific property
+// (`SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN`, etc), as SDL will handle that
+// internally when it chooses a renderer. However, SDL might need to recreate
+// your window at that point, which may cause the window to appear briefly,
+// and then flicker as it is recreated. The correct approach to this is to
+// create the window with the `SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN` property
+// set to true, then create the renderer, then show the window with
+// SDL_ShowWindow().
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto create( properties::id_t _properties ) -> window_t {
+    return ( SDL_CreateWindowWithProperties( _properties ) );
+}
 
-/**
- * Get a list of valid windows.
- *
- * \param count a pointer filled in with the number of windows returned, may
- *              be NULL.
- * \returns a NULL terminated array of SDL_Window pointers or NULL on failure;
- *          call SDL_GetError() for more information. This is a single
- *          allocation that should be freed with SDL_free() when it is no
- *          longer needed.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-window_t* SDL_GetWindows( int* count );
+namespace wproperties {
 
-/**
- * Create a window with the specified dimensions and flags.
- *
- * The window size is a request and may be different than expected based on
- * the desktop layout and window manager policies. Your application should be
- * prepared to handle a window of any size.
- *
- * `flags` may be any of the following OR'd together:
- *
- * - `SDL_WINDOW_FULLSCREEN`: fullscreen window at desktop resolution
- * - `SDL_WINDOW_OPENGL`: window usable with an OpenGL context
- * - `SDL_WINDOW_OCCLUDED`: window partially or completely obscured by another
- *   window
- * - `SDL_WINDOW_HIDDEN`: window is not visible
- * - `SDL_WINDOW_BORDERLESS`: no window decoration
- * - `SDL_WINDOW_RESIZABLE`: window can be resized
- * - `SDL_WINDOW_MINIMIZED`: window is minimized
- * - `SDL_WINDOW_MAXIMIZED`: window is maximized
- * - `SDL_WINDOW_MOUSE_GRABBED`: window has grabbed mouse focus
- * - `SDL_WINDOW_INPUT_FOCUS`: window has input focus
- * - `SDL_WINDOW_MOUSE_FOCUS`: window has mouse focus
- * - `SDL_WINDOW_EXTERNAL`: window not created by SDL
- * - `SDL_WINDOW_MODAL`: window is modal
- * - `SDL_WINDOW_HIGH_PIXEL_DENSITY`: window uses high pixel density back
- *   buffer if possible
- * - `SDL_WINDOW_MOUSE_CAPTURE`: window has mouse captured (unrelated to
- *   MOUSE_GRABBED)
- * - `SDL_WINDOW_ALWAYS_ON_TOP`: window should always be above others
- * - `SDL_WINDOW_UTILITY`: window should be treated as a utility window, not
- *   showing in the task bar and window list
- * - `SDL_WINDOW_TOOLTIP`: window should be treated as a tooltip and does not
- *   get mouse or keyboard focus, requires a parent window
- * - `SDL_WINDOW_POPUP_MENU`: window should be treated as a popup menu,
- *   requires a parent window
- * - `SDL_WINDOW_KEYBOARD_GRABBED`: window has grabbed keyboard input
- * - `SDL_WINDOW_VULKAN`: window usable with a Vulkan instance
- * - `SDL_WINDOW_METAL`: window usable with a Metal instance
- * - `SDL_WINDOW_TRANSPARENT`: window with transparent buffer
- * - `SDL_WINDOW_NOT_FOCUSABLE`: window should not be focusable
- *
- * The SDL_Window is implicitly shown if SDL_WINDOW_HIDDEN is not set.
- *
- * On Apple's macOS, you **must** set the NSHighResolutionCapable Info.plist
- * property to YES, otherwise you will not receive a High-DPI OpenGL canvas.
- *
- * The window pixel size may differ from its window coordinate size if the
- * window is on a high pixel density display. Use SDL_GetWindowSize() to query
- * the client area's size in window coordinates, and
- * SDL_GetWindowSizeInPixels() or SDL_GetRenderOutputSize() to query the
- * drawable size in pixels. Note that the drawable size can vary after the
- * window is created and should be queried again if you get an
- * SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED event.
- *
- * If the window is created with any of the SDL_WINDOW_OPENGL or
- * SDL_WINDOW_VULKAN flags, then the corresponding LoadLibrary function
- * (SDL_GL_LoadLibrary or SDL_Vulkan_LoadLibrary) is called and the
- * corresponding UnloadLibrary function is called by SDL_DestroyWindow().
- *
- * If SDL_WINDOW_VULKAN is specified and there isn't a working Vulkan driver,
- * SDL_CreateWindow() will fail, because SDL_Vulkan_LoadLibrary() will fail.
- *
- * If SDL_WINDOW_METAL is specified on an OS that does not support Metal,
- * SDL_CreateWindow() will fail.
- *
- * If you intend to use this window with an SDL_Renderer, you should use
- * SDL_CreateWindowAndRenderer() instead of this function, to avoid window
- * flicker.
- *
- * On non-Apple devices, SDL requires you to either not link to the Vulkan
- * loader or link to a dynamic library version. This limitation may be removed
- * in a future version of SDL.
- *
- * \param title the title of the window, in UTF-8 encoding.
- * \param w the width of the window.
- * \param h the height of the window.
- * \param flags 0, or one or more SDL_WindowFlags OR'd together.
- * \returns the window that was created or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreateWindowAndRenderer
- * \sa SDL_CreatePopupWindow
- * \sa SDL_CreateWindowWithProperties
- * \sa SDL_DestroyWindow
- */
-window_t SDL_CreateWindow( const char* title,
-                           int w,
-                           int h,
-                           SDL_WindowFlags flags );
+constexpr std::string_view g_createAlwaysOnTopBoolean =
+    "SDL.window.create.always_on_top";
+constexpr std::string_view g_createBorderlessBoolean =
+    "SDL.window.create.borderless";
+constexpr std::string_view g_createConstrainPopupBoolean =
+    "SDL.window.create.constrain_popup";
+constexpr std::string_view g_createFocusableBoolean =
+    "SDL.window.create.focusable";
+constexpr std::string_view g_createExternalGraphicsContextBoolean =
+    "SDL.window.create.external_graphics_context";
+constexpr std::string_view g_createFlagsNumber = "SDL.window.create.flags";
+constexpr std::string_view g_createFullscreenBoolean =
+    "SDL.window.create.fullscreen";
+constexpr std::string_view g_createHeightNumber = "SDL.window.create.height";
+constexpr std::string_view g_createHiddenBoolean = "SDL.window.create.hidden";
+constexpr std::string_view g_createHighPixelDensityBoolean =
+    "SDL.window.create.high_pixel_density";
+constexpr std::string_view g_createMaximizedBoolean =
+    "SDL.window.create.maximized";
+constexpr std::string_view g_createMenuBoolean = "SDL.window.create.menu";
+constexpr std::string_view g_createMetalBoolean = "SDL.window.create.metal";
+constexpr std::string_view g_createMinimizedBoolean =
+    "SDL.window.create.minimized";
+constexpr std::string_view g_createModalBoolean = "SDL.window.create.modal";
+constexpr std::string_view g_createMouseGrabbedBoolean =
+    "SDL.window.create.mouse_grabbed";
+constexpr std::string_view g_createOpenglBoolean = "SDL.window.create.opengl";
+constexpr std::string_view g_createParentPointer = "SDL.window.create.parent";
+constexpr std::string_view g_createResizableBoolean =
+    "SDL.window.create.resizable";
+constexpr std::string_view g_createTitleString = "SDL.window.create.title";
+constexpr std::string_view g_createTransparentBoolean =
+    "SDL.window.create.transparent";
+constexpr std::string_view g_createTooltipBoolean = "SDL.window.create.tooltip";
+constexpr std::string_view g_createUtilityBoolean = "SDL.window.create.utility";
+constexpr std::string_view g_createVulkanBoolean = "SDL.window.create.vulkan";
+constexpr std::string_view g_createWidthNumber = "SDL.window.create.width";
+constexpr std::string_view g_createXNumber = "SDL.window.create.x";
+constexpr std::string_view g_createYNumber = "SDL.window.create.y";
+constexpr std::string_view g_createCocoaWindowPointer =
+    "SDL.window.create.cocoa.window";
+constexpr std::string_view g_createCocoaViewPointer =
+    "SDL.window.create.cocoa.view";
+constexpr std::string_view g_createWaylandSurfaceRoleCustomBoolean =
+    "SDL.window.create.wayland.surface_role_custom";
+constexpr std::string_view g_createWaylandCreateEglWindowBoolean =
+    "SDL.window.create.wayland.create_egl_window";
+constexpr std::string_view g_createWaylandWlSurfacePointer =
+    "SDL.window.create.wayland.wl_surface";
+constexpr std::string_view g_createWiN32HwndPointer =
+    "SDL.window.create.win32.hwnd";
+constexpr std::string_view g_createWiN32PixelFormatHwndPointer =
+    "SDL.window.create.win32.pixel_format_hwnd";
+constexpr std::string_view g_createX11WindowNumber =
+    "SDL.window.create.x11.window";
+constexpr std::string_view g_createEmscriptenCanvasIdString =
+    "SDL.window.create.emscripten.canvas_id";
+constexpr std::string_view g_createEmscriptenKeyboardElementString =
+    "SDL.window.create.emscripten.keyboard_element";
 
-/**
- * Create a child popup window of the specified parent window.
- *
- * The window size is a request and may be different than expected based on
- * the desktop layout and window manager policies. Your application should be
- * prepared to handle a window of any size.
- *
- * The flags parameter **must** contain at least one of the following:
- *
- * - `SDL_WINDOW_TOOLTIP`: The popup window is a tooltip and will not pass any
- *   input events.
- * - `SDL_WINDOW_POPUP_MENU`: The popup window is a popup menu. The topmost
- *   popup menu will implicitly gain the keyboard focus.
- *
- * The following flags are not relevant to popup window creation and will be
- * ignored:
- *
- * - `SDL_WINDOW_MINIMIZED`
- * - `SDL_WINDOW_MAXIMIZED`
- * - `SDL_WINDOW_FULLSCREEN`
- * - `SDL_WINDOW_BORDERLESS`
- *
- * The following flags are incompatible with popup window creation and will
- * cause it to fail:
- *
- * - `SDL_WINDOW_UTILITY`
- * - `SDL_WINDOW_MODAL`
- *
- * The parent parameter **must** be non-null and a valid window. The parent of
- * a popup window can be either a regular, toplevel window, or another popup
- * window.
- *
- * Popup windows cannot be minimized, maximized, made fullscreen, raised,
- * flash, be made a modal window, be the parent of a toplevel window, or grab
- * the mouse and/or keyboard. Attempts to do so will fail.
- *
- * Popup windows implicitly do not have a border/decorations and do not appear
- * on the taskbar/dock or in lists of windows such as alt-tab menus.
- *
- * By default, popup window positions will automatically be constrained to
- * keep the entire window within display bounds. This can be overridden with
- * the `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN` property.
- *
- * By default, popup menus will automatically grab keyboard focus from the
- * parent when shown. This behavior can be overridden by setting the
- * `SDL_WINDOW_NOT_FOCUSABLE` flag, setting the
- * `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN` property to false, or toggling
- * it after creation via the `SDL_SetWindowFocusable()` function.
- *
- * If a parent window is hidden or destroyed, any child popup windows will be
- * recursively hidden or destroyed as well. Child popup windows not explicitly
- * hidden will be restored when the parent is shown.
- *
- * \param parent the parent of the window, must not be NULL.
- * \param offset_x the x position of the popup window relative to the origin
- *                 of the parent.
- * \param offset_y the y position of the popup window relative to the origin
- *                 of the parent window.
- * \param w the width of the window.
- * \param h the height of the window.
- * \param flags SDL_WINDOW_TOOLTIP or SDL_WINDOW_POPUP_MENU, and zero or more
- *              additional SDL_WindowFlags OR'd together.
- * \returns the window that was created or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreateWindow
- * \sa SDL_CreateWindowWithProperties
- * \sa SDL_DestroyWindow
- * \sa SDL_GetWindowParent
- */
-window_t SDL_CreatePopupWindow( window_t parent,
-                                int offset_x,
-                                int offset_y,
-                                int w,
-                                int h,
-                                SDL_WindowFlags flags );
+} // namespace wproperties
 
-/**
- * Create a window with the specified properties.
- *
- * The window size is a request and may be different than expected based on
- * the desktop layout and window manager policies. Your application should be
- * prepared to handle a window of any size.
- *
- * These are the supported properties:
- *
- * - `SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN`: true if the window should
- *   be always on top
- * - `SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN`: true if the window has no
- *   window decoration
- * - `SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN`: true if the "tooltip"
- *   and "menu" window types should be automatically constrained to be
- *   entirely within display bounds (default), false if no constraints on the
- *   position are desired.
- * - `SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN`: true if the
- *   window will be used with an externally managed graphics context.
- * - `SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN`: true if the window should
- *   accept keyboard input (defaults true)
- * - `SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN`: true if the window should
- *   start in fullscreen mode at desktop resolution
- * - `SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER`: the height of the window
- * - `SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN`: true if the window should start
- *   hidden
- * - `SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN`: true if the window
- *   uses a high pixel density buffer if possible
- * - `SDL_PROP_WINDOW_CREATE_MAXIMIZED_BOOLEAN`: true if the window should
- *   start maximized
- * - `SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN`: true if the window is a popup menu
- * - `SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN`: true if the window will be used
- *   with Metal rendering
- * - `SDL_PROP_WINDOW_CREATE_MINIMIZED_BOOLEAN`: true if the window should
- *   start minimized
- * - `SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN`: true if the window is modal to
- *   its parent
- * - `SDL_PROP_WINDOW_CREATE_MOUSE_GRABBED_BOOLEAN`: true if the window starts
- *   with grabbed mouse focus
- * - `SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN`: true if the window will be used
- *   with OpenGL rendering
- * - `SDL_PROP_WINDOW_CREATE_PARENT_POINTER`: an SDL_Window that will be the
- *   parent of this window, required for windows with the "tooltip", "menu",
- *   and "modal" properties
- * - `SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN`: true if the window should be
- *   resizable
- * - `SDL_PROP_WINDOW_CREATE_TITLE_STRING`: the title of the window, in UTF-8
- *   encoding
- * - `SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN`: true if the window show
- *   transparent in the areas with alpha of 0
- * - `SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN`: true if the window is a tooltip
- * - `SDL_PROP_WINDOW_CREATE_UTILITY_BOOLEAN`: true if the window is a utility
- *   window, not showing in the task bar and window list
- * - `SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN`: true if the window will be used
- *   with Vulkan rendering
- * - `SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER`: the width of the window
- * - `SDL_PROP_WINDOW_CREATE_X_NUMBER`: the x position of the window, or
- *   `SDL_WINDOWPOS_CENTERED`, defaults to `SDL_WINDOWPOS_UNDEFINED`. This is
- *   relative to the parent for windows with the "tooltip" or "menu" property
- *   set.
- * - `SDL_PROP_WINDOW_CREATE_Y_NUMBER`: the y position of the window, or
- *   `SDL_WINDOWPOS_CENTERED`, defaults to `SDL_WINDOWPOS_UNDEFINED`. This is
- *   relative to the parent for windows with the "tooltip" or "menu" property
- *   set.
- *
- * These are additional supported properties on macOS:
- *
- * - `SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER`: the
- *   `(__unsafe_unretained)` NSWindow associated with the window, if you want
- *   to wrap an existing window.
- * - `SDL_PROP_WINDOW_CREATE_COCOA_VIEW_POINTER`: the `(__unsafe_unretained)`
- *   NSView associated with the window, defaults to `[window contentView]`
- *
- * These are additional supported properties on Wayland:
- *
- * - `SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN` - true if
- *   the application wants to use the Wayland surface for a custom role and
- *   does not want it attached to an XDG toplevel window. See
- *   [README-wayland](README-wayland) for more information on using custom
- *   surfaces.
- * - `SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN` - true if the
- *   application wants an associated `wl_egl_window` object to be created and
- *   attached to the window, even if the window does not have the OpenGL
- *   property or `SDL_WINDOW_OPENGL` flag set.
- * - `SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER` - the wl_surface
- *   associated with the window, if you want to wrap an existing window. See
- *   [README-wayland](README-wayland) for more information.
- *
- * These are additional supported properties on Windows:
- *
- * - `SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER`: the HWND associated with the
- *   window, if you want to wrap an existing window.
- * - `SDL_PROP_WINDOW_CREATE_WIN32_PIXEL_FORMAT_HWND_POINTER`: optional,
- *   another window to share pixel format with, useful for OpenGL windows
- *
- * These are additional supported properties with X11:
- *
- * - `SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER`: the X11 Window associated
- *   with the window, if you want to wrap an existing window.
- *
- * The window is implicitly shown if the "hidden" property is not set.
- *
- * These are additional supported properties with Emscripten:
- *
- * - `SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_CANVAS_ID_STRING`: the id given to the
- *   canvas element. This should start with a '#' sign
- * - `SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING`: override the
- *   binding element for keyboard inputs for this canvas. The variable can be
- *   one of:
- * - "#window": the javascript window object (default)
- * - "#document": the javascript document object
- * - "#screen": the javascript window.screen object
- * - "#canvas": the WebGL canvas element
- * - "#none": Don't bind anything at all
- * - any other string without a leading # sign applies to the element on the
- *   page with that ID. Windows with the "tooltip" and "menu" properties are
- *   popup windows and have the behaviors and guidelines outlined in
- *   SDL_CreatePopupWindow().
- *
- * If this window is being created to be used with an SDL_Renderer, you should
- * not add a graphics API specific property
- * (`SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN`, etc), as SDL will handle that
- * internally when it chooses a renderer. However, SDL might need to recreate
- * your window at that point, which may cause the window to appear briefly,
- * and then flicker as it is recreated. The correct approach to this is to
- * create the window with the `SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN` property
- * set to true, then create the renderer, then show the window with
- * SDL_ShowWindow().
- *
- * \param props the properties to use.
- * \returns the window that was created or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreateProperties
- * \sa SDL_CreateWindow
- * \sa SDL_DestroyWindow
- */
-window_t SDL_CreateWindowWithProperties( SDL_PropertiesID props );
+// Get the numeric ID of a window.
+//
+// The numeric ID is what SDL_WindowEvent references, and is necessary to map
+// these events to specific SDL_Window objects.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto id( window_t _window ) -> id_t {
+    return ( SDL_GetWindowID( _window ) );
+}
 
-#define SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN \
-    "SDL.window.create.always_on_top"
-#define SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN "SDL.window.create.borderless"
-#define SDL_PROP_WINDOW_CREATE_CONSTRAIN_POPUP_BOOLEAN \
-    "SDL.window.create.constrain_popup"
-#define SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN "SDL.window.create.focusable"
-#define SDL_PROP_WINDOW_CREATE_EXTERNAL_GRAPHICS_CONTEXT_BOOLEAN \
-    "SDL.window.create.external_graphics_context"
-#define SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER "SDL.window.create.flags"
-#define SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN "SDL.window.create.fullscreen"
-#define SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER "SDL.window.create.height"
-#define SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN "SDL.window.create.hidden"
-#define SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN \
-    "SDL.window.create.high_pixel_density"
-#define SDL_PROP_WINDOW_CREATE_MAXIMIZED_BOOLEAN "SDL.window.create.maximized"
-#define SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN "SDL.window.create.menu"
-#define SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN "SDL.window.create.metal"
-#define SDL_PROP_WINDOW_CREATE_MINIMIZED_BOOLEAN "SDL.window.create.minimized"
-#define SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN "SDL.window.create.modal"
-#define SDL_PROP_WINDOW_CREATE_MOUSE_GRABBED_BOOLEAN \
-    "SDL.window.create.mouse_grabbed"
-#define SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN "SDL.window.create.opengl"
-#define SDL_PROP_WINDOW_CREATE_PARENT_POINTER "SDL.window.create.parent"
-#define SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN "SDL.window.create.resizable"
-#define SDL_PROP_WINDOW_CREATE_TITLE_STRING "SDL.window.create.title"
-#define SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN \
-    "SDL.window.create.transparent"
-#define SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN "SDL.window.create.tooltip"
-#define SDL_PROP_WINDOW_CREATE_UTILITY_BOOLEAN "SDL.window.create.utility"
-#define SDL_PROP_WINDOW_CREATE_VULKAN_BOOLEAN "SDL.window.create.vulkan"
-#define SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER "SDL.window.create.width"
-#define SDL_PROP_WINDOW_CREATE_X_NUMBER "SDL.window.create.x"
-#define SDL_PROP_WINDOW_CREATE_Y_NUMBER "SDL.window.create.y"
-#define SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER \
-    "SDL.window.create.cocoa.window"
-#define SDL_PROP_WINDOW_CREATE_COCOA_VIEW_POINTER "SDL.window.create.cocoa.view"
-#define SDL_PROP_WINDOW_CREATE_WAYLAND_SURFACE_ROLE_CUSTOM_BOOLEAN \
-    "SDL.window.create.wayland.surface_role_custom"
-#define SDL_PROP_WINDOW_CREATE_WAYLAND_CREATE_EGL_WINDOW_BOOLEAN \
-    "SDL.window.create.wayland.create_egl_window"
-#define SDL_PROP_WINDOW_CREATE_WAYLAND_WL_SURFACE_POINTER \
-    "SDL.window.create.wayland.wl_surface"
-#define SDL_PROP_WINDOW_CREATE_WIN32_HWND_POINTER "SDL.window.create.win32.hwnd"
-#define SDL_PROP_WINDOW_CREATE_WIN32_PIXEL_FORMAT_HWND_POINTER \
-    "SDL.window.create.win32.pixel_format_hwnd"
-#define SDL_PROP_WINDOW_CREATE_X11_WINDOW_NUMBER "SDL.window.create.x11.window"
-#define SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_CANVAS_ID_STRING \
-    "SDL.window.create.emscripten.canvas_id"
-#define SDL_PROP_WINDOW_CREATE_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING \
-    "SDL.window.create.emscripten.keyboard_element"
+// Get a window from a stored ID.
+//
+// The numeric ID is what SDL_WindowEvent references, and is necessary to map
+// these events to specific SDL_Window objects.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto window( id_t _id ) -> window_t {
+    return ( SDL_GetWindowFromID( _id ) );
+}
 
-/**
- * Get the numeric ID of a window.
- *
- * The numeric ID is what SDL_WindowEvent references, and is necessary to map
- * these events to specific SDL_Window objects.
- *
- * \param window the window to query.
- * \returns the ID of the window on success or 0 on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowFromID
- */
-SDL_WindowID SDL_GetWindowID( window_t window );
+// Get parent of a window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto parent( window_t _window ) -> window_t {
+    return ( SDL_GetWindowParent( _window ) );
+}
 
-/**
- * Get a window from a stored ID.
- *
- * The numeric ID is what SDL_WindowEvent references, and is necessary to map
- * these events to specific SDL_Window objects.
- *
- * \param id the ID of the window.
- * \returns the window associated with `id` or NULL if it doesn't exist; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowID
- */
-window_t SDL_GetWindowFromID( SDL_WindowID id );
+// Get the properties associated with a window.
+//
+// The following read-only properties are provided by SDL:
+//
+// - `SDL_PROP_WINDOW_SHAPE_POINTER`: the surface associated with a shaped
+//   window
+// - `SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN`: true if the window has HDR
+//   headroom above the SDR white point. This property can change dynamically
+//   when SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
+// - `SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT`: the value of SDR white in the
+//   SDL_COLORSPACE_SRGB_LINEAR colorspace. On Windows this corresponds to the
+//   SDR white level in scRGB colorspace, and on Apple platforms this is
+//   always 1.0 for EDR content. This property can change dynamically when
+//   SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
+// - `SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT`: the additional high dynamic range
+//   that can be displayed, in terms of the SDR white point. When HDR is not
+//   enabled, this will be 1.0. This property can change dynamically when
+//   SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
+//
+// On Android:
+//
+// - `SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER`: the ANativeWindow associated
+//   with the window
+// - `SDL_PROP_WINDOW_ANDROID_SURFACE_POINTER`: the EGLSurface associated with
+//   the window
+//
+// On iOS:
+//
+// - `SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER`: the `(__unsafe_unretained)`
+//   UIWindow associated with the window
+// - `SDL_PROP_WINDOW_UIKIT_METAL_VIEW_TAG_NUMBER`: the NSInteger tag
+//   associated with metal views on the window
+// - `SDL_PROP_WINDOW_UIKIT_OPENGL_FRAMEBUFFER_NUMBER`: the OpenGL view's
+//   framebuffer object. It must be bound when rendering to the screen using
+//   OpenGL.
+// - `SDL_PROP_WINDOW_UIKIT_OPENGL_RENDERBUFFER_NUMBER`: the OpenGL view's
+//   renderbuffer object. It must be bound when SDL_GL_SwapWindow is called.
+// - `SDL_PROP_WINDOW_UIKIT_OPENGL_RESOLVE_FRAMEBUFFER_NUMBER`: the OpenGL
+//   view's resolve framebuffer, when MSAA is used.
+//
+// On KMS/DRM:
+//
+// - `SDL_PROP_WINDOW_KMSDRM_DEVICE_INDEX_NUMBER`: the device index associated
+//   with the window (e.g. the X in /dev/dri/cardX)
+// - `SDL_PROP_WINDOW_KMSDRM_DRM_FD_NUMBER`: the DRM FD associated with the
+//   window
+// - `SDL_PROP_WINDOW_KMSDRM_GBM_DEVICE_POINTER`: the GBM device associated
+//   with the window
+//
+// On macOS:
+//
+// - `SDL_PROP_WINDOW_COCOA_WINDOW_POINTER`: the `(__unsafe_unretained)`
+//   NSWindow associated with the window
+// - `SDL_PROP_WINDOW_COCOA_METAL_VIEW_TAG_NUMBER`: the NSInteger tag
+//   assocated with metal views on the window
+//
+// On OpenVR:
+//
+// - `SDL_PROP_WINDOW_OPENVR_OVERLAY_ID_NUMBER`: the OpenVR Overlay Handle ID
+//   for the associated overlay window.
+//
+// On Vivante:
+//
+// - `SDL_PROP_WINDOW_VIVANTE_DISPLAY_POINTER`: the EGLNativeDisplayType
+//   associated with the window
+// - `SDL_PROP_WINDOW_VIVANTE_WINDOW_POINTER`: the EGLNativeWindowType
+//   associated with the window
+// - `SDL_PROP_WINDOW_VIVANTE_SURFACE_POINTER`: the EGLSurface associated with
+//   the window
+//
+// On Windows:
+//
+// - `SDL_PROP_WINDOW_WIN32_HWND_POINTER`: the HWND associated with the window
+// - `SDL_PROP_WINDOW_WIN32_HDC_POINTER`: the HDC associated with the window
+// - `SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER`: the HINSTANCE associated with
+//   the window
+//
+// On Wayland:
+//
+// Note: The `xdg_*` window objects do not internally persist across window
+// show/hide calls. They will be null if the window is hidden and must be
+// queried each time it is shown.
+//
+// - `SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER`: the wl_display associated with
+//   the window
+// - `SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER`: the wl_surface associated with
+//   the window
+// - `SDL_PROP_WINDOW_WAYLAND_VIEWPORT_POINTER`: the wp_viewport associated
+//   with the window
+// - `SDL_PROP_WINDOW_WAYLAND_EGL_WINDOW_POINTER`: the wl_egl_window
+//   associated with the window
+// - `SDL_PROP_WINDOW_WAYLAND_XDG_SURFACE_POINTER`: the xdg_surface associated
+//   with the window
+// - `SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_POINTER`: the xdg_toplevel role
+//   associated with the window
+// - 'SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_EXPORT_HANDLE_STRING': the export
+//   handle associated with the window
+// - `SDL_PROP_WINDOW_WAYLAND_XDG_POPUP_POINTER`: the xdg_popup role
+//   associated with the window
+// - `SDL_PROP_WINDOW_WAYLAND_XDG_POSITIONER_POINTER`: the xdg_positioner
+//   associated with the window, in popup mode
+//
+// On X11:
+//
+// - `SDL_PROP_WINDOW_X11_DISPLAY_POINTER`: the X11 Display associated with
+//   the window
+// - `SDL_PROP_WINDOW_X11_SCREEN_NUMBER`: the screen number associated with
+//   the window
+// - `SDL_PROP_WINDOW_X11_WINDOW_NUMBER`: the X11 Window associated with the
+//   window
+//
+// On Emscripten:
+//
+// - `SDL_PROP_WINDOW_EMSCRIPTEN_CANVAS_ID_STRING`: the id the canvas element
+//   will have
+// - `SDL_PROP_WINDOW_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING`: the keyboard
+//   element that associates keyboard events to this window
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto properties( window_t _window ) -> properties::id_t {
+    return ( SDL_GetWindowProperties( _window ) );
+}
 
-/**
- * Get parent of a window.
- *
- * \param window the window to query.
- * \returns the parent of the window on success or NULL if the window has no
- *          parent.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreatePopupWindow
- */
-window_t SDL_GetWindowParent( window_t window );
+namespace wproperties {
 
-/**
- * Get the properties associated with a window.
- *
- * The following read-only properties are provided by SDL:
- *
- * - `SDL_PROP_WINDOW_SHAPE_POINTER`: the surface associated with a shaped
- *   window
- * - `SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN`: true if the window has HDR
- *   headroom above the SDR white point. This property can change dynamically
- *   when SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
- * - `SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT`: the value of SDR white in the
- *   SDL_COLORSPACE_SRGB_LINEAR colorspace. On Windows this corresponds to the
- *   SDR white level in scRGB colorspace, and on Apple platforms this is
- *   always 1.0 for EDR content. This property can change dynamically when
- *   SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
- * - `SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT`: the additional high dynamic range
- *   that can be displayed, in terms of the SDR white point. When HDR is not
- *   enabled, this will be 1.0. This property can change dynamically when
- *   SDL_EVENT_WINDOW_HDR_STATE_CHANGED is sent.
- *
- * On Android:
- *
- * - `SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER`: the ANativeWindow associated
- *   with the window
- * - `SDL_PROP_WINDOW_ANDROID_SURFACE_POINTER`: the EGLSurface associated with
- *   the window
- *
- * On iOS:
- *
- * - `SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER`: the `(__unsafe_unretained)`
- *   UIWindow associated with the window
- * - `SDL_PROP_WINDOW_UIKIT_METAL_VIEW_TAG_NUMBER`: the NSInteger tag
- *   associated with metal views on the window
- * - `SDL_PROP_WINDOW_UIKIT_OPENGL_FRAMEBUFFER_NUMBER`: the OpenGL view's
- *   framebuffer object. It must be bound when rendering to the screen using
- *   OpenGL.
- * - `SDL_PROP_WINDOW_UIKIT_OPENGL_RENDERBUFFER_NUMBER`: the OpenGL view's
- *   renderbuffer object. It must be bound when SDL_GL_SwapWindow is called.
- * - `SDL_PROP_WINDOW_UIKIT_OPENGL_RESOLVE_FRAMEBUFFER_NUMBER`: the OpenGL
- *   view's resolve framebuffer, when MSAA is used.
- *
- * On KMS/DRM:
- *
- * - `SDL_PROP_WINDOW_KMSDRM_DEVICE_INDEX_NUMBER`: the device index associated
- *   with the window (e.g. the X in /dev/dri/cardX)
- * - `SDL_PROP_WINDOW_KMSDRM_DRM_FD_NUMBER`: the DRM FD associated with the
- *   window
- * - `SDL_PROP_WINDOW_KMSDRM_GBM_DEVICE_POINTER`: the GBM device associated
- *   with the window
- *
- * On macOS:
- *
- * - `SDL_PROP_WINDOW_COCOA_WINDOW_POINTER`: the `(__unsafe_unretained)`
- *   NSWindow associated with the window
- * - `SDL_PROP_WINDOW_COCOA_METAL_VIEW_TAG_NUMBER`: the NSInteger tag
- *   assocated with metal views on the window
- *
- * On OpenVR:
- *
- * - `SDL_PROP_WINDOW_OPENVR_OVERLAY_ID_NUMBER`: the OpenVR Overlay Handle ID
- *   for the associated overlay window.
- *
- * On Vivante:
- *
- * - `SDL_PROP_WINDOW_VIVANTE_DISPLAY_POINTER`: the EGLNativeDisplayType
- *   associated with the window
- * - `SDL_PROP_WINDOW_VIVANTE_WINDOW_POINTER`: the EGLNativeWindowType
- *   associated with the window
- * - `SDL_PROP_WINDOW_VIVANTE_SURFACE_POINTER`: the EGLSurface associated with
- *   the window
- *
- * On Windows:
- *
- * - `SDL_PROP_WINDOW_WIN32_HWND_POINTER`: the HWND associated with the window
- * - `SDL_PROP_WINDOW_WIN32_HDC_POINTER`: the HDC associated with the window
- * - `SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER`: the HINSTANCE associated with
- *   the window
- *
- * On Wayland:
- *
- * Note: The `xdg_*` window objects do not internally persist across window
- * show/hide calls. They will be null if the window is hidden and must be
- * queried each time it is shown.
- *
- * - `SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER`: the wl_display associated with
- *   the window
- * - `SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER`: the wl_surface associated with
- *   the window
- * - `SDL_PROP_WINDOW_WAYLAND_VIEWPORT_POINTER`: the wp_viewport associated
- *   with the window
- * - `SDL_PROP_WINDOW_WAYLAND_EGL_WINDOW_POINTER`: the wl_egl_window
- *   associated with the window
- * - `SDL_PROP_WINDOW_WAYLAND_XDG_SURFACE_POINTER`: the xdg_surface associated
- *   with the window
- * - `SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_POINTER`: the xdg_toplevel role
- *   associated with the window
- * - 'SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_EXPORT_HANDLE_STRING': the export
- *   handle associated with the window
- * - `SDL_PROP_WINDOW_WAYLAND_XDG_POPUP_POINTER`: the xdg_popup role
- *   associated with the window
- * - `SDL_PROP_WINDOW_WAYLAND_XDG_POSITIONER_POINTER`: the xdg_positioner
- *   associated with the window, in popup mode
- *
- * On X11:
- *
- * - `SDL_PROP_WINDOW_X11_DISPLAY_POINTER`: the X11 Display associated with
- *   the window
- * - `SDL_PROP_WINDOW_X11_SCREEN_NUMBER`: the screen number associated with
- *   the window
- * - `SDL_PROP_WINDOW_X11_WINDOW_NUMBER`: the X11 Window associated with the
- *   window
- *
- * On Emscripten:
- *
- * - `SDL_PROP_WINDOW_EMSCRIPTEN_CANVAS_ID_STRING`: the id the canvas element
- *   will have
- * - `SDL_PROP_WINDOW_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING`: the keyboard
- *   element that associates keyboard events to this window
- *
- * \param window the window to query.
- * \returns a valid property ID on success or 0 on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_PropertiesID SDL_GetWindowProperties( window_t window );
+constexpr std::string_view g_shapePointer = "SDL.window.shape";
+constexpr std::string_view g_hdrEnabledBoolean = "SDL.window.HDR_enabled";
+constexpr std::string_view g_sdrWhiteLevelFloat = "SDL.window.SDR_white_level";
+constexpr std::string_view g_hdrHeadroomFloat = "SDL.window.HDR_headroom";
+constexpr std::string_view g_androidWindowPointer = "SDL.window.android.window";
+constexpr std::string_view g_androidSurfacePointer =
+    "SDL.window.android.surface";
+constexpr std::string_view g_uikitWindowPointer = "SDL.window.uikit.window";
+constexpr std::string_view g_uikitMetalViewTagNumber =
+    "SDL.window.uikit.metal_view_tag";
+constexpr std::string_view g_uikitOpenglFramebufferNumber =
+    "SDL.window.uikit.opengl.framebuffer";
+constexpr std::string_view g_uikitOpenglRenderbufferNumber =
+    "SDL.window.uikit.opengl.renderbuffer";
+constexpr std::string_view g_uikitOpenglResolveFramebufferNumber =
+    "SDL.window.uikit.opengl.resolve_framebuffer";
+constexpr std::string_view g_kmsdrmDeviceIndexNumber =
+    "SDL.window.kmsdrm.dev_index";
+constexpr std::string_view g_kmsdrmDrmFdNumber = "SDL.window.kmsdrm.drm_fd";
+constexpr std::string_view g_kmsdrmGbmDevicePointer =
+    "SDL.window.kmsdrm.gbm_dev";
+constexpr std::string_view g_cocoaWindowPointer = "SDL.window.cocoa.window";
+constexpr std::string_view g_cocoaMetalViewTagNumber =
+    "SDL.window.cocoa.metal_view_tag";
+constexpr std::string_view g_openvrOverlayIdNumber =
+    "SDL.window.openvr.overlay_id";
+constexpr std::string_view g_vivanteDisplayPointer =
+    "SDL.window.vivante.display";
+constexpr std::string_view g_vivanteWindowPointer = "SDL.window.vivante.window";
+constexpr std::string_view g_vivanteSurfacePointer =
+    "SDL.window.vivante.surface";
+constexpr std::string_view g_wiN32HwndPointer = "SDL.window.win32.hwnd";
+constexpr std::string_view g_wiN32HdcPointer = "SDL.window.win32.hdc";
+constexpr std::string_view g_wiN32InstancePointer = "SDL.window.win32.instance";
+constexpr std::string_view g_waylandDisplayPointer =
+    "SDL.window.wayland.display";
+constexpr std::string_view g_waylandSurfacePointer =
+    "SDL.window.wayland.surface";
+constexpr std::string_view g_waylandViewportPointer =
+    "SDL.window.wayland.viewport";
+constexpr std::string_view g_waylandEglWindowPointer =
+    "SDL.window.wayland.egl_window";
+constexpr std::string_view g_waylandXdgSurfacePointer =
+    "SDL.window.wayland.xdg_surface";
+constexpr std::string_view g_waylandXdgToplevelPointer =
+    "SDL.window.wayland.xdg_toplevel";
+constexpr std::string_view g_waylandXdgToplevelExportHandleString =
+    "SDL.window.wayland.xdg_toplevel_export_handle";
+constexpr std::string_view g_waylandXdgPopupPointer =
+    "SDL.window.wayland.xdg_popup";
+constexpr std::string_view g_waylandXdgPositionerPointer =
+    "SDL.window.wayland.xdg_positioner";
+constexpr std::string_view g_x11DisplayPointer = "SDL.window.x11.display";
+constexpr std::string_view g_x11ScreenNumber = "SDL.window.x11.screen";
+constexpr std::string_view g_x11WindowNumber = "SDL.window.x11.window";
+constexpr std::string_view g_emscriptenCanvasIdString =
+    "SDL.window.emscripten.canvas_id";
+constexpr std::string_view g_emscriptenKeyboardElementString =
+    "SDL.window.emscripten.keyboard_element";
 
-#define SDL_PROP_WINDOW_SHAPE_POINTER "SDL.window.shape"
-#define SDL_PROP_WINDOW_HDR_ENABLED_BOOLEAN "SDL.window.HDR_enabled"
-#define SDL_PROP_WINDOW_SDR_WHITE_LEVEL_FLOAT "SDL.window.SDR_white_level"
-#define SDL_PROP_WINDOW_HDR_HEADROOM_FLOAT "SDL.window.HDR_headroom"
-#define SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER "SDL.window.android.window"
-#define SDL_PROP_WINDOW_ANDROID_SURFACE_POINTER "SDL.window.android.surface"
-#define SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER "SDL.window.uikit.window"
-#define SDL_PROP_WINDOW_UIKIT_METAL_VIEW_TAG_NUMBER \
-    "SDL.window.uikit.metal_view_tag"
-#define SDL_PROP_WINDOW_UIKIT_OPENGL_FRAMEBUFFER_NUMBER \
-    "SDL.window.uikit.opengl.framebuffer"
-#define SDL_PROP_WINDOW_UIKIT_OPENGL_RENDERBUFFER_NUMBER \
-    "SDL.window.uikit.opengl.renderbuffer"
-#define SDL_PROP_WINDOW_UIKIT_OPENGL_RESOLVE_FRAMEBUFFER_NUMBER \
-    "SDL.window.uikit.opengl.resolve_framebuffer"
-#define SDL_PROP_WINDOW_KMSDRM_DEVICE_INDEX_NUMBER "SDL.window.kmsdrm.dev_index"
-#define SDL_PROP_WINDOW_KMSDRM_DRM_FD_NUMBER "SDL.window.kmsdrm.drm_fd"
-#define SDL_PROP_WINDOW_KMSDRM_GBM_DEVICE_POINTER "SDL.window.kmsdrm.gbm_dev"
-#define SDL_PROP_WINDOW_COCOA_WINDOW_POINTER "SDL.window.cocoa.window"
-#define SDL_PROP_WINDOW_COCOA_METAL_VIEW_TAG_NUMBER \
-    "SDL.window.cocoa.metal_view_tag"
-#define SDL_PROP_WINDOW_OPENVR_OVERLAY_ID_NUMBER "SDL.window.openvr.overlay_id"
-#define SDL_PROP_WINDOW_VIVANTE_DISPLAY_POINTER "SDL.window.vivante.display"
-#define SDL_PROP_WINDOW_VIVANTE_WINDOW_POINTER "SDL.window.vivante.window"
-#define SDL_PROP_WINDOW_VIVANTE_SURFACE_POINTER "SDL.window.vivante.surface"
-#define SDL_PROP_WINDOW_WIN32_HWND_POINTER "SDL.window.win32.hwnd"
-#define SDL_PROP_WINDOW_WIN32_HDC_POINTER "SDL.window.win32.hdc"
-#define SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER "SDL.window.win32.instance"
-#define SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER "SDL.window.wayland.display"
-#define SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER "SDL.window.wayland.surface"
-#define SDL_PROP_WINDOW_WAYLAND_VIEWPORT_POINTER "SDL.window.wayland.viewport"
-#define SDL_PROP_WINDOW_WAYLAND_EGL_WINDOW_POINTER \
-    "SDL.window.wayland.egl_window"
-#define SDL_PROP_WINDOW_WAYLAND_XDG_SURFACE_POINTER \
-    "SDL.window.wayland.xdg_surface"
-#define SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_POINTER \
-    "SDL.window.wayland.xdg_toplevel"
-#define SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_EXPORT_HANDLE_STRING \
-    "SDL.window.wayland.xdg_toplevel_export_handle"
-#define SDL_PROP_WINDOW_WAYLAND_XDG_POPUP_POINTER "SDL.window.wayland.xdg_popup"
-#define SDL_PROP_WINDOW_WAYLAND_XDG_POSITIONER_POINTER \
-    "SDL.window.wayland.xdg_positioner"
-#define SDL_PROP_WINDOW_X11_DISPLAY_POINTER "SDL.window.x11.display"
-#define SDL_PROP_WINDOW_X11_SCREEN_NUMBER "SDL.window.x11.screen"
-#define SDL_PROP_WINDOW_X11_WINDOW_NUMBER "SDL.window.x11.window"
-#define SDL_PROP_WINDOW_EMSCRIPTEN_CANVAS_ID_STRING \
-    "SDL.window.emscripten.canvas_id"
-#define SDL_PROP_WINDOW_EMSCRIPTEN_KEYBOARD_ELEMENT_STRING \
-    "SDL.window.emscripten.keyboard_element"
+} // namespace wproperties
 
-/**
- * Get the window flags.
- *
- * \param window the window to query.
- * \returns a mask of the SDL_WindowFlags associated with `window`.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreateWindow
- * \sa SDL_HideWindow
- * \sa SDL_MaximizeWindow
- * \sa SDL_MinimizeWindow
- * \sa SDL_SetWindowFullscreen
- * \sa SDL_SetWindowMouseGrab
- * \sa SDL_ShowWindow
- */
-SDL_WindowFlags SDL_GetWindowFlags( window_t window );
+// Get the window flags.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto flags( window_t _window ) -> flags_t {
+    return ( fromLegacy( SDL_GetWindowFlags( _window ) ) );
+}
 
-/**
- * Set the title of a window.
- *
- * This string is expected to be in UTF-8 encoding.
- *
- * \param window the window to change.
- * \param title the desired window title in UTF-8 format.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowTitle
- */
-bool SDL_SetWindowTitle( window_t window, const char* title );
+// Set the title of a window.
+//
+// This string is expected to be in UTF-8 encoding.
+//
+// Should only be called on the main thread.
+inline void title( window_t _window, std::string_view _title ) {
+    const bool l_result =
+        SDL_SetWindowTitle( _window, std::string( _title ).c_str() );
 
-/**
- * Get the title of a window.
- *
- * \param window the window to query.
- * \returns the title of the window in UTF-8 format or "" if there is no
- *          title.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowTitle
- */
-const char* SDL_GetWindowTitle( window_t window );
+    assert( l_result );
+}
 
-/**
- * Set the icon for a window.
- *
- * If this function is passed a surface with alternate representations, the
- * surface will be interpreted as the content to be used for 100% display
- * scale, and the alternate representations will be used for high DPI
- * situations. For example, if the original surface is 32x32, then on a 2x
- * macOS display or 200% display scale on Windows, a 64x64 version of the
- * image will be used, if available. If a matching version of the image isn't
- * available, the closest larger size image will be downscaled to the
- * appropriate size and be used instead, if available. Otherwise, the closest
- * smaller image will be upscaled and be used instead.
- *
- * \param window the window to change.
- * \param icon an SDL_Surface structure containing the icon for the window.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_SetWindowIcon( window_t window, SDL_Surface* icon );
+// Get the title of a window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto title( window_t _window ) -> std::string_view {
+    return { SDL_GetWindowTitle( _window ) };
+}
 
-/**
- * Request that the window's position be set.
- *
- * If the window is in an exclusive fullscreen or maximized state, this
- * request has no effect.
- *
- * This can be used to reposition fullscreen-desktop windows onto a different
- * display, however, as exclusive fullscreen windows are locked to a specific
- * display, they can only be repositioned programmatically via
- * SDL_SetWindowFullscreenMode().
- *
- * On some windowing systems this request is asynchronous and the new
- * coordinates may not have have been applied immediately upon the return of
- * this function. If an immediate change is required, call SDL_SyncWindow() to
- * block until the changes have taken effect.
- *
- * When the window position changes, an SDL_EVENT_WINDOW_MOVED event will be
- * emitted with the window's new coordinates. Note that the new coordinates
- * may not match the exact coordinates requested, as some windowing systems
- * can restrict the position of the window in certain scenarios (e.g.
- * constraining the position so the window is always within desktop bounds).
- * Additionally, as this is just a request, it can be denied by the windowing
- * system.
- *
- * \param window the window to reposition.
- * \param x the x coordinate of the window, or `SDL_WINDOWPOS_CENTERED` or
- *          `SDL_WINDOWPOS_UNDEFINED`.
- * \param y the y coordinate of the window, or `SDL_WINDOWPOS_CENTERED` or
- *          `SDL_WINDOWPOS_UNDEFINED`.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowPosition
- * \sa SDL_SyncWindow
- */
-bool SDL_SetWindowPosition( window_t window, int x, int y );
+// Set the icon for a window.
+//
+// If this function is passed a surface with alternate representations, the
+// surface will be interpreted as the content to be used for 100% display
+// scale, and the alternate representations will be used for high DPI
+// situations. For example, if the original surface is 32x32, then on a 2x
+// macOS display or 200% display scale on Windows, a 64x64 version of the
+// image will be used, if available. If a matching version of the image isn't
+// available, the closest larger size image will be downscaled to the
+// appropriate size and be used instead, if available. Otherwise, the closest
+// smaller image will be upscaled and be used instead.
+//
+// Should only be called on the main thread.
+inline void icon( window_t _window, surface_t& _icon ) {
+    const bool l_result = SDL_SetWindowIcon( _window, _icon );
 
-/**
- * Get the position of a window.
- *
- * This is the current position of the window as last reported by the
- * windowing system.
- *
- * If you do not need the value for one of the positions a NULL may be passed
- * in the `x` or `y` parameter.
- *
- * \param window the window to query.
- * \param x a pointer filled in with the x position of the window, may be
- *          NULL.
- * \param y a pointer filled in with the y position of the window, may be
- *          NULL.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowPosition
- */
-bool SDL_GetWindowPosition( window_t window, int* x, int* y );
+    assert( l_result );
+}
 
-/**
- * Request that the size of a window's client area be set.
- *
- * If the window is in a fullscreen or maximized state, this request has no
- * effect.
- *
- * To change the exclusive fullscreen mode of a window, use
- * SDL_SetWindowFullscreenMode().
- *
- * On some windowing systems, this request is asynchronous and the new window
- * size may not have have been applied immediately upon the return of this
- * function. If an immediate change is required, call SDL_SyncWindow() to
- * block until the changes have taken effect.
- *
- * When the window size changes, an SDL_EVENT_WINDOW_RESIZED event will be
- * emitted with the new window dimensions. Note that the new dimensions may
- * not match the exact size requested, as some windowing systems can restrict
- * the window size in certain scenarios (e.g. constraining the size of the
- * content area to remain within the usable desktop bounds). Additionally, as
- * this is just a request, it can be denied by the windowing system.
- *
- * \param window the window to change.
- * \param w the width of the window, must be > 0.
- * \param h the height of the window, must be > 0.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSize
- * \sa SDL_SetWindowFullscreenMode
- * \sa SDL_SyncWindow
- */
-bool SDL_SetWindowSize( window_t window, int w, int h );
+// Request that the window's position be set.
+//
+// If the window is in an exclusive fullscreen or maximized state, this
+// request has no effect.
+//
+// This can be used to reposition fullscreen-desktop windows onto a different
+// display, however, as exclusive fullscreen windows are locked to a specific
+// display, they can only be repositioned programmatically via
+// SDL_SetWindowFullscreenMode().
+//
+// On some windowing systems this request is asynchronous and the new
+// coordinates may not have have been applied immediately upon the return of
+// this function. If an immediate change is required, call SDL_SyncWindow() to
+// block until the changes have taken effect.
+//
+// When the window position changes, an SDL_EVENT_WINDOW_MOVED event will be
+// emitted with the window's new coordinates. Note that the new coordinates
+// may not match the exact coordinates requested, as some windowing systems
+// can restrict the position of the window in certain scenarios (e.g.
+// constraining the position so the window is always within desktop bounds).
+// Additionally, as this is just a request, it can be denied by the windowing
+// system.
+//
+// Should only be called on the main thread.
+inline void position( window_t _window, point_t< int > _position ) {
+    const bool l_result =
+        SDL_SetWindowPosition( _window, _position.x, _position.y );
 
-/**
- * Get the size of a window's client area.
- *
- * The window pixel size may differ from its window coordinate size if the
- * window is on a high pixel density display. Use SDL_GetWindowSizeInPixels()
- * or SDL_GetRenderOutputSize() to get the real client area size in pixels.
- *
- * \param window the window to query the width and height from.
- * \param w a pointer filled in with the width of the window, may be NULL.
- * \param h a pointer filled in with the height of the window, may be NULL.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetRenderOutputSize
- * \sa SDL_GetWindowSizeInPixels
- * \sa SDL_SetWindowSize
- */
-bool SDL_GetWindowSize( window_t window, int* w, int* h );
+    assert( l_result );
+}
 
-/**
- * Get the safe area for this window.
- *
- * Some devices have portions of the screen which are partially obscured or
- * not interactive, possibly due to on-screen controls, curved edges, camera
- * notches, TV overscan, etc. This function provides the area of the window
- * which is safe to have interactable content. You should continue rendering
- * into the rest of the window, but it should not contain visually important
- * or interactible content.
- *
- * \param window the window to query.
- * \param rect a pointer filled in with the client area that is safe for
- *             interactive content.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_GetWindowSafeArea( window_t window, SDL_Rect* rect );
+// Get the position of a window.
+//
+// This is the current position of the window as last reported by the
+// windowing system.
+//
+// If you do not need the value for one of the positions a NULL may be passed
+// in the `x` or `y` parameter.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto position( window_t _window ) -> point_t< int > {
+    point_t< int > l_position;
 
-/**
- * Request that the aspect ratio of a window's client area be set.
- *
- * The aspect ratio is the ratio of width divided by height, e.g. 2560x1600
- * would be 1.6. Larger aspect ratios are wider and smaller aspect ratios are
- * narrower.
- *
- * If, at the time of this request, the window in a fixed-size state, such as
- * maximized or fullscreen, the request will be deferred until the window
- * exits this state and becomes resizable again.
- *
- * On some windowing systems, this request is asynchronous and the new window
- * aspect ratio may not have have been applied immediately upon the return of
- * this function. If an immediate change is required, call SDL_SyncWindow() to
- * block until the changes have taken effect.
- *
- * When the window size changes, an SDL_EVENT_WINDOW_RESIZED event will be
- * emitted with the new window dimensions. Note that the new dimensions may
- * not match the exact aspect ratio requested, as some windowing systems can
- * restrict the window size in certain scenarios (e.g. constraining the size
- * of the content area to remain within the usable desktop bounds).
- * Additionally, as this is just a request, it can be denied by the windowing
- * system.
- *
- * \param window the window to change.
- * \param min_aspect the minimum aspect ratio of the window, or 0.0f for no
- *                   limit.
- * \param max_aspect the maximum aspect ratio of the window, or 0.0f for no
- *                   limit.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowAspectRatio
- * \sa SDL_SyncWindow
- */
-bool SDL_SetWindowAspectRatio( window_t window,
-                               float min_aspect,
-                               float max_aspect );
+    const bool l_result =
+        SDL_GetWindowPosition( _window, &l_position.x, &l_position.y );
 
-/**
- * Get the size of a window's client area.
- *
- * \param window the window to query the width and height from.
- * \param min_aspect a pointer filled in with the minimum aspect ratio of the
- *                   window, may be NULL.
- * \param max_aspect a pointer filled in with the maximum aspect ratio of the
- *                   window, may be NULL.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowAspectRatio
- */
-bool SDL_GetWindowAspectRatio( window_t window,
-                               float* min_aspect,
-                               float* max_aspect );
+    assert( l_result );
 
-/**
- * Get the size of a window's borders (decorations) around the client area.
- *
- * Note: If this function fails (returns false), the size values will be
- * initialized to 0, 0, 0, 0 (if a non-NULL pointer is provided), as if the
- * window in question was borderless.
- *
- * Note: This function may fail on systems where the window has not yet been
- * decorated by the display server (for example, immediately after calling
- * SDL_CreateWindow). It is recommended that you wait at least until the
- * window has been presented and composited, so that the window system has a
- * chance to decorate the window and provide the border dimensions to SDL.
- *
- * This function also returns false if getting the information is not
- * supported.
- *
- * \param window the window to query the size values of the border
- *               (decorations) from.
- * \param top pointer to variable for storing the size of the top border; NULL
- *            is permitted.
- * \param left pointer to variable for storing the size of the left border;
- *             NULL is permitted.
- * \param bottom pointer to variable for storing the size of the bottom
- *               border; NULL is permitted.
- * \param right pointer to variable for storing the size of the right border;
- *              NULL is permitted.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSize
- */
-bool SDL_GetWindowBordersSize( window_t window,
-                               int* top,
-                               int* left,
-                               int* bottom,
-                               int* right );
+    return ( l_position );
+}
 
-/**
- * Get the size of a window's client area, in pixels.
- *
- * \param window the window from which the drawable size should be queried.
- * \param w a pointer to variable for storing the width in pixels, may be
- *          NULL.
- * \param h a pointer to variable for storing the height in pixels, may be
- *          NULL.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreateWindow
- * \sa SDL_GetWindowSize
- */
-bool SDL_GetWindowSizeInPixels( window_t window, int* w, int* h );
+// Request that the size of a window's client area be set.
+//
+// If the window is in a fullscreen or maximized state, this request has no
+// effect.
+//
+// To change the exclusive fullscreen mode of a window, use
+// SDL_SetWindowFullscreenMode().
+//
+// On some windowing systems, this request is asynchronous and the new window
+// size may not have have been applied immediately upon the return of this
+// function. If an immediate change is required, call SDL_SyncWindow() to
+// block until the changes have taken effect.
+//
+// When the window size changes, an SDL_EVENT_WINDOW_RESIZED event will be
+// emitted with the new window dimensions. Note that the new dimensions may
+// not match the exact size requested, as some windowing systems can restrict
+// the window size in certain scenarios (e.g. constraining the size of the
+// content area to remain within the usable desktop bounds). Additionally, as
+// this is just a request, it can be denied by the windowing system.
+//
+// Should only be called on the main thread.
+inline void volume( window_t _window, volume_t< int > _volume ) {
+    const bool l_result =
+        SDL_SetWindowSize( _window, _volume.width, _volume.height );
 
-/**
- * Set the minimum size of a window's client area.
- *
- * \param window the window to change.
- * \param min_w the minimum width of the window, or 0 for no limit.
- * \param min_h the minimum height of the window, or 0 for no limit.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMinimumSize
- * \sa SDL_SetWindowMaximumSize
- */
-bool SDL_SetWindowMinimumSize( window_t window, int min_w, int min_h );
+    assert( l_result );
+}
 
-/**
- * Get the minimum size of a window's client area.
- *
- * \param window the window to query.
- * \param w a pointer filled in with the minimum width of the window, may be
- *          NULL.
- * \param h a pointer filled in with the minimum height of the window, may be
- *          NULL.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMaximumSize
- * \sa SDL_SetWindowMinimumSize
- */
-bool SDL_GetWindowMinimumSize( window_t window, int* w, int* h );
+// Get the size of a window's client area.
+//
+// The window pixel size may differ from its window coordinate size if the
+// window is on a high pixel density display. Use SDL_GetWindowSizeInPixels()
+// or SDL_GetRenderOutputSize() to get the real client area size in pixels.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto volume( window_t _window ) -> volume_t< int > {
+    volume_t< int > l_volume;
 
-/**
- * Set the maximum size of a window's client area.
- *
- * \param window the window to change.
- * \param max_w the maximum width of the window, or 0 for no limit.
- * \param max_h the maximum height of the window, or 0 for no limit.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMaximumSize
- * \sa SDL_SetWindowMinimumSize
- */
-bool SDL_SetWindowMaximumSize( window_t window, int max_w, int max_h );
+    const bool l_result =
+        SDL_GetWindowSize( _window, &l_volume.width, &l_volume.height );
 
-/**
- * Get the maximum size of a window's client area.
- *
- * \param window the window to query.
- * \param w a pointer filled in with the maximum width of the window, may be
- *          NULL.
- * \param h a pointer filled in with the maximum height of the window, may be
- *          NULL.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMinimumSize
- * \sa SDL_SetWindowMaximumSize
- */
-bool SDL_GetWindowMaximumSize( window_t window, int* w, int* h );
+    assert( l_result );
 
-/**
- * Set the border state of a window.
- *
- * This will add or remove the window's `SDL_WINDOW_BORDERLESS` flag and add
- * or remove the border from the actual window. This is a no-op if the
- * window's border already matches the requested state.
- *
- * You can't change the border state of a fullscreen window.
- *
- * \param window the window of which to change the border state.
- * \param bordered false to remove border, true to add border.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowFlags
- */
-bool SDL_SetWindowBordered( window_t window, bool bordered );
+    return ( l_volume );
+}
 
-/**
- * Set the user-resizable state of a window.
- *
- * This will add or remove the window's `SDL_WINDOW_RESIZABLE` flag and
- * allow/disallow user resizing of the window. This is a no-op if the window's
- * resizable state already matches the requested state.
- *
- * You can't change the resizable state of a fullscreen window.
- *
- * \param window the window of which to change the resizable state.
- * \param resizable true to allow resizing, false to disallow.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowFlags
- */
-bool SDL_SetWindowResizable( window_t window, bool resizable );
+// Get the safe area for this window.
+//
+// Some devices have portions of the screen which are partially obscured or
+// not interactive, possibly due to on-screen controls, curved edges, camera
+// notches, TV overscan, etc. This function provides the area of the window
+// which is safe to have interactable content. You should continue rendering
+// into the rest of the window, but it should not contain visually important
+// or interactible content.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto safeArea( window_t _window ) -> box_t< int > {
+    box_t< int > l_box;
 
-/**
- * Set the window to always be above the others.
- *
- * This will add or remove the window's `SDL_WINDOW_ALWAYS_ON_TOP` flag. This
- * will bring the window to the front and keep the window above the rest.
- *
- * \param window the window of which to change the always on top state.
- * \param on_top true to set the window always on top, false to disable.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowFlags
- */
-bool SDL_SetWindowAlwaysOnTop( window_t window, bool on_top );
+    const bool l_result = SDL_GetWindowSafeArea( _window, l_box );
 
-/**
- * Show a window.
- *
- * \param window the window to show.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_HideWindow
- * \sa SDL_RaiseWindow
- */
-bool SDL_ShowWindow( window_t window );
+    assert( l_result );
 
-/**
- * Hide a window.
- *
- * \param window the window to hide.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_ShowWindow
- * \sa SDL_WINDOW_HIDDEN
- */
-bool SDL_HideWindow( window_t window );
+    return { l_box };
+}
 
-/**
- * Request that a window be raised above other windows and gain the input
- * focus.
- *
- * The result of this request is subject to desktop window manager policy,
- * particularly if raising the requested window would result in stealing focus
- * from another application. If the window is successfully raised and gains
- * input focus, an SDL_EVENT_WINDOW_FOCUS_GAINED event will be emitted, and
- * the window will have the SDL_WINDOW_INPUT_FOCUS flag set.
- *
- * \param window the window to raise.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_RaiseWindow( window_t window );
+// Request that the aspect ratio of a window's client area be set.
+//
+// The aspect ratio is the ratio of width divided by height, e.g. 2560x1600
+// would be 1.6. Larger aspect ratios are wider and smaller aspect ratios are
+// narrower.
+//
+// If, at the time of this request, the window in a fixed-size state, such as
+// maximized or fullscreen, the request will be deferred until the window
+// exits this state and becomes resizable again.
+//
+// On some windowing systems, this request is asynchronous and the new window
+// aspect ratio may not have have been applied immediately upon the return of
+// this function. If an immediate change is required, call SDL_SyncWindow() to
+// block until the changes have taken effect.
+//
+// When the window size changes, an SDL_EVENT_WINDOW_RESIZED event will be
+// emitted with the new window dimensions. Note that the new dimensions may
+// not match the exact aspect ratio requested, as some windowing systems can
+// restrict the window size in certain scenarios (e.g. constraining the size
+// of the content area to remain within the usable desktop bounds).
+// Additionally, as this is just a request, it can be denied by the windowing
+// system.
+//
+// Should only be called on the main thread.
+inline void aspectRatio( window_t _window,
+                         float _minAspect,
+                         float _maxAspect ) {
+    const bool l_result =
+        SDL_SetWindowAspectRatio( _window, _minAspect, _maxAspect );
 
-/**
- * Request that the window be made as large as possible.
- *
- * Non-resizable windows can't be maximized. The window must have the
- * SDL_WINDOW_RESIZABLE flag set, or this will have no effect.
- *
- * On some windowing systems this request is asynchronous and the new window
- * state may not have have been applied immediately upon the return of this
- * function. If an immediate change is required, call SDL_SyncWindow() to
- * block until the changes have taken effect.
- *
- * When the window state changes, an SDL_EVENT_WINDOW_MAXIMIZED event will be
- * emitted. Note that, as this is just a request, the windowing system can
- * deny the state change.
- *
- * When maximizing a window, whether the constraints set via
- * SDL_SetWindowMaximumSize() are honored depends on the policy of the window
- * manager. Win32 and macOS enforce the constraints when maximizing, while X11
- * and Wayland window managers may vary.
- *
- * \param window the window to maximize.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_MinimizeWindow
- * \sa SDL_RestoreWindow
- * \sa SDL_SyncWindow
- */
-bool SDL_MaximizeWindow( window_t window );
+    assert( l_result );
+}
 
-/**
- * Request that the window be minimized to an iconic representation.
- *
- * If the window is in a fullscreen state, this request has no direct effect.
- * It may alter the state the window is returned to when leaving fullscreen.
- *
- * On some windowing systems this request is asynchronous and the new window
- * state may not have been applied immediately upon the return of this
- * function. If an immediate change is required, call SDL_SyncWindow() to
- * block until the changes have taken effect.
- *
- * When the window state changes, an SDL_EVENT_WINDOW_MINIMIZED event will be
- * emitted. Note that, as this is just a request, the windowing system can
- * deny the state change.
- *
- * \param window the window to minimize.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_MaximizeWindow
- * \sa SDL_RestoreWindow
- * \sa SDL_SyncWindow
- */
-bool SDL_MinimizeWindow( window_t window );
+// Get the size of a window's client area.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto aspectRatio( window_t _window )
+    -> std::pair< float, float > {
+    float l_minAspect = NAN;
+    float l_maxAspect = NAN;
 
-/**
- * Request that the size and position of a minimized or maximized window be
- * restored.
- *
- * If the window is in a fullscreen state, this request has no direct effect.
- * It may alter the state the window is returned to when leaving fullscreen.
- *
- * On some windowing systems this request is asynchronous and the new window
- * state may not have have been applied immediately upon the return of this
- * function. If an immediate change is required, call SDL_SyncWindow() to
- * block until the changes have taken effect.
- *
- * When the window state changes, an SDL_EVENT_WINDOW_RESTORED event will be
- * emitted. Note that, as this is just a request, the windowing system can
- * deny the state change.
- *
- * \param window the window to restore.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_MaximizeWindow
- * \sa SDL_MinimizeWindow
- * \sa SDL_SyncWindow
- */
-bool SDL_RestoreWindow( window_t window );
+    const bool l_result =
+        SDL_GetWindowAspectRatio( _window, &l_minAspect, &l_maxAspect );
 
-/**
- * Request that the window's fullscreen state be changed.
- *
- * By default a window in fullscreen state uses borderless fullscreen desktop
- * mode, but a specific exclusive display mode can be set using
- * SDL_SetWindowFullscreenMode().
- *
- * On some windowing systems this request is asynchronous and the new
- * fullscreen state may not have have been applied immediately upon the return
- * of this function. If an immediate change is required, call SDL_SyncWindow()
- * to block until the changes have taken effect.
- *
- * When the window state changes, an SDL_EVENT_WINDOW_ENTER_FULLSCREEN or
- * SDL_EVENT_WINDOW_LEAVE_FULLSCREEN event will be emitted. Note that, as this
- * is just a request, it can be denied by the windowing system.
- *
- * \param window the window to change.
- * \param fullscreen true for fullscreen mode, false for windowed mode.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowFullscreenMode
- * \sa SDL_SetWindowFullscreenMode
- * \sa SDL_SyncWindow
- * \sa SDL_WINDOW_FULLSCREEN
- */
-bool SDL_SetWindowFullscreen( window_t window, bool fullscreen );
+    assert( l_result );
 
-/**
- * Block until any pending window state is finalized.
- *
- * On asynchronous windowing systems, this acts as a synchronization barrier
- * for pending window state. It will attempt to wait until any pending window
- * state has been applied and is guaranteed to return within finite time. Note
- * that for how long it can potentially block depends on the underlying window
- * system, as window state changes may involve somewhat lengthy animations
- * that must complete before the window is in its final requested state.
- *
- * On windowing systems where changes are immediate, this does nothing.
- *
- * \param window the window for which to wait for the pending state to be
- *               applied.
- * \returns true on success or false if the operation timed out before the
- *          window was in the requested state.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowSize
- * \sa SDL_SetWindowPosition
- * \sa SDL_SetWindowFullscreen
- * \sa SDL_MinimizeWindow
- * \sa SDL_MaximizeWindow
- * \sa SDL_RestoreWindow
- * \sa SDL_HINT_VIDEO_SYNC_WINDOW_OPERATIONS
- */
-bool SDL_SyncWindow( window_t window );
+    return { l_minAspect, l_maxAspect };
+}
 
-/**
- * Return whether the window has a surface associated with it.
- *
- * \param window the window to query.
- * \returns true if there is a surface associated with the window, or false
- *          otherwise.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSurface
- */
-bool SDL_WindowHasSurface( window_t window );
+// Get the size of a window's borders (decorations) around the client area.
+//
+// Note: If this function fails (returns false), the size values will be
+// initialized to 0, 0, 0, 0 (if a non-NULL pointer is provided), as if the
+// window in question was borderless.
+//
+// Note: This function may fail on systems where the window has not yet been
+// decorated by the display server (for example, immediately after calling
+// SDL_CreateWindow). It is recommended that you wait at least until the
+// window has been presented and composited, so that the window system has a
+// chance to decorate the window and provide the border dimensions to SDL.
+//
+// This function also returns false if getting the information is not
+// supported.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto borders( window_t _window ) -> std::tuple< int > {
+    int l_top = 0;
+    int l_left = 0;
+    int l_bottom = 0;
+    int l_right = 0;
 
-/**
- * Get the SDL surface associated with the window.
- *
- * A new surface will be created with the optimal format for the window, if
- * necessary. This surface will be freed when the window is destroyed. Do not
- * free this surface.
- *
- * This surface will be invalidated if the window is resized. After resizing a
- * window this function must be called again to return a valid surface.
- *
- * You may not combine this with 3D or the rendering API on this window.
- *
- * This function is affected by `SDL_HINT_FRAMEBUFFER_ACCELERATION`.
- *
- * \param window the window to query.
- * \returns the surface associated with the window, or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_DestroyWindowSurface
- * \sa SDL_WindowHasSurface
- * \sa SDL_UpdateWindowSurface
- * \sa SDL_UpdateWindowSurfaceRects
- */
-SDL_Surface* SDL_GetWindowSurface( window_t window );
+    const bool l_result = SDL_GetWindowBordersSize( _window, &l_top, &l_left,
+                                                    &l_bottom, &l_right );
 
-/**
- * Toggle VSync for the window surface.
- *
- * When a window surface is created, vsync defaults to
- * SDL_WINDOW_SURFACE_VSYNC_DISABLED.
- *
- * The `vsync` parameter can be 1 to synchronize present with every vertical
- * refresh, 2 to synchronize present with every second vertical refresh, etc.,
- * SDL_WINDOW_SURFACE_VSYNC_ADAPTIVE for late swap tearing (adaptive vsync),
- * or SDL_WINDOW_SURFACE_VSYNC_DISABLED to disable. Not every value is
- * supported by every driver, so you should check the return value to see
- * whether the requested setting is supported.
- *
- * \param window the window.
- * \param vsync the vertical refresh sync interval.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSurfaceVSync
- */
-bool SDL_SetWindowSurfaceVSync( window_t window, int vsync );
+    assert( l_result );
 
-constexpr int WINDOW_SURFACE_VSYNC_DISABLED = 0;
-constexpr int WINDOW_SURFACE_VSYNC_ADAPTIVE = ( -1 );
+    return std::make_tuple( l_top, l_left, l_bottom, l_right );
+}
 
-/**
- * Get VSync for the window surface.
- *
- * \param window the window to query.
- * \param vsync an int filled with the current vertical refresh sync interval.
- *              See SDL_SetWindowSurfaceVSync() for the meaning of the value.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowSurfaceVSync
- */
-bool SDL_GetWindowSurfaceVSync( window_t window, int* vsync );
+// Get the size of a window's client area, in pixels.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto volumeInPixels( window_t _window )
+    -> volume_t< int > {
+    volume_t< int > l_volume;
 
-/**
- * Copy the window surface to the screen.
- *
- * This is the function you use to reflect any changes to the surface on the
- * screen.
- *
- * This function is equivalent to the SDL 1.2 API SDL_Flip().
- *
- * \param window the window to update.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSurface
- * \sa SDL_UpdateWindowSurfaceRects
- */
-bool SDL_UpdateWindowSurface( window_t window );
+    const bool l_result =
+        SDL_GetWindowSizeInPixels( _window, &l_volume.width, &l_volume.height );
 
-/**
- * Copy areas of the window surface to the screen.
- *
- * This is the function you use to reflect changes to portions of the surface
- * on the screen.
- *
- * This function is equivalent to the SDL 1.2 API SDL_UpdateRects().
- *
- * Note that this function will update _at least_ the rectangles specified,
- * but this is only intended as an optimization; in practice, this might
- * update more of the screen (or all of the screen!), depending on what method
- * SDL uses to send pixels to the system.
- *
- * \param window the window to update.
- * \param rects an array of SDL_Rect structures representing areas of the
- *              surface to copy, in pixels.
- * \param numrects the number of rectangles.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSurface
- * \sa SDL_UpdateWindowSurface
- */
-bool SDL_UpdateWindowSurfaceRects( window_t window,
-                                   const SDL_Rect* rects,
-                                   int numrects );
+    assert( l_result );
 
-/**
- * Destroy the surface associated with the window.
- *
- * \param window the window to update.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowSurface
- * \sa SDL_WindowHasSurface
- */
-bool SDL_DestroyWindowSurface( window_t window );
+    return ( l_volume );
+}
 
-/**
- * Set a window's keyboard grab mode.
- *
- * Keyboard grab enables capture of system keyboard shortcuts like Alt+Tab or
- * the Meta/Super key. Note that not all system keyboard shortcuts can be
- * captured by applications (one example is Ctrl+Alt+Del on Windows).
- *
- * This is primarily intended for specialized applications such as VNC clients
- * or VM frontends. Normal games should not use keyboard grab.
- *
- * When keyboard grab is enabled, SDL will continue to handle Alt+Tab when the
- * window is full-screen to ensure the user is not trapped in your
- * application. If you have a custom keyboard shortcut to exit fullscreen
- * mode, you may suppress this behavior with
- * `SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED`.
- *
- * If the caller enables a grab while another window is currently grabbed, the
- * other window loses its grab in favor of the caller's window.
- *
- * \param window the window for which the keyboard grab mode should be set.
- * \param grabbed this is true to grab keyboard, and false to release.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowKeyboardGrab
- * \sa SDL_SetWindowMouseGrab
- */
-bool SDL_SetWindowKeyboardGrab( window_t window, bool grabbed );
+// Set the minimum size of a window's client area.
+//
+// Should only be called on the main thread.
+inline void minimumVolume( window_t _window, volume_t< int > _volume ) {
+    const bool l_result =
+        SDL_SetWindowMinimumSize( _window, _volume.width, _volume.height );
 
-/**
- * Set a window's mouse grab mode.
- *
- * Mouse grab confines the mouse cursor to the window.
- *
- * \param window the window for which the mouse grab mode should be set.
- * \param grabbed this is true to grab mouse, and false to release.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMouseRect
- * \sa SDL_SetWindowMouseRect
- * \sa SDL_SetWindowKeyboardGrab
- */
-bool SDL_SetWindowMouseGrab( window_t window, bool grabbed );
+    assert( l_result );
+}
 
-/**
- * Get a window's keyboard grab mode.
- *
- * \param window the window to query.
- * \returns true if keyboard is grabbed, and false otherwise.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowKeyboardGrab
- */
-bool SDL_GetWindowKeyboardGrab( window_t window );
+// Get the minimum size of a window's client area.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto minimumVolume( window_t _window ) -> volume_t< int > {
+    volume_t< int > l_volume;
 
-/**
- * Get a window's mouse grab mode.
- *
- * \param window the window to query.
- * \returns true if mouse is grabbed, and false otherwise.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMouseRect
- * \sa SDL_SetWindowMouseRect
- * \sa SDL_SetWindowMouseGrab
- * \sa SDL_SetWindowKeyboardGrab
- */
-bool SDL_GetWindowMouseGrab( window_t window );
+    const bool l_result =
+        SDL_GetWindowMinimumSize( _window, &l_volume.width, &l_volume.height );
 
-/**
- * Get the window that currently has an input grab enabled.
- *
- * \returns the window if input is grabbed or NULL otherwise.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowMouseGrab
- * \sa SDL_SetWindowKeyboardGrab
- */
-window_t SDL_GetGrabbedWindow( void );
+    assert( l_result );
 
-/**
- * Confines the cursor to the specified area of a window.
- *
- * Note that this does NOT grab the cursor, it only defines the area a cursor
- * is restricted to when the window has mouse focus.
- *
- * \param window the window that will be associated with the barrier.
- * \param rect a rectangle area in window-relative coordinates. If NULL the
- *             barrier for the specified window will be destroyed.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowMouseRect
- * \sa SDL_GetWindowMouseGrab
- * \sa SDL_SetWindowMouseGrab
- */
-bool SDL_SetWindowMouseRect( window_t window, const SDL_Rect* rect );
+    return ( l_volume );
+}
 
-/**
- * Get the mouse confinement rectangle of a window.
- *
- * \param window the window to query.
- * \returns a pointer to the mouse confinement rectangle of a window, or NULL
- *          if there isn't one.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowMouseRect
- * \sa SDL_GetWindowMouseGrab
- * \sa SDL_SetWindowMouseGrab
- */
-const SDL_Rect* SDL_GetWindowMouseRect( window_t window );
+// Set the maximum size of a window's client area.
+//
+// Should only be called on the main thread.
+inline void maximumVolume( window_t _window, volume_t< int > _volume ) {
+    const bool l_result =
+        SDL_SetWindowMaximumSize( _window, _volume.width, _volume.height );
+
+    assert( l_result );
+}
+
+// Get the maximum size of a window's client area.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto maximumVolume( window_t _window ) -> volume_t< int > {
+    volume_t< int > l_volume;
+
+    const bool l_result =
+        SDL_GetWindowMaximumSize( _window, &l_volume.width, &l_volume.height );
+
+    assert( l_result );
+
+    return ( l_volume );
+}
+
+// Set the border state of a window.
+//
+// This will add or remove the window's `SDL_WINDOW_BORDERLESS` flag and add
+// or remove the border from the actual window. This is a no-op if the
+// window's border already matches the requested state.
+//
+// You can't change the border state of a fullscreen window.
+//
+// Should only be called on the main thread.
+inline void bordered( window_t _window, bool _isBordered ) {
+    const bool l_result = SDL_SetWindowBordered( _window, _isBordered );
+
+    assert( l_result );
+}
+
+// Set the user-resizable state of a window.
+//
+// This will add or remove the window's `SDL_WINDOW_RESIZABLE` flag and
+// allow/disallow user resizing of the window. This is a no-op if the window's
+// resizable state already matches the requested state.
+//
+// You can't change the resizable state of a fullscreen window.
+//
+// Should only be called on the main thread.
+inline void resizable( window_t _window, bool _isResizable ) {
+    const bool l_result = SDL_SetWindowResizable( _window, _isResizable );
+
+    assert( l_result );
+}
+
+// Set the window to always be above the others.
+//
+// This will add or remove the window's `SDL_WINDOW_ALWAYS_ON_TOP` flag. This
+// will bring the window to the front and keep the window above the rest.
+//
+// Should only be called on the main thread.
+inline void alwaysOnTop( window_t _window, bool _isOnTop ) {
+    const bool l_result = SDL_SetWindowAlwaysOnTop( _window, _isOnTop );
+
+    assert( l_result );
+}
+
+// Show a window.
+//
+// Should only be called on the main thread.
+inline void show( window_t _window ) {
+    const bool l_result = SDL_ShowWindow( _window );
+
+    assert( l_result );
+}
+
+// Hide a window.
+//
+// Should only be called on the main thread.
+inline void hide( window_t _window ) {
+    const bool l_result = SDL_HideWindow( _window );
+
+    assert( l_result );
+}
+
+// Request that a window be raised above other windows and gain the input
+// focus.
+//
+// The result of this request is subject to desktop window manager policy,
+// particularly if raising the requested window would result in stealing focus
+// from another application. If the window is successfully raised and gains
+// input focus, an SDL_EVENT_WINDOW_FOCUS_GAINED event will be emitted, and
+// the window will have the SDL_WINDOW_INPUT_FOCUS flag set.
+//
+// Should only be called on the main thread.
+inline void raise( window_t _window ) {
+    const bool l_result = SDL_RaiseWindow( _window );
+
+    assert( l_result );
+}
+
+// Request that the window be made as large as possible.
+//
+// Non-resizable windows can't be maximized. The window must have the
+// SDL_WINDOW_RESIZABLE flag set, or this will have no effect.
+//
+// On some windowing systems this request is asynchronous and the new window
+// state may not have have been applied immediately upon the return of this
+// function. If an immediate change is required, call SDL_SyncWindow() to
+// block until the changes have taken effect.
+//
+// When the window state changes, an SDL_EVENT_WINDOW_MAXIMIZED event will be
+// emitted. Note that, as this is just a request, the windowing system can
+// deny the state change.
+//
+// When maximizing a window, whether the constraints set via
+// SDL_SetWindowMaximumSize() are honored depends on the policy of the window
+// manager. Win32 and macOS enforce the constraints when maximizing, while X11
+// and Wayland window managers may vary.
+//
+// Should only be called on the main thread.
+inline void maximize( window_t _window ) {
+    SDL_MaximizeWindow( _window );
+}
+
+// Request that the window be minimized to an iconic representation.
+//
+// If the window is in a fullscreen state, this request has no direct effect.
+// It may alter the state the window is returned to when leaving fullscreen.
+//
+// On some windowing systems this request is asynchronous and the new window
+// state may not have been applied immediately upon the return of this
+// function. If an immediate change is required, call SDL_SyncWindow() to
+// block until the changes have taken effect.
+//
+// When the window state changes, an SDL_EVENT_WINDOW_MINIMIZED event will be
+// emitted. Note that, as this is just a request, the windowing system can
+// deny the state change.
+//
+// Should only be called on the main thread.
+inline void minimize( window_t _window ) {
+    const bool l_result = SDL_MinimizeWindow( _window );
+
+    assert( l_result );
+}
+
+// Request that the size and position of a minimized or maximized window be
+// restored.
+//
+// If the window is in a fullscreen state, this request has no direct effect.
+// It may alter the state the window is returned to when leaving fullscreen.
+//
+// On some windowing systems this request is asynchronous and the new window
+// state may not have have been applied immediately upon the return of this
+// function. If an immediate change is required, call SDL_SyncWindow() to
+// block until the changes have taken effect.
+//
+// When the window state changes, an SDL_EVENT_WINDOW_RESTORED event will be
+// emitted. Note that, as this is just a request, the windowing system can
+// deny the state change.
+//
+// Should only be called on the main thread.
+inline void restore( window_t _window ) {
+    const bool l_result = SDL_RestoreWindow( _window );
+
+    assert( l_result );
+}
+
+// Request that the window's fullscreen state be changed.
+//
+// By default a window in fullscreen state uses borderless fullscreen desktop
+// mode, but a specific exclusive display mode can be set using
+// SDL_SetWindowFullscreenMode().
+//
+// On some windowing systems this request is asynchronous and the new
+// fullscreen state may not have have been applied immediately upon the return
+// of this function. If an immediate change is required, call SDL_SyncWindow()
+// to block until the changes have taken effect.
+//
+// When the window state changes, an SDL_EVENT_WINDOW_ENTER_FULLSCREEN or
+// SDL_EVENT_WINDOW_LEAVE_FULLSCREEN event will be emitted. Note that, as this
+// is just a request, it can be denied by the windowing system.
+//
+// Should only be called on the main thread.
+inline void fullscreen( window_t _window, bool _isFullscreen ) {
+    const bool l_result = SDL_SetWindowFullscreen( _window, _isFullscreen );
+
+    assert( l_result );
+}
+
+// Block until any pending window state is finalized.
+//
+// On asynchronous windowing systems, this acts as a synchronization barrier
+// for pending window state. It will attempt to wait until any pending window
+// state has been applied and is guaranteed to return within finite time. Note
+// that for how long it can potentially block depends on the underlying window
+// system, as window state changes may involve somewhat lengthy animations
+// that must complete before the window is in its final requested state.
+//
+// On windowing systems where changes are immediate, this does nothing.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto sync( window_t _window ) -> bool {
+    return SDL_SyncWindow( _window );
+}
+
+// Return whether the window has a surface associated with it.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto hasSurface( window_t _window ) -> bool {
+    const bool l_result = SDL_WindowHasSurface( _window );
+
+    assert( l_result );
+}
+
+// Get the SDL surface associated with the window.
+//
+// A new surface will be created with the optimal format for the window, if
+// necessary. This surface will be freed when the window is destroyed. Do not
+// free this surface.
+//
+// This surface will be invalidated if the window is resized. After resizing a
+// window this function must be called again to return a valid surface.
+//
+// You may not combine this with 3D or the rendering API on this window.
+//
+// This function is affected by `SDL_HINT_FRAMEBUFFER_ACCELERATION`.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto surface( window_t _window ) -> surface_t {
+    return ( SDL_GetWindowSurface( _window ) );
+}
+
+// Toggle VSync for the window surface.
+//
+// When a window surface is created, vsync defaults to
+// SDL_WINDOW_SURFACE_VSYNC_DISABLED.
+//
+// The `vsync` parameter can be 1 to synchronize present with every vertical
+// refresh, 2 to synchronize present with every second vertical refresh, etc.,
+// SDL_WINDOW_SURFACE_VSYNC_ADAPTIVE for late swap tearing (adaptive vsync),
+// or SDL_WINDOW_SURFACE_VSYNC_DISABLED to disable. Not every value is
+// supported by every driver, so you should check the return value to see
+// whether the requested setting is supported.
+//
+// Should only be called on the main thread.
+inline void surfaceVSync( window_t _window, int _vsync ) {
+    const bool l_result = SDL_SetWindowSurfaceVSync( _window, _vsync );
+
+    assert( l_result );
+}
+
+constexpr int g_surfaceVsyncDisabled = 0;
+constexpr int g_surfaceVsyncAdaptive = ( -1 );
+
+// Get VSync for the window surface.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto surfaceVSync( window_t _window ) -> int {
+    int l_vsync = 0;
+
+    const bool l_result = SDL_GetWindowSurfaceVSync( _window, &l_vsync );
+
+    assert( l_result );
+
+    return ( l_vsync );
+}
+
+// Copy the window surface to the screen.
+//
+// This is the function you use to reflect any changes to the surface on the
+// screen.
+//
+// This function is equivalent to the SDL 1.2 API SDL_Flip().
+//
+// Should only be called on the main thread.
+inline void updateSurface( window_t _window ) {
+    const bool l_result = SDL_UpdateWindowSurface( _window );
+
+    assert( l_result );
+}
+
+// Copy areas of the window surface to the screen.
+//
+// This is the function you use to reflect changes to portions of the surface
+// on the screen.
+//
+// This function is equivalent to the SDL 1.2 API SDL_UpdateRects().
+//
+// Note that this function will update _at least_ the rectangles specified,
+// but this is only intended as an optimization; in practice, this might
+// update more of the screen (or all of the screen!), depending on what method
+// SDL uses to send pixels to the system.
+//
+// Should only be called on the main thread.
+inline void updateSurface( window_t _window,
+                           std::span< const box_t< int > > _boxes ) {
+    const auto l_boxes =
+        stdfunc::spanToVector< box_t< int >, SDL_Rect >( _boxes );
+
+    const bool l_result =
+        SDL_UpdateWindowSurfaceRects( _window, l_boxes.data(), l_boxes.size() );
+
+    assert( l_result );
+}
+
+// Destroy the surface associated with the window.
+//
+// Should only be called on the main thread.
+inline void destroySurface( window_t _window ) {
+    const bool l_result = SDL_DestroyWindowSurface( _window );
+
+    assert( l_result );
+}
+
+// Set a window's keyboard grab mode.
+//
+// Keyboard grab enables capture of system keyboard shortcuts like Alt+Tab or
+// the Meta/Super key. Note that not all system keyboard shortcuts can be
+// captured by applications (one example is Ctrl+Alt+Del on Windows).
+//
+// This is primarily intended for specialized applications such as VNC clients
+// or VM frontends. Normal games should not use keyboard grab.
+//
+// When keyboard grab is enabled, SDL will continue to handle Alt+Tab when the
+// window is full-screen to ensure the user is not trapped in your
+// application. If you have a custom keyboard shortcut to exit fullscreen
+// mode, you may suppress this behavior with
+// `SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED`.
+//
+// If the caller enables a grab while another window is currently grabbed, the
+// other window loses its grab in favor of the caller's window.
+//
+// Should only be called on the main thread.
+inline void keyboardGrab( window_t _window, bool _isGrabbed ) {
+    const bool l_result = SDL_SetWindowKeyboardGrab( _window, _isGrabbed );
+
+    assert( l_result );
+}
+
+// Set a window's mouse grab mode.
+//
+// Mouse grab confines the mouse cursor to the window.
+//
+// Should only be called on the main thread.
+inline void mouseGrab( window_t _window, bool _isGrabbed ) {
+    const bool l_result = SDL_SetWindowMouseGrab( _window, _isGrabbed );
+
+    assert( l_result );
+}
+
+// Get a window's keyboard grab mode.
+[[nodiscard]] inline auto keyboardGrab( window_t _window ) -> bool {
+    return ( SDL_GetWindowKeyboardGrab( _window ) );
+}
+
+// Get a window's mouse grab mode.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto mouseGrab( window_t _window ) -> bool {
+    return ( SDL_GetWindowMouseGrab( _window ) );
+}
+
+// Get the window that currently has an input grab enabled.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto grabbed() -> window_t {
+    return ( SDL_GetGrabbedWindow() );
+}
+
+// Confines the cursor to the specified area of a window.
+//
+// Note that this does NOT grab the cursor, it only defines the area a cursor
+// is restricted to when the window has mouse focus.
+//
+// Should only be called on the main thread.
+// TODO: Change box to clipping zone
+inline void mouseClippingZone( window_t _window, const box_t< int >& _box ) {
+    const bool l_result = SDL_SetWindowMouseRect( _window, _box );
+
+    assert( l_result );
+}
+
+// Get the mouse confinement rectangle of a window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto mouseClippingZone( window_t _window )
+    -> std::optional< box_t< int > > {
+    const SDL_Rect* l_result = SDL_GetWindowMouseRect( _window );
+
+    if ( l_result ) {
+        return ( box_t< int >{ *l_result } );
+
+    } else {
+        return ( std::nullopt );
+    }
+}
 
 /**
  * Set the opacity for a window.
@@ -2621,6 +1983,319 @@ bool SDL_SetWindowFocusable( window_t window, bool focusable );
  * \since This function is available since SDL 3.2.0.
  */
 bool SDL_ShowWindowSystemMenu( window_t window, int x, int y );
+
+} // namespace window
+
+// An opaque handle to an OpenGL context.
+using contextGL_t = gsl::not_null< gsl::not_null< SDL_GLContextState* >* >;
+
+// Opaque type for an EGL display.
+using displayEGL_t = gsl::not_null< void* >;
+
+// Opaque type for an EGL config.
+using configEGL_t = gsl::not_null< void* >;
+
+// Opaque type for an EGL surface.
+using surfaceEGL_t = gsl::not_null< void* >;
+
+// An EGL attribute, used when creating an EGL context.
+using attributeEGL_t = intptr_t;
+
+// An EGL integer attribute, used when creating an EGL surface.
+using intEGL_t = int;
+
+// EGL platform attribute initialization callback.
+//
+// This is called when SDL is attempting to create an EGL context, to let the
+// app add extra attributes to its eglGetPlatformDisplay() call.
+//
+// The callback should return a pointer to an EGL attribute array terminated
+// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
+// process will fail gracefully.
+//
+// The returned pointer should be allocated with SDL_malloc() and will be
+// passed to SDL_free().
+//
+// The arrays returned by each callback will be appended to the existing
+// attribute arrays defined by SDL.
+using attributeEGLArrayCallback_t = gsl::not_null< SDL_EGLAttribArrayCallback >;
+
+// EGL surface/context attribute initialization callback types.
+//
+// This is called when SDL is attempting to create an EGL surface, to let the
+// app add extra attributes to its eglCreateWindowSurface() or
+// eglCreateContext calls.
+//
+// For convenience, the EGLDisplay and EGLConfig to use are provided to the
+// callback.
+//
+// The callback should return a pointer to an EGL attribute array terminated
+// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
+// process will fail gracefully.
+//
+// The returned pointer should be allocated with SDL_malloc() and will be
+// passed to SDL_free().
+//
+// The arrays returned by each callback will be appended to the existing
+// attribute arrays defined by SDL.
+using intEGLArrayCallback_t = gsl::not_null< SDL_EGLIntArrayCallback >;
+
+// An enumeration of OpenGL configuration attributes.
+//
+// While you can set most OpenGL attributes normally, the attributes listed
+// above must be known before SDL creates the window that will be used with
+// the OpenGL context. These attributes are set and read with
+// SDL_GL_SetAttribute() and SDL_GL_GetAttribute().
+//
+// In some cases, these attributes are minimum requests; the GL does not
+// promise to give you exactly what you asked for. It's possible to ask for a
+// 16-bit depth buffer and get a 24-bit one instead, for example, or to ask
+// for no stencil buffer and still have one available. Context creation should
+// fail if the GL can't provide your requested attributes at a minimum, but
+// you should check to see exactly what you got.
+using attributeGL_t = enum class attributeGL : uint8_t {
+    redSize,        /**< the minimum number of bits for the red channel of the
+                               color buffer; defaults to 8. */
+    greenSize,      /**< the minimum number of bits for the green channel of
+                               the color buffer; defaults to 8. */
+    blueSize,       /**< the minimum number of bits for the blue channel of
+                               the color buffer; defaults to 8. */
+    alphaSize,      /**< the minimum number of bits for the alpha channel of
+                               the color buffer; defaults to 8. */
+    bufferSize,     /**< the minimum number of bits for frame buffer size;
+                               defaults to 0. */
+    doublebuffer,   /**< whether the output is single or double buffered;
+                              defaults to double buffering on. */
+    depthSize,      /**< the minimum number of bits in the depth buffer;
+                               defaults to 16. */
+    stencilSize,    /**< the minimum number of bits in the stencil buffer;
+                               defaults to 0. */
+    accumRedSize,   /**< the minimum number of bits for the red channel
+                                of the accumulation buffer; defaults to 0. */
+    accumGreenSize, /**< the minimum number of bits for the green
+                                channel of the accumulation buffer; defaults to
+                                0. */
+    accumBlueSize,  /**< the minimum number of bits for the blue channel
+                                of the accumulation buffer; defaults to 0. */
+    accumAlphaSize, /**< the minimum number of bits for the alpha
+                                channel of the accumulation buffer; defaults to
+                                0. */
+    stereo,         /**< whether the output is stereo 3D; defaults to off. */
+    multiSampleBuffers,  /**< the number of buffers used for multisample
+                                   anti-aliasing; defaults to 0. */
+    multiSampleSamples,  /**< the number of samples used around the
+                                   current pixel used for multisample
+                                   anti-aliasing. */
+    acceleratedVisual,   /**< set to 1 to require hardware acceleration,
+                                    set to 0 to force software rendering; defaults
+                                    to allow either. */
+    retainedBacking,     /**< not used (deprecated). */
+    contextMajorVersion, /**< OpenGL context major version. */
+    contextMinorVersion, /**< OpenGL context minor version. */
+    contextFlags,        /**< some combination of 0 or more of elements of the
+                                    SDL_GLContextFlag enumeration; defaults to 0. */
+    contextProfileMask,  /**< type of GL context (Core, Compatibility,
+                                     ES). See SDL_GLProfile; default value
+                                     depends on platform. */
+    shareWithCurrentContext, /**< OpenGL context sharing; defaults to 0. */
+    framebufferSrgbCapable, /**< requests sRGB capable visual; defaults to 0. */
+    contextReleaseBehavior, /**< sets context the release behavior. See
+                                        SDL_GLContextReleaseFlag; defaults to
+                                        FLUSH. */
+    contextResetNotification, /**< set context reset notification. See
+                                          SDL_GLContextResetNotification;
+                                          defaults to NO_NOTIFICATION. */
+    contextNoError,
+    floatBuffers,
+    platformEGL,
+};
+
+using attributeGLUnderlying_t = std::underlying_type_t< attributeGL_t >;
+
+[[nodiscard]] constexpr auto toLegacy( attributeGL_t _value ) -> SDL_GLAttr {
+    return ( static_cast< SDL_GLAttr >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( attributeGL_t* _value ) -> SDL_GLAttr* {
+    return ( std::bit_cast< SDL_GLAttr* >( _value ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLAttr _value ) -> attributeGL_t {
+    return ( static_cast< attributeGL_t >( _value ) );
+}
+
+// Possible values to be set for the SDL_GL_CONTEXT_PROFILE_MASK attribute.
+using profileGL_t = enum class profileGL : uint8_t {
+    core = 0x1,        /**< OpenGL Core Profile context */
+    compatibility = 2, /**< OpenGL Compatibility Profile context */
+    es = 0x4,          /**< GLX_CONTEXT_ES2_PROFILE_BIT_EXT \ */
+};
+
+using profileGLUnderlying_t = std::underlying_type_t< profileGL_t >;
+
+[[nodiscard]] constexpr auto toLegacy( profileGL_t _value ) -> SDL_GLProfile {
+    return ( static_cast< SDL_GLProfile >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( profileGL_t* _value ) -> SDL_GLProfile* {
+    return ( std::bit_cast< SDL_GLProfile* >( _value ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLProfile _value ) -> profileGL_t {
+    return ( static_cast< profileGL_t >( _value ) );
+}
+
+// Possible flags to be set for the SDL_GL_CONTEXT_FLAGS attribute.
+using contextGLFlag_t = enum class contextGLFlag : uint8_t {
+    debug = 0x1,
+    forwardCompatible = 0x2,
+    robustAccess = 0x4,
+    resetIsolation = 0x8,
+};
+
+using contextGLFlagUnderlying_t = std::underlying_type_t< contextGLFlag_t >;
+
+[[nodiscard]] constexpr auto toLegacy( contextGLFlag_t _value )
+    -> SDL_GLContextFlag {
+    return ( static_cast< SDL_GLContextFlag >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( contextGLFlag_t* _value )
+    -> SDL_GLContextFlag* {
+    return ( std::bit_cast< SDL_GLContextFlag* >( _value ) );
+}
+
+#if 0
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextFlag _value )
+    -> contextGLFlag_t {
+    return ( static_cast< contextGLFlag_t >( _value ) );
+}
+#endif
+
+// Possible values to be set for the SDL_GL_CONTEXT_RELEASE_BEHAVIOR
+// attribute.
+using contextGLReleaseFlag_t = enum class contextGLReleaseFlag : uint8_t {
+    none = 0,
+    flush = 0x1,
+};
+
+using contextGLReleaseFlagUnderlying_t =
+    std::underlying_type_t< contextGLReleaseFlag_t >;
+
+[[nodiscard]] constexpr auto toLegacy( contextGLReleaseFlag_t _value )
+    -> SDL_GLContextReleaseFlag {
+    return ( static_cast< SDL_GLContextReleaseFlag >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( contextGLReleaseFlag_t* _value )
+    -> SDL_GLContextReleaseFlag* {
+    return ( std::bit_cast< SDL_GLContextReleaseFlag* >( _value ) );
+}
+
+#if 0
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextReleaseFlag _value )
+    -> contextGLReleaseFlag_t {
+    return ( static_cast< contextGLReleaseFlag_t >( _value ) );
+}
+#endif
+
+// Possible values to be set SDL_GL_CONTEXT_RESET_NOTIFICATION attribute.
+using contextGLResetNotification_t =
+    enum class contextGLResetNotification : uint8_t {
+        noNotification = 0,
+        loseContext = 0x1,
+    };
+
+using contextGLResetNotificationUnderlying_t =
+    std::underlying_type_t< contextGLResetNotification_t >;
+
+[[nodiscard]] constexpr auto toLegacy( contextGLResetNotification_t _value )
+    -> SDL_GLContextResetNotification {
+    return ( static_cast< SDL_GLContextResetNotification >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( contextGLResetNotification_t* _value )
+    -> SDL_GLContextResetNotification* {
+    return ( std::bit_cast< SDL_GLContextResetNotification* >( _value ) );
+}
+
+#if 0
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextResetNotification _value )
+    -> contextGLResetNotification_t {
+    return ( static_cast< contextGLResetNotification_t >( _value ) );
+}
+#endif
+
+namespace driver {
+
+// Get the number of video drivers compiled into SDL.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto all() -> size_t {
+    return ( SDL_GetNumVideoDrivers() );
+}
+
+// Get the name of a built in video driver.
+//
+// The video drivers are presented in the order in which they are normally
+// checked during initialization.
+//
+// The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
+// "x11" or "windows". These never have Unicode characters, and are not meant
+// to be proper names.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto name( size_t _index ) -> std::string_view {
+    return ( SDL_GetVideoDriver( _index ) );
+}
+
+// Get the name of the currently initialized video driver.
+//
+// The names of drivers are all simple, low-ASCII identifiers, like "cocoa",
+// "x11" or "windows". These never have Unicode characters, and are not meant
+// to be proper names.
+//
+// The name of the current video driver or assert if no driver has been
+// initialized.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto current() -> std::string_view {
+    return { gsl::make_not_null( SDL_GetCurrentVideoDriver() ) };
+}
+
+} // namespace driver
+
+namespace system_theme {
+
+// System theme.
+using type_t = enum class type : uint8_t {
+    unknown, /**< Unknown system theme */
+    light,   /**< Light colored system theme */
+    dark,    /**< Dark colored system theme */
+};
+
+using typeUnderlying_t = std::underlying_type_t< type_t >;
+
+[[nodiscard]] constexpr auto toLegacy( type_t _value ) -> SDL_SystemTheme {
+    return ( static_cast< SDL_SystemTheme >( _value ) );
+}
+
+[[nodiscard]] constexpr auto toLegacy( type_t* _value ) -> SDL_SystemTheme* {
+    return ( std::bit_cast< SDL_SystemTheme* >( _value ) );
+}
+
+[[nodiscard]] constexpr auto fromLegacy( SDL_SystemTheme _value ) -> type_t {
+    return ( static_cast< type_t >( _value ) );
+}
+
+// Get the current system theme.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto current() -> type_t {
+    return ( fromLegacy( SDL_GetSystemTheme() ) );
+}
+
+} // namespace system_theme
 
 /**
  * Possible return values from the SDL_HitTest callback.

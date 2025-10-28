@@ -23,7 +23,7 @@ using window_t = gsl::not_null< SDL_Window* >;
 
 template < is_int_or_float T >
 struct volume {
-    T width, height;
+    T width{}, height{};
 };
 
 template < typename T >

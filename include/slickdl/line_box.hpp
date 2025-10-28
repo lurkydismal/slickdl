@@ -48,7 +48,7 @@ struct box {
         stdfunc::assert( _height );
     }
 
-    constexpr box( native_t& _rectangle )
+    constexpr box( const native_t& _rectangle )
         : x( _rectangle.x ),
           y( _rectangle.y ),
           width( _rectangle.w ),

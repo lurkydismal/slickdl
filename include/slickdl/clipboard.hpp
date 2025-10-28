@@ -165,13 +165,9 @@ inline void clear() {
 // The size of text data does not include the terminator, but the text is
 // guaranteed to be null terminated.
 //
-// \returns the retrieved data buffer or NULL on failure; call
-// SDL_GetError() for more information. This should be freed with SDL_free()
-// when it is no longer needed.
-//
 // Should only be called on the main thread.
 template < typename T >
-[[nodiscard]] inline auto data( std::string_view _mimeType ) -> T* {
+[[nodiscard]] inline auto data( std::string_view _mimeType ) -> T {
     size_t l_amount = 0;
 
     std::unique_ptr< void, void ( * )( void* ) > l_result(
@@ -181,7 +177,7 @@ template < typename T >
     assert( l_result.get() );
     assert( sizeof( T ) == l_amount );
 
-    return ( std::bit_cast< T* >( l_result.get() ) );
+    return { l_result.get() };
 }
 
 // Query whether there is data in the clipboard for the provided mime type.
