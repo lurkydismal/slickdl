@@ -1,10 +1,8 @@
 #pragma once
 
 #include <SDL3/SDL_video.h>
-#include <math.h>
 
-#include <algorithm>
-#include <ranges>
+#include <cmath>
 #include <vector>
 
 #include "slickdl.hpp"
@@ -36,6 +34,33 @@
 // most apps can get by with simply creating a window and listening for
 // events, so start with SDL_CreateWindow() and SDL_PollEvent().
 namespace slickdl::video {
+
+namespace hit_test {
+
+// Possible return values from the SDL_HitTest callback.
+//
+// Should only be called on the main thread.
+using result_t = enum class result : uint8_t {
+    normal,            /**< Region is normal. No special properties. */
+    draggable,         /**< Region can drag entire window. */
+    resizeTopleft,     /**< Region is the resizable top-left corner
+                           border. */
+    resizeTop,         /**< Region is the resizable top border. */
+    resizeTopright,    /**< Region is the resizable top-right corner
+                           border. */
+    resizeRight,       /**< Region is the resizable right border. */
+    resizeBottomright, /**< Region is the resizable bottom-right
+                           corner border. */
+    resizeBottom,      /**< Region is the resizable bottom border. */
+    resizeBottomleft,  /**< Region is the resizable bottom-left
+                           corner border. */
+    resizeLeft,        /**< Region is the resizable left border. */
+};
+
+// Callback used for hit-testing.
+using callback_t = gsl::not_null< SDL_HitTest >;
+
+} // namespace hit_test
 
 namespace display {
 
@@ -1842,379 +1867,235 @@ inline void mouseClippingZone( window_t _window, const box_t< int >& _box ) {
     }
 }
 
-/**
- * Set the opacity for a window.
- *
- * The parameter `opacity` will be clamped internally between 0.0f
- * (transparent) and 1.0f (opaque).
- *
- * This function also returns false if setting the opacity isn't supported.
- *
- * \param window the window which will be made transparent or opaque.
- * \param opacity the opacity value (0.0f - transparent, 1.0f - opaque).
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GetWindowOpacity
- */
-bool SDL_SetWindowOpacity( window_t window, float opacity );
+// Set the opacity for a window.
+//
+// The parameter `opacity` will be clamped internally between 0.0f
+// (transparent) and 1.0f (opaque).
+//
+// This function also returns false if setting the opacity isn't supported.
+//
+// Should only be called on the main thread.
+inline void opacity( window_t _window, float _opacity ) {
+    const bool l_result = SDL_SetWindowOpacity( _window, _opacity );
 
-/**
- * Get the opacity of a window.
- *
- * If transparency isn't supported on this platform, opacity will be returned
- * as 1.0f without error.
- *
- * \param window the window to get the current opacity value from.
- * \returns the opacity, (0.0f - transparent, 1.0f - opaque), or -1.0f on
- *          failure; call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowOpacity
- */
-float SDL_GetWindowOpacity( window_t window );
+    assert( l_result );
+}
 
-/**
- * Set the window as a child of a parent window.
- *
- * If the window is already the child of an existing window, it will be
- * reparented to the new owner. Setting the parent window to NULL unparents
- * the window and removes child window status.
- *
- * If a parent window is hidden or destroyed, the operation will be
- * recursively applied to child windows. Child windows hidden with the parent
- * that did not have their hidden status explicitly set will be restored when
- * the parent is shown.
- *
- * Attempting to set the parent of a window that is currently in the modal
- * state will fail. Use SDL_SetWindowModal() to cancel the modal status before
- * attempting to change the parent.
- *
- * Popup windows cannot change parents and attempts to do so will fail.
- *
- * Setting a parent window that is currently the sibling or descendent of the
- * child window results in undefined behavior.
- *
- * \param window the window that should become the child of a parent.
- * \param parent the new parent window for the child window.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowModal
- */
-bool SDL_SetWindowParent( window_t window, window_t parent );
+// Get the opacity of a window.
+//
+// If transparency isn't supported on this platform, opacity will be returned
+// as 1.0f without error.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto opacity( window_t _window ) -> float {
+    const float l_result = SDL_GetWindowOpacity( _window );
 
-/**
- * Toggle the state of the window as modal.
- *
- * To enable modal status on a window, the window must currently be the child
- * window of a parent, or toggling modal status on will fail.
- *
- * \param window the window on which to set the modal state.
- * \param modal true to toggle modal status on, false to toggle it off.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_SetWindowParent
- * \sa SDL_WINDOW_MODAL
- */
-bool SDL_SetWindowModal( window_t window, bool modal );
+    assert( l_result != -1.0f );
 
-/**
- * Set whether the window may have input focus.
- *
- * \param window the window to set focusable state.
- * \param focusable true to allow input focus, false to not allow input focus.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_SetWindowFocusable( window_t window, bool focusable );
+    return ( l_result );
+}
 
-/**
- * Display the system-level window menu.
- *
- * This default window menu is provided by the system and on some platforms
- * provides functionality for setting or changing privileged state on the
- * window, such as moving it between workspaces or displays, or toggling the
- * always-on-top property.
- *
- * On platforms or desktops where this is unsupported, this function does
- * nothing.
- *
- * \param window the window for which the menu will be displayed.
- * \param x the x coordinate of the menu, relative to the origin (top-left) of
- *          the client area.
- * \param y the y coordinate of the menu, relative to the origin (top-left) of
- *          the client area.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_ShowWindowSystemMenu( window_t window, int x, int y );
+// Set the window as a child of a parent window.
+//
+// If the window is already the child of an existing window, it will be
+// reparented to the new owner. Setting the parent window to NULL unparents
+// the window and removes child window status.
+//
+// If a parent window is hidden or destroyed, the operation will be
+// recursively applied to child windows. Child windows hidden with the parent
+// that did not have their hidden status explicitly set will be restored when
+// the parent is shown.
+//
+// Attempting to set the parent of a window that is currently in the modal
+// state will fail. Use SDL_SetWindowModal() to cancel the modal status before
+// attempting to change the parent.
+//
+// Popup windows cannot change parents and attempts to do so will fail.
+//
+// Setting a parent window that is currently the sibling or descendent of the
+// child window results in undefined behavior.
+//
+// Should only be called on the main thread.
+inline void parent( window_t _window, window_t _parent ) {
+    const bool l_result = SDL_SetWindowParent( _window, _parent );
+
+    assert( l_result );
+}
+
+// Toggle the state of the window as modal.
+//
+// To enable modal status on a window, the window must currently be the child
+// window of a parent, or toggling modal status on will fail.
+//
+// Should only be called on the main thread.
+inline void modal( window_t _window, bool _isModal ) {
+    const bool l_result = SDL_SetWindowModal( _window, _isModal );
+
+    assert( l_result );
+}
+
+// Set whether the window may have input focus.
+//
+// Should only be called on the main thread.
+inline void focusable( window_t _window, bool _isFocusable ) {
+    const bool l_result = SDL_SetWindowFocusable( _window, _isFocusable );
+
+    assert( l_result );
+}
+
+// Display the system-level window menu.
+//
+// This default window menu is provided by the system and on some platforms
+// provides functionality for setting or changing privileged state on the
+// window, such as moving it between workspaces or displays, or toggling the
+// always-on-top property.
+//
+// On platforms or desktops where this is unsupported, this function does
+// nothing.
+//
+// Should only be called on the main thread.
+inline void systemMenu( window_t _window, point_t< int > _posiiton ) {
+    const bool l_result =
+        SDL_ShowWindowSystemMenu( _window, _posiiton.x, _posiiton.y );
+
+    assert( l_result );
+}
+
+// Provide a callback that decides if a window region has special properties.
+//
+// Normally windows are dragged and resized by decorations provided by the
+// system window manager (a title bar, borders, etc), but for some apps, it
+// makes sense to drag them from somewhere else inside the window itself; for
+// example, one might have a borderless window that wants to be draggable from
+// any part, or simulate its own title bar, etc.
+//
+// This function lets the app provide a callback that designates pieces of a
+// given window as special. This callback is run during event processing if we
+// need to tell the OS to treat a region of the window specially; the use of
+// this callback is known as "hit testing."
+//
+// Mouse input may not be delivered to your application if it is within a
+// special area; the OS will often apply that input to moving the window or
+// resizing the window and not deliver it to the application.
+//
+// Specifying NULL for a callback disables hit-testing. Hit-testing is
+// disabled by default.
+//
+// Platforms that don't support this functionality will return false
+// unconditionally, even if you're attempting to disable hit-testing.
+//
+// Your callback may fire at any time, and its firing does not indicate any
+// specific behavior (for example, on Windows, this certainly might fire when
+// the OS is deciding whether to drag your window, but it fires for lots of
+// other reasons, too, some unrelated to anything you probably care about _and
+// when the mouse isn't actually at the location it is testing_). Since this
+// can fire at any time, you should try to keep your callback efficient,
+// devoid of allocations, etc.
+//
+// Should only be called on the main thread.
+inline void hitTest( window_t _window,
+                     hit_test::callback_t _callback,
+                     void* _userData = nullptr ) {
+    const bool l_result = SDL_SetWindowHitTest( _window, _callback, _userData );
+
+    assert( l_result );
+}
+
+// Set the shape of a transparent window.
+//
+// This sets the alpha channel of a transparent window and any fully
+// transparent areas are also transparent to mouse clicks. If you are using
+// something besides the SDL render API, then you are responsible for drawing
+// the alpha channel of the window to match the shape alpha channel to get
+// consistent cross-platform results.
+//
+// The shape is copied inside this function, so you can free it afterwards. If
+// your shape surface changes, you should call SDL_SetWindowShape() again to
+// update the window. This is an expensive operation, so should be done
+// sparingly.
+//
+// The window must have been created with the SDL_WINDOW_TRANSPARENT flag.
+//
+// Should only be called on the main thread.
+inline void setWindowShape(
+    window_t _window,
+    const std::optional< surface_t >& _shape = std::nullopt ) {
+    bool l_result = false;
+
+    if ( _shape ) {
+        l_result = SDL_SetWindowShape( _window, _shape.value() );
+
+    } else {
+        l_result = SDL_SetWindowShape( _window, nullptr );
+    }
+
+    assert( l_result );
+}
+
+// Request a window to demand attention from the user.
+//
+// Should only be called on the main thread.
+inline void flash( window_t _window, flashOperation_t _operation ) {
+    const bool l_result = SDL_FlashWindow( _window, toLegacy( _operation ) );
+
+    assert( l_result );
+}
+
+// Sets the state of the progress bar for the given window’s taskbar icon.
+//
+// Should only be called on the main thread.
+inline void progressState( window_t _window, progressState_t _state ) {
+    const bool l_result =
+        SDL_SetWindowProgressState( _window, toLegacy( _state ) );
+
+    assert( l_result );
+}
+
+// Get the state of the progress bar for the given window’s taskbar icon.
+//
+// Should only be called on the main thread.
+inline auto progressState( window_t _window ) -> progressState_t {
+    const progressState_t l_result =
+        fromLegacy( SDL_GetWindowProgressState( _window ) );
+
+    assert( l_result != progressState_t::invalid );
+
+    return ( l_result );
+}
+
+// Sets the value of the progress bar for the given window’s taskbar icon.
+//
+// Should only be called on the main thread.
+inline void progressValue( window_t _window, float _value ) {
+    const bool l_result = SDL_SetWindowProgressValue( _window, _value );
+
+    assert( l_result );
+}
+
+// Get the value of the progress bar for the given window’s taskbar icon.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto progressValue( window_t _window ) -> float {
+    const float l_result = SDL_GetWindowProgressValue( _window );
+
+    assert( l_result != -1.0f );
+
+    return ( l_result );
+}
+
+// Destroy a window.
+//
+// Any child windows owned by the window will be recursively destroyed as
+// well.
+//
+// Note that on some platforms, the visible window may not actually be removed
+// from the screen until the SDL event loop is pumped again, even though the
+// SDL_Window is no longer valid after this call.
+inline void destroy( window_t _window ) {
+    SDL_DestroyWindow( _window );
+}
 
 } // namespace window
-
-// An opaque handle to an OpenGL context.
-using contextGL_t = gsl::not_null< gsl::not_null< SDL_GLContextState* >* >;
-
-// Opaque type for an EGL display.
-using displayEGL_t = gsl::not_null< void* >;
-
-// Opaque type for an EGL config.
-using configEGL_t = gsl::not_null< void* >;
-
-// Opaque type for an EGL surface.
-using surfaceEGL_t = gsl::not_null< void* >;
-
-// An EGL attribute, used when creating an EGL context.
-using attributeEGL_t = intptr_t;
-
-// An EGL integer attribute, used when creating an EGL surface.
-using intEGL_t = int;
-
-// EGL platform attribute initialization callback.
-//
-// This is called when SDL is attempting to create an EGL context, to let the
-// app add extra attributes to its eglGetPlatformDisplay() call.
-//
-// The callback should return a pointer to an EGL attribute array terminated
-// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
-// process will fail gracefully.
-//
-// The returned pointer should be allocated with SDL_malloc() and will be
-// passed to SDL_free().
-//
-// The arrays returned by each callback will be appended to the existing
-// attribute arrays defined by SDL.
-using attributeEGLArrayCallback_t = gsl::not_null< SDL_EGLAttribArrayCallback >;
-
-// EGL surface/context attribute initialization callback types.
-//
-// This is called when SDL is attempting to create an EGL surface, to let the
-// app add extra attributes to its eglCreateWindowSurface() or
-// eglCreateContext calls.
-//
-// For convenience, the EGLDisplay and EGLConfig to use are provided to the
-// callback.
-//
-// The callback should return a pointer to an EGL attribute array terminated
-// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
-// process will fail gracefully.
-//
-// The returned pointer should be allocated with SDL_malloc() and will be
-// passed to SDL_free().
-//
-// The arrays returned by each callback will be appended to the existing
-// attribute arrays defined by SDL.
-using intEGLArrayCallback_t = gsl::not_null< SDL_EGLIntArrayCallback >;
-
-// An enumeration of OpenGL configuration attributes.
-//
-// While you can set most OpenGL attributes normally, the attributes listed
-// above must be known before SDL creates the window that will be used with
-// the OpenGL context. These attributes are set and read with
-// SDL_GL_SetAttribute() and SDL_GL_GetAttribute().
-//
-// In some cases, these attributes are minimum requests; the GL does not
-// promise to give you exactly what you asked for. It's possible to ask for a
-// 16-bit depth buffer and get a 24-bit one instead, for example, or to ask
-// for no stencil buffer and still have one available. Context creation should
-// fail if the GL can't provide your requested attributes at a minimum, but
-// you should check to see exactly what you got.
-using attributeGL_t = enum class attributeGL : uint8_t {
-    redSize,        /**< the minimum number of bits for the red channel of the
-                               color buffer; defaults to 8. */
-    greenSize,      /**< the minimum number of bits for the green channel of
-                               the color buffer; defaults to 8. */
-    blueSize,       /**< the minimum number of bits for the blue channel of
-                               the color buffer; defaults to 8. */
-    alphaSize,      /**< the minimum number of bits for the alpha channel of
-                               the color buffer; defaults to 8. */
-    bufferSize,     /**< the minimum number of bits for frame buffer size;
-                               defaults to 0. */
-    doublebuffer,   /**< whether the output is single or double buffered;
-                              defaults to double buffering on. */
-    depthSize,      /**< the minimum number of bits in the depth buffer;
-                               defaults to 16. */
-    stencilSize,    /**< the minimum number of bits in the stencil buffer;
-                               defaults to 0. */
-    accumRedSize,   /**< the minimum number of bits for the red channel
-                                of the accumulation buffer; defaults to 0. */
-    accumGreenSize, /**< the minimum number of bits for the green
-                                channel of the accumulation buffer; defaults to
-                                0. */
-    accumBlueSize,  /**< the minimum number of bits for the blue channel
-                                of the accumulation buffer; defaults to 0. */
-    accumAlphaSize, /**< the minimum number of bits for the alpha
-                                channel of the accumulation buffer; defaults to
-                                0. */
-    stereo,         /**< whether the output is stereo 3D; defaults to off. */
-    multiSampleBuffers,  /**< the number of buffers used for multisample
-                                   anti-aliasing; defaults to 0. */
-    multiSampleSamples,  /**< the number of samples used around the
-                                   current pixel used for multisample
-                                   anti-aliasing. */
-    acceleratedVisual,   /**< set to 1 to require hardware acceleration,
-                                    set to 0 to force software rendering; defaults
-                                    to allow either. */
-    retainedBacking,     /**< not used (deprecated). */
-    contextMajorVersion, /**< OpenGL context major version. */
-    contextMinorVersion, /**< OpenGL context minor version. */
-    contextFlags,        /**< some combination of 0 or more of elements of the
-                                    SDL_GLContextFlag enumeration; defaults to 0. */
-    contextProfileMask,  /**< type of GL context (Core, Compatibility,
-                                     ES). See SDL_GLProfile; default value
-                                     depends on platform. */
-    shareWithCurrentContext, /**< OpenGL context sharing; defaults to 0. */
-    framebufferSrgbCapable, /**< requests sRGB capable visual; defaults to 0. */
-    contextReleaseBehavior, /**< sets context the release behavior. See
-                                        SDL_GLContextReleaseFlag; defaults to
-                                        FLUSH. */
-    contextResetNotification, /**< set context reset notification. See
-                                          SDL_GLContextResetNotification;
-                                          defaults to NO_NOTIFICATION. */
-    contextNoError,
-    floatBuffers,
-    platformEGL,
-};
-
-using attributeGLUnderlying_t = std::underlying_type_t< attributeGL_t >;
-
-[[nodiscard]] constexpr auto toLegacy( attributeGL_t _value ) -> SDL_GLAttr {
-    return ( static_cast< SDL_GLAttr >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( attributeGL_t* _value ) -> SDL_GLAttr* {
-    return ( std::bit_cast< SDL_GLAttr* >( _value ) );
-}
-
-[[nodiscard]] constexpr auto fromLegacy( SDL_GLAttr _value ) -> attributeGL_t {
-    return ( static_cast< attributeGL_t >( _value ) );
-}
-
-// Possible values to be set for the SDL_GL_CONTEXT_PROFILE_MASK attribute.
-using profileGL_t = enum class profileGL : uint8_t {
-    core = 0x1,        /**< OpenGL Core Profile context */
-    compatibility = 2, /**< OpenGL Compatibility Profile context */
-    es = 0x4,          /**< GLX_CONTEXT_ES2_PROFILE_BIT_EXT \ */
-};
-
-using profileGLUnderlying_t = std::underlying_type_t< profileGL_t >;
-
-[[nodiscard]] constexpr auto toLegacy( profileGL_t _value ) -> SDL_GLProfile {
-    return ( static_cast< SDL_GLProfile >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( profileGL_t* _value ) -> SDL_GLProfile* {
-    return ( std::bit_cast< SDL_GLProfile* >( _value ) );
-}
-
-[[nodiscard]] constexpr auto fromLegacy( SDL_GLProfile _value ) -> profileGL_t {
-    return ( static_cast< profileGL_t >( _value ) );
-}
-
-// Possible flags to be set for the SDL_GL_CONTEXT_FLAGS attribute.
-using contextGLFlag_t = enum class contextGLFlag : uint8_t {
-    debug = 0x1,
-    forwardCompatible = 0x2,
-    robustAccess = 0x4,
-    resetIsolation = 0x8,
-};
-
-using contextGLFlagUnderlying_t = std::underlying_type_t< contextGLFlag_t >;
-
-[[nodiscard]] constexpr auto toLegacy( contextGLFlag_t _value )
-    -> SDL_GLContextFlag {
-    return ( static_cast< SDL_GLContextFlag >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( contextGLFlag_t* _value )
-    -> SDL_GLContextFlag* {
-    return ( std::bit_cast< SDL_GLContextFlag* >( _value ) );
-}
-
-#if 0
-[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextFlag _value )
-    -> contextGLFlag_t {
-    return ( static_cast< contextGLFlag_t >( _value ) );
-}
-#endif
-
-// Possible values to be set for the SDL_GL_CONTEXT_RELEASE_BEHAVIOR
-// attribute.
-using contextGLReleaseFlag_t = enum class contextGLReleaseFlag : uint8_t {
-    none = 0,
-    flush = 0x1,
-};
-
-using contextGLReleaseFlagUnderlying_t =
-    std::underlying_type_t< contextGLReleaseFlag_t >;
-
-[[nodiscard]] constexpr auto toLegacy( contextGLReleaseFlag_t _value )
-    -> SDL_GLContextReleaseFlag {
-    return ( static_cast< SDL_GLContextReleaseFlag >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( contextGLReleaseFlag_t* _value )
-    -> SDL_GLContextReleaseFlag* {
-    return ( std::bit_cast< SDL_GLContextReleaseFlag* >( _value ) );
-}
-
-#if 0
-[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextReleaseFlag _value )
-    -> contextGLReleaseFlag_t {
-    return ( static_cast< contextGLReleaseFlag_t >( _value ) );
-}
-#endif
-
-// Possible values to be set SDL_GL_CONTEXT_RESET_NOTIFICATION attribute.
-using contextGLResetNotification_t =
-    enum class contextGLResetNotification : uint8_t {
-        noNotification = 0,
-        loseContext = 0x1,
-    };
-
-using contextGLResetNotificationUnderlying_t =
-    std::underlying_type_t< contextGLResetNotification_t >;
-
-[[nodiscard]] constexpr auto toLegacy( contextGLResetNotification_t _value )
-    -> SDL_GLContextResetNotification {
-    return ( static_cast< SDL_GLContextResetNotification >( _value ) );
-}
-
-[[nodiscard]] constexpr auto toLegacy( contextGLResetNotification_t* _value )
-    -> SDL_GLContextResetNotification* {
-    return ( std::bit_cast< SDL_GLContextResetNotification* >( _value ) );
-}
-
-#if 0
-[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextResetNotification _value )
-    -> contextGLResetNotification_t {
-    return ( static_cast< contextGLResetNotification_t >( _value ) );
-}
-#endif
 
 namespace driver {
 
@@ -2287,674 +2168,570 @@ using typeUnderlying_t = std::underlying_type_t< type_t >;
 
 } // namespace system_theme
 
-/**
- * Possible return values from the SDL_HitTest callback.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This enum is available since SDL 3.2.0.
- *
- * \sa SDL_HitTest
- */
-typedef enum SDL_HitTestResult {
-    SDL_HITTEST_NORMAL,         /**< Region is normal. No special properties. */
-    SDL_HITTEST_DRAGGABLE,      /**< Region can drag entire window. */
-    SDL_HITTEST_RESIZE_TOPLEFT, /**< Region is the resizable top-left corner
-                                   border. */
-    SDL_HITTEST_RESIZE_TOP,     /**< Region is the resizable top border. */
-    SDL_HITTEST_RESIZE_TOPRIGHT, /**< Region is the resizable top-right corner
-                                    border. */
-    SDL_HITTEST_RESIZE_RIGHT,    /**< Region is the resizable right border. */
-    SDL_HITTEST_RESIZE_BOTTOMRIGHT, /**< Region is the resizable bottom-right
-                                       corner border. */
-    SDL_HITTEST_RESIZE_BOTTOM, /**< Region is the resizable bottom border. */
-    SDL_HITTEST_RESIZE_BOTTOMLEFT, /**< Region is the resizable bottom-left
-                                      corner border. */
-    SDL_HITTEST_RESIZE_LEFT        /**< Region is the resizable left border. */
-} SDL_HitTestResult;
+namespace screen_saver {
 
-/**
- * Callback used for hit-testing.
- *
- * \param win the SDL_Window where hit-testing was set on.
- * \param area an SDL_Point which should be hit-tested.
- * \param data what was passed as `callback_data` to SDL_SetWindowHitTest().
- * \returns an SDL_HitTestResult value.
- *
- * \sa SDL_SetWindowHitTest
- */
-typedef SDL_HitTestResult ( *SDL_HitTest )( window_t win,
-                                            const SDL_Point* area,
-                                            void* data );
+// Check whether the screensaver is currently enabled.
+//
+// The screensaver is disabled by default.
+//
+// The default can also be changed using `SDL_HINT_VIDEO_ALLOW_SCREENSAVER`.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto isEnabled() -> bool {
+    return ( SDL_ScreenSaverEnabled() );
+}
 
-/**
- * Provide a callback that decides if a window region has special properties.
- *
- * Normally windows are dragged and resized by decorations provided by the
- * system window manager (a title bar, borders, etc), but for some apps, it
- * makes sense to drag them from somewhere else inside the window itself; for
- * example, one might have a borderless window that wants to be draggable from
- * any part, or simulate its own title bar, etc.
- *
- * This function lets the app provide a callback that designates pieces of a
- * given window as special. This callback is run during event processing if we
- * need to tell the OS to treat a region of the window specially; the use of
- * this callback is known as "hit testing."
- *
- * Mouse input may not be delivered to your application if it is within a
- * special area; the OS will often apply that input to moving the window or
- * resizing the window and not deliver it to the application.
- *
- * Specifying NULL for a callback disables hit-testing. Hit-testing is
- * disabled by default.
- *
- * Platforms that don't support this functionality will return false
- * unconditionally, even if you're attempting to disable hit-testing.
- *
- * Your callback may fire at any time, and its firing does not indicate any
- * specific behavior (for example, on Windows, this certainly might fire when
- * the OS is deciding whether to drag your window, but it fires for lots of
- * other reasons, too, some unrelated to anything you probably care about _and
- * when the mouse isn't actually at the location it is testing_). Since this
- * can fire at any time, you should try to keep your callback efficient,
- * devoid of allocations, etc.
- *
- * \param window the window to set hit-testing on.
- * \param callback the function to call when doing a hit-test.
- * \param callback_data an app-defined void pointer passed to **callback**.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_SetWindowHitTest( window_t window,
-                           SDL_HitTest callback,
-                           void* callback_data );
+// Allow the screen to be blanked by a screen saver.
+//
+// Should only be called on the main thread.
+inline void enable() {
+    const bool l_result = SDL_EnableScreenSaver();
 
-/**
- * Set the shape of a transparent window.
- *
- * This sets the alpha channel of a transparent window and any fully
- * transparent areas are also transparent to mouse clicks. If you are using
- * something besides the SDL render API, then you are responsible for drawing
- * the alpha channel of the window to match the shape alpha channel to get
- * consistent cross-platform results.
- *
- * The shape is copied inside this function, so you can free it afterwards. If
- * your shape surface changes, you should call SDL_SetWindowShape() again to
- * update the window. This is an expensive operation, so should be done
- * sparingly.
- *
- * The window must have been created with the SDL_WINDOW_TRANSPARENT flag.
- *
- * \param window the window.
- * \param shape the surface representing the shape of the window, or NULL to
- *              remove any current shape.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_SetWindowShape( window_t window, SDL_Surface* shape );
+    assert( l_result );
+}
 
-/**
- * Request a window to demand attention from the user.
- *
- * \param window the window to be flashed.
- * \param operation the operation to perform.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_FlashWindow( window_t window, SDL_FlashOperation operation );
+// Prevent the screen from being blanked by a screen saver.
+//
+// If you disable the screensaver, it is automatically re-enabled when SDL
+// quits.
+//
+// The screensaver is disabled by default, but this may by changed by
+// SDL_HINT_VIDEO_ALLOW_SCREENSAVER.
+//
+// Should only be called on the main thread.
+inline void disable() {
+    const bool l_result = SDL_DisableScreenSaver();
 
-/**
- * Sets the state of the progress bar for the given window’s taskbar icon.
- *
- * \param window the window whose progress state is to be modified.
- * \param state the progress state. `SDL_PROGRESS_STATE_NONE` stops displaying
- *              the progress bar.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.4.0.
- */
-bool SDL_SetWindowProgressState( window_t window, SDL_ProgressState state );
+    assert( l_result );
+}
 
-/**
- * Get the state of the progress bar for the given window’s taskbar icon.
- *
- * \param window the window to get the current progress state from.
- * \returns the progress state, or `SDL_PROGRESS_STATE_INVALID` on failure;
- *          call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.4.0.
- */
-SDL_ProgressState SDL_GetWindowProgressState( window_t window );
+} // namespace screen_saver
 
-/**
- * Sets the value of the progress bar for the given window’s taskbar icon.
- *
- * \param window the window whose progress value is to be modified.
- * \param value the progress value in the range of [0.0f - 1.0f]. If the value
- *              is outside the valid range, it gets clamped.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.4.0.
- */
-bool SDL_SetWindowProgressValue( window_t window, float value );
+namespace open_gl {
 
-/**
- * Get the value of the progress bar for the given window’s taskbar icon.
- *
- * \param window the window to get the current progress value from.
- * \returns the progress value in the range of [0.0f - 1.0f], or -1.0f on
- *          failure; call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.4.0.
- */
-float SDL_GetWindowProgressValue( window_t window );
+// An opaque handle to an OpenGL context.
+using context_t = gsl::not_null< SDL_GLContextState* >;
 
-/**
- * Destroy a window.
- *
- * Any child windows owned by the window will be recursively destroyed as
- * well.
- *
- * Note that on some platforms, the visible window may not actually be removed
- * from the screen until the SDL event loop is pumped again, even though the
- * SDL_Window is no longer valid after this call.
- *
- * \param window the window to destroy.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_CreatePopupWindow
- * \sa SDL_CreateWindow
- * \sa SDL_CreateWindowWithProperties
- */
-void SDL_DestroyWindow( window_t window );
+// An enumeration of OpenGL configuration attributes.
+//
+// While you can set most OpenGL attributes normally, the attributes listed
+// above must be known before SDL creates the window that will be used with
+// the OpenGL context. These attributes are set and read with
+// SDL_GL_SetAttribute() and SDL_GL_GetAttribute().
+//
+// In some cases, these attributes are minimum requests; the GL does not
+// promise to give you exactly what you asked for. It's possible to ask for a
+// 16-bit depth buffer and get a 24-bit one instead, for example, or to ask
+// for no stencil buffer and still have one available. Context creation should
+// fail if the GL can't provide your requested attributes at a minimum, but
+// you should check to see exactly what you got.
+using attribute_t = enum class attribute : uint8_t {
+    redSize,        /**< the minimum number of bits for the red channel of the
+                               color buffer; defaults to 8. */
+    greenSize,      /**< the minimum number of bits for the green channel of
+                               the color buffer; defaults to 8. */
+    blueSize,       /**< the minimum number of bits for the blue channel of
+                               the color buffer; defaults to 8. */
+    alphaSize,      /**< the minimum number of bits for the alpha channel of
+                               the color buffer; defaults to 8. */
+    bufferSize,     /**< the minimum number of bits for frame buffer size;
+                               defaults to 0. */
+    doublebuffer,   /**< whether the output is single or double buffered;
+                              defaults to double buffering on. */
+    depthSize,      /**< the minimum number of bits in the depth buffer;
+                               defaults to 16. */
+    stencilSize,    /**< the minimum number of bits in the stencil buffer;
+                               defaults to 0. */
+    accumRedSize,   /**< the minimum number of bits for the red channel
+                                of the accumulation buffer; defaults to 0. */
+    accumGreenSize, /**< the minimum number of bits for the green
+                                channel of the accumulation buffer; defaults to
+                                0. */
+    accumBlueSize,  /**< the minimum number of bits for the blue channel
+                                of the accumulation buffer; defaults to 0. */
+    accumAlphaSize, /**< the minimum number of bits for the alpha
+                                channel of the accumulation buffer; defaults to
+                                0. */
+    stereo,         /**< whether the output is stereo 3D; defaults to off. */
+    multiSampleBuffers,  /**< the number of buffers used for multisample
+                                   anti-aliasing; defaults to 0. */
+    multiSampleSamples,  /**< the number of samples used around the
+                                   current pixel used for multisample
+                                   anti-aliasing. */
+    acceleratedVisual,   /**< set to 1 to require hardware acceleration,
+                                    set to 0 to force software rendering; defaults
+                                    to allow either. */
+    retainedBacking,     /**< not used (deprecated). */
+    contextMajorVersion, /**< OpenGL context major version. */
+    contextMinorVersion, /**< OpenGL context minor version. */
+    contextFlags,        /**< some combination of 0 or more of elements of the
+                                    SDL_GLContextFlag enumeration; defaults to 0. */
+    contextProfileMask,  /**< type of GL context (Core, Compatibility,
+                                     ES). See SDL_GLProfile; default value
+                                     depends on platform. */
+    shareWithCurrentContext, /**< OpenGL context sharing; defaults to 0. */
+    framebufferSrgbCapable, /**< requests sRGB capable visual; defaults to 0. */
+    contextReleaseBehavior, /**< sets context the release behavior. See
+                                        SDL_GLContextReleaseFlag; defaults to
+                                        FLUSH. */
+    contextResetNotification, /**< set context reset notification. See
+                                          SDL_GLContextResetNotification;
+                                          defaults to NO_NOTIFICATION. */
+    contextNoError,
+    floatBuffers,
+    platformEGL,
+};
 
-/**
- * Check whether the screensaver is currently enabled.
- *
- * The screensaver is disabled by default.
- *
- * The default can also be changed using `SDL_HINT_VIDEO_ALLOW_SCREENSAVER`.
- *
- * \returns true if the screensaver is enabled, false if it is disabled.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_DisableScreenSaver
- * \sa SDL_EnableScreenSaver
- */
-bool SDL_ScreenSaverEnabled( void );
+using attributeUnderlying_t = std::underlying_type_t< attribute_t >;
 
-/**
- * Allow the screen to be blanked by a screen saver.
- *
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_DisableScreenSaver
- * \sa SDL_ScreenSaverEnabled
- */
-bool SDL_EnableScreenSaver( void );
+[[nodiscard]] constexpr auto toLegacy( attribute_t _value ) -> SDL_GLAttr {
+    return ( static_cast< SDL_GLAttr >( _value ) );
+}
 
-/**
- * Prevent the screen from being blanked by a screen saver.
- *
- * If you disable the screensaver, it is automatically re-enabled when SDL
- * quits.
- *
- * The screensaver is disabled by default, but this may by changed by
- * SDL_HINT_VIDEO_ALLOW_SCREENSAVER.
- *
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_EnableScreenSaver
- * \sa SDL_ScreenSaverEnabled
- */
-bool SDL_DisableScreenSaver( void );
+[[nodiscard]] constexpr auto toLegacy( attribute_t* _value ) -> SDL_GLAttr* {
+    return ( std::bit_cast< SDL_GLAttr* >( _value ) );
+}
 
-/**
- *  \name OpenGL support functions
- */
-/* @{ */
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLAttr _value ) -> attribute_t {
+    return ( static_cast< attribute_t >( _value ) );
+}
 
-/**
- * Dynamically load an OpenGL library.
- *
- * This should be done after initializing the video driver, but before
- * creating any OpenGL windows. If no OpenGL library is loaded, the default
- * library will be loaded upon creation of the first OpenGL window.
- *
- * If you do this, you need to retrieve all of the GL functions used in your
- * program from the dynamic library using SDL_GL_GetProcAddress().
- *
- * \param path the platform dependent OpenGL library name, or NULL to open the
- *             default OpenGL library.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_GetProcAddress
- * \sa SDL_GL_UnloadLibrary
- */
-bool SDL_GL_LoadLibrary( const char* path );
+// Possible values to be set for the SDL_GL_CONTEXT_PROFILE_MASK attribute.
+using profile_t = enum class profile : uint8_t {
+    core = 0x1,        /**< OpenGL Core Profile context */
+    compatibility = 2, /**< OpenGL Compatibility Profile context */
+    es = 0x4,          /**< GLX_CONTEXT_ES2_PROFILE_BIT_EXT \ */
+};
 
-/**
- * Get an OpenGL function by name.
- *
- * If the GL library is loaded at runtime with SDL_GL_LoadLibrary(), then all
- * GL functions must be retrieved this way. Usually this is used to retrieve
- * function pointers to OpenGL extensions.
- *
- * There are some quirks to looking up OpenGL functions that require some
- * extra care from the application. If you code carefully, you can handle
- * these quirks without any platform-specific code, though:
- *
- * - On Windows, function pointers are specific to the current GL context;
- *   this means you need to have created a GL context and made it current
- *   before calling SDL_GL_GetProcAddress(). If you recreate your context or
- *   create a second context, you should assume that any existing function
- *   pointers aren't valid to use with it. This is (currently) a
- *   Windows-specific limitation, and in practice lots of drivers don't suffer
- *   this limitation, but it is still the way the wgl API is documented to
- *   work and you should expect crashes if you don't respect it. Store a copy
- *   of the function pointers that comes and goes with context lifespan.
- * - On X11, function pointers returned by this function are valid for any
- *   context, and can even be looked up before a context is created at all.
- *   This means that, for at least some common OpenGL implementations, if you
- *   look up a function that doesn't exist, you'll get a non-NULL result that
- *   is _NOT_ safe to call. You must always make sure the function is actually
- *   available for a given GL context before calling it, by checking for the
- *   existence of the appropriate extension with SDL_GL_ExtensionSupported(),
- *   or verifying that the version of OpenGL you're using offers the function
- *   as core functionality.
- * - Some OpenGL drivers, on all platforms, *will* return NULL if a function
- *   isn't supported, but you can't count on this behavior. Check for
- *   extensions you use, and if you get a NULL anyway, act as if that
- *   extension wasn't available. This is probably a bug in the driver, but you
- *   can code defensively for this scenario anyhow.
- * - Just because you're on Linux/Unix, don't assume you'll be using X11.
- *   Next-gen display servers are waiting to replace it, and may or may not
- *   make the same promises about function pointers.
- * - OpenGL function pointers must be declared `APIENTRY` as in the example
- *   code. This will ensure the proper calling convention is followed on
- *   platforms where this matters (Win32) thereby avoiding stack corruption.
- *
- * \param proc the name of an OpenGL function.
- * \returns a pointer to the named OpenGL function. The returned pointer
- *          should be cast to the appropriate function signature.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_ExtensionSupported
- * \sa SDL_GL_LoadLibrary
- * \sa SDL_GL_UnloadLibrary
- */
-SDL_FunctionPointer SDL_GL_GetProcAddress( const char* proc );
+using profileUnderlying_t = std::underlying_type_t< profile_t >;
 
-/**
- * Get an EGL library function by name.
- *
- * If an EGL library is loaded, this function allows applications to get entry
- * points for EGL functions. This is useful to provide to an EGL API and
- * extension loader.
- *
- * \param proc the name of an EGL function.
- * \returns a pointer to the named EGL function. The returned pointer should
- *          be cast to the appropriate function signature.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_EGL_GetCurrentDisplay
- */
-SDL_FunctionPointer SDL_EGL_GetProcAddress( const char* proc );
+[[nodiscard]] constexpr auto toLegacy( profile_t _value ) -> SDL_GLProfile {
+    return ( static_cast< SDL_GLProfile >( _value ) );
+}
 
-/**
- * Unload the OpenGL library previously loaded by SDL_GL_LoadLibrary().
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_LoadLibrary
- */
-void SDL_GL_UnloadLibrary( void );
+[[nodiscard]] constexpr auto toLegacy( profile_t* _value ) -> SDL_GLProfile* {
+    return ( std::bit_cast< SDL_GLProfile* >( _value ) );
+}
 
-/**
- * Check if an OpenGL extension is supported for the current context.
- *
- * This function operates on the current GL context; you must have created a
- * context and it must be current before calling this function. Do not assume
- * that all contexts you create will have the same set of extensions
- * available, or that recreating an existing context will offer the same
- * extensions again.
- *
- * While it's probably not a massive overhead, this function is not an O(1)
- * operation. Check the extensions you care about after creating the GL
- * context and save that information somewhere instead of calling the function
- * every time you need to know.
- *
- * \param extension the name of the extension to check.
- * \returns true if the extension is supported, false otherwise.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_GL_ExtensionSupported( const char* extension );
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLProfile _value ) -> profile_t {
+    return ( static_cast< profile_t >( _value ) );
+}
 
-/**
- * Reset all previously set OpenGL context attributes to their default values.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_GetAttribute
- * \sa SDL_GL_SetAttribute
- */
-void SDL_GL_ResetAttributes( void );
+// Possible flags to be set for the SDL_GL_CONTEXT_FLAGS attribute.
+using contextFlag_t = enum class contextFlag : uint8_t {
+    debug = 0x1,
+    forwardCompatible = 0x2,
+    robustAccess = 0x4,
+    resetIsolation = 0x8,
+};
 
-/**
- * Set an OpenGL window attribute before window creation.
- *
- * This function sets the OpenGL attribute `attr` to `value`. The requested
- * attributes should be set before creating an OpenGL window. You should use
- * SDL_GL_GetAttribute() to check the values after creating the OpenGL
- * context, since the values obtained can differ from the requested ones.
- *
- * \param attr an SDL_GLAttr enum value specifying the OpenGL attribute to
- *             set.
- * \param value the desired value for the attribute.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_GetAttribute
- * \sa SDL_GL_ResetAttributes
- */
-bool SDL_GL_SetAttribute( SDL_GLAttr attr, int value );
+using contextFlagUnderlying_t = std::underlying_type_t< contextFlag_t >;
 
-/**
- * Get the actual value for an attribute from the current context.
- *
- * \param attr an SDL_GLAttr enum value specifying the OpenGL attribute to
- *             get.
- * \param value a pointer filled in with the current value of `attr`.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_ResetAttributes
- * \sa SDL_GL_SetAttribute
- */
-bool SDL_GL_GetAttribute( SDL_GLAttr attr, int* value );
+[[nodiscard]] constexpr auto toLegacy( contextFlag_t _value )
+    -> SDL_GLContextFlag {
+    return ( static_cast< SDL_GLContextFlag >( _value ) );
+}
 
-/**
- * Create an OpenGL context for an OpenGL window, and make it current.
- *
- * Windows users new to OpenGL should note that, for historical reasons, GL
- * functions added after OpenGL version 1.1 are not available by default.
- * Those functions must be loaded at run-time, either with an OpenGL
- * extension-handling library or with SDL_GL_GetProcAddress() and its related
- * functions.
- *
- * SDL_GLContext is opaque to the application.
- *
- * \param window the window to associate with the context.
- * \returns the OpenGL context associated with `window` or NULL on failure;
- *          call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_DestroyContext
- * \sa SDL_GL_MakeCurrent
- */
-SDL_GLContext SDL_GL_CreateContext( window_t window );
+[[nodiscard]] constexpr auto toLegacy( contextFlag_t* _value )
+    -> SDL_GLContextFlag* {
+    return ( std::bit_cast< SDL_GLContextFlag* >( _value ) );
+}
 
-/**
- * Set up an OpenGL context for rendering into an OpenGL window.
- *
- * The context must have been created with a compatible window.
- *
- * \param window the window to associate with the context.
- * \param context the OpenGL context to associate with the window.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_CreateContext
- */
-bool SDL_GL_MakeCurrent( window_t window, SDL_GLContext context );
+#if 0
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextFlag _value )
+    -> contextFlag_t {
+    return ( static_cast< contextFlag_t >( _value ) );
+}
+#endif
 
-/**
- * Get the currently active OpenGL window.
- *
- * \returns the currently active OpenGL window on success or NULL on failure;
- *          call SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-window_t SDL_GL_GetCurrentWindow( void );
+// Possible values to be set for the SDL_GL_CONTEXT_RELEASE_BEHAVIOR
+// attribute.
+using contextReleaseFlag_t = enum class contextReleaseFlag : uint8_t {
+    none = 0,
+    flush = 0x1,
+};
 
-/**
- * Get the currently active OpenGL context.
- *
- * \returns the currently active OpenGL context or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_MakeCurrent
- */
-SDL_GLContext SDL_GL_GetCurrentContext( void );
+using contextReleaseFlagUnderlying_t =
+    std::underlying_type_t< contextReleaseFlag_t >;
 
-/**
- * Get the currently active EGL display.
- *
- * \returns the currently active EGL display or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_EGLDisplay SDL_EGL_GetCurrentDisplay( void );
+[[nodiscard]] constexpr auto toLegacy( contextReleaseFlag_t _value )
+    -> SDL_GLContextReleaseFlag {
+    return ( static_cast< SDL_GLContextReleaseFlag >( _value ) );
+}
 
-/**
- * Get the currently active EGL config.
- *
- * \returns the currently active EGL config or NULL on failure; call
- *          SDL_GetError() for more information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_EGLConfig SDL_EGL_GetCurrentConfig( void );
+[[nodiscard]] constexpr auto toLegacy( contextReleaseFlag_t* _value )
+    -> SDL_GLContextReleaseFlag* {
+    return ( std::bit_cast< SDL_GLContextReleaseFlag* >( _value ) );
+}
 
-/**
- * Get the EGL surface associated with the window.
- *
- * \param window the window to query.
- * \returns the EGLSurface pointer associated with the window, or NULL on
- *          failure.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-SDL_EGLSurface SDL_EGL_GetWindowSurface( window_t window );
+#if 0
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextReleaseFlag _value )
+    -> contextReleaseFlag_t {
+    return ( static_cast< contextReleaseFlag_t >( _value ) );
+}
+#endif
 
-/**
- * Sets the callbacks for defining custom EGLAttrib arrays for EGL
- * initialization.
- *
- * Callbacks that aren't needed can be set to NULL.
- *
- * NOTE: These callback pointers will be reset after SDL_GL_ResetAttributes.
- *
- * \param platformAttribCallback callback for attributes to pass to
- *                               eglGetPlatformDisplay. May be NULL.
- * \param surfaceAttribCallback callback for attributes to pass to
- *                              eglCreateSurface. May be NULL.
- * \param contextAttribCallback callback for attributes to pass to
- *                              eglCreateContext. May be NULL.
- * \param userdata a pointer that is passed to the callbacks.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-void SDL_EGL_SetAttributeCallbacks(
-    SDL_EGLAttribArrayCallback platformAttribCallback,
-    SDL_EGLIntArrayCallback surfaceAttribCallback,
-    SDL_EGLIntArrayCallback contextAttribCallback,
-    void* userdata );
+// Possible values to be set SDL_GL_CONTEXT_RESET_NOTIFICATION attribute.
+using contextResetNotification_t =
+    enum class contextResetNotification : uint8_t {
+        noNotification = 0,
+        loseContext = 0x1,
+    };
 
-/**
- * Set the swap interval for the current OpenGL context.
- *
- * Some systems allow specifying -1 for the interval, to enable adaptive
- * vsync. Adaptive vsync works the same as vsync, but if you've already missed
- * the vertical retrace for a given frame, it swaps buffers immediately, which
- * might be less jarring for the user during occasional framerate drops. If an
- * application requests adaptive vsync and the system does not support it,
- * this function will fail and return false. In such a case, you should
- * probably retry the call with 1 for the interval.
- *
- * Adaptive vsync is implemented for some glX drivers with
- * GLX_EXT_swap_control_tear, and for some Windows drivers with
- * WGL_EXT_swap_control_tear.
- *
- * Read more on the Khronos wiki:
- * https://www.khronos.org/opengl/wiki/Swap_Interval#Adaptive_Vsync
- *
- * \param interval 0 for immediate updates, 1 for updates synchronized with
- *                 the vertical retrace, -1 for adaptive vsync.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_GetSwapInterval
- */
-bool SDL_GL_SetSwapInterval( int interval );
+using contextResetNotificationUnderlying_t =
+    std::underlying_type_t< contextResetNotification_t >;
 
-/**
- * Get the swap interval for the current OpenGL context.
- *
- * If the system can't determine the swap interval, or there isn't a valid
- * current context, this function will set *interval to 0 as a safe default.
- *
- * \param interval output interval value. 0 if there is no vertical retrace
- *                 synchronization, 1 if the buffer swap is synchronized with
- *                 the vertical retrace, and -1 if late swaps happen
- *                 immediately instead of waiting for the next retrace.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_SetSwapInterval
- */
-bool SDL_GL_GetSwapInterval( int* interval );
+[[nodiscard]] constexpr auto toLegacy( contextResetNotification_t _value )
+    -> SDL_GLContextResetNotification {
+    return ( static_cast< SDL_GLContextResetNotification >( _value ) );
+}
 
-/**
- * Update a window with OpenGL rendering.
- *
- * This is used with double-buffered OpenGL contexts, which are the default.
- *
- * On macOS, make sure you bind 0 to the draw framebuffer before swapping the
- * window, otherwise nothing will happen. If you aren't using
- * glBindFramebuffer(), this is the default and you won't have to do anything
- * extra.
- *
- * \param window the window to change.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- */
-bool SDL_GL_SwapWindow( window_t window );
+[[nodiscard]] constexpr auto toLegacy( contextResetNotification_t* _value )
+    -> SDL_GLContextResetNotification* {
+    return ( std::bit_cast< SDL_GLContextResetNotification* >( _value ) );
+}
 
-/**
- * Delete an OpenGL context.
- *
- * \param context the OpenGL context to be deleted.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \threadsafety This function should only be called on the main thread.
- *
- * \since This function is available since SDL 3.2.0.
- *
- * \sa SDL_GL_CreateContext
- */
-bool SDL_GL_DestroyContext( SDL_GLContext context );
+#if 0
+[[nodiscard]] constexpr auto fromLegacy( SDL_GLContextResetNotification _value )
+    -> contextGLResetNotification_t {
+    return ( static_cast< contextResetNotification_t >( _value ) );
+}
+#endif
 
-/* @} */ /* OpenGL support functions */
+// Dynamically load an OpenGL library.
+//
+// This should be done after initializing the video driver, but before
+// creating any OpenGL windows. If no OpenGL library is loaded, the default
+// library will be loaded upon creation of the first OpenGL window.
+//
+// If you do this, you need to retrieve all of the GL functions used in your
+// program from the dynamic library using SDL_GL_GetProcAddress().
+//
+// Should only be called on the main thread.
+inline void load( std::string_view _path ) {
+    const bool l_result = SDL_GL_LoadLibrary( std::string( _path ).c_str() );
+
+    assert( l_result );
+}
+
+// Get an OpenGL function by name.
+//
+// If the GL library is loaded at runtime with SDL_GL_LoadLibrary(), then all
+// GL functions must be retrieved this way. Usually this is used to retrieve
+// function pointers to OpenGL extensions.
+//
+// There are some quirks to looking up OpenGL functions that require some
+// extra care from the application. If you code carefully, you can handle
+// these quirks without any platform-specific code, though:
+//
+// - On Windows, function pointers are specific to the current GL context;
+//   this means you need to have created a GL context and made it current
+//   before calling SDL_GL_GetProcAddress(). If you recreate your context or
+//   create a second context, you should assume that any existing function
+//   pointers aren't valid to use with it. This is (currently) a
+//   Windows-specific limitation, and in practice lots of drivers don't suffer
+//   this limitation, but it is still the way the wgl API is documented to
+//   work and you should expect crashes if you don't respect it. Store a copy
+//   of the function pointers that comes and goes with context lifespan.
+// - On X11, function pointers returned by this function are valid for any
+//   context, and can even be looked up before a context is created at all.
+//   This means that, for at least some common OpenGL implementations, if you
+//   look up a function that doesn't exist, you'll get a non-NULL result that
+//   is _NOT_ safe to call. You must always make sure the function is actually
+//   available for a given GL context before calling it, by checking for the
+//   existence of the appropriate extension with SDL_GL_ExtensionSupported(),
+//   or verifying that the version of OpenGL you're using offers the function
+//   as core functionality.
+// - Some OpenGL drivers, on all platforms, *will* return NULL if a function
+//   isn't supported, but you can't count on this behavior. Check for
+//   extensions you use, and if you get a NULL anyway, act as if that
+//   extension wasn't available. This is probably a bug in the driver, but you
+//   can code defensively for this scenario anyhow.
+// - Just because you're on Linux/Unix, don't assume you'll be using X11.
+//   Next-gen display servers are waiting to replace it, and may or may not
+//   make the same promises about function pointers.
+// - OpenGL function pointers must be declared `APIENTRY` as in the example
+//   code. This will ensure the proper calling convention is followed on
+//   platforms where this matters (Win32) thereby avoiding stack corruption.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto procedureAddress( std::string_view _procedureName )
+    -> gsl::not_null< SDL_FunctionPointer > {
+    return ( SDL_GL_GetProcAddress( std::string( _procedureName ).c_str() ) );
+}
+
+namespace egl {
+
+// Opaque type for an EGL display.
+using display_t = gsl::not_null< void* >;
+
+// Opaque type for an EGL config.
+using config_t = gsl::not_null< void* >;
+
+// Opaque type for an EGL surface.
+using surface_t = gsl::not_null< void* >;
+
+// An EGL attribute, used when creating an EGL context.
+using attribute_t = intptr_t;
+
+// An EGL integer attribute, used when creating an EGL surface.
+using int_t = int;
+
+// EGL platform attribute initialization callback.
+//
+// This is called when SDL is attempting to create an EGL context, to let the
+// app add extra attributes to its eglGetPlatformDisplay() call.
+//
+// The callback should return a pointer to an EGL attribute array terminated
+// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
+// process will fail gracefully.
+//
+// The returned pointer should be allocated with SDL_malloc() and will be
+// passed to SDL_free().
+//
+// The arrays returned by each callback will be appended to the existing
+// attribute arrays defined by SDL.
+using attributeArrayCallback_t = gsl::not_null< SDL_EGLAttribArrayCallback >;
+
+// EGL surface/context attribute initialization callback types.
+//
+// This is called when SDL is attempting to create an EGL surface, to let the
+// app add extra attributes to its eglCreateWindowSurface() or
+// eglCreateContext calls.
+//
+// For convenience, the EGLDisplay and EGLConfig to use are provided to the
+// callback.
+//
+// The callback should return a pointer to an EGL attribute array terminated
+// with `EGL_NONE`. If this function returns NULL, the SDL_CreateWindow
+// process will fail gracefully.
+//
+// The returned pointer should be allocated with SDL_malloc() and will be
+// passed to SDL_free().
+//
+// The arrays returned by each callback will be appended to the existing
+// attribute arrays defined by SDL.
+using intArrayCallback_t = gsl::not_null< SDL_EGLIntArrayCallback >;
+
+// Get an EGL library function by name.
+//
+// If an EGL library is loaded, this function allows applications to get entry
+// points for EGL functions. This is useful to provide to an EGL API and
+// extension loader.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto procedureAddress( std::string_view _procedureName )
+    -> gsl::not_null< SDL_FunctionPointer > {
+    return SDL_EGL_GetProcAddress( std::string( _procedureName ).c_str() );
+}
+
+// Get the currently active EGL display.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto currentDisplay() -> display_t {
+    return ( SDL_EGL_GetCurrentDisplay() );
+}
+
+// Get the currently active EGL config.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto currentConfig() -> config_t {
+    return ( SDL_EGL_GetCurrentConfig() );
+}
+
+// Get the EGL surface associated with the window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto windowSurface( window_t _window ) -> surface_t {
+    return ( SDL_EGL_GetWindowSurface( _window ) );
+}
+
+// Sets the callbacks for defining custom EGLAttrib arrays for EGL
+// initialization.
+//
+// Callbacks that aren't needed can be set to NULL.
+//
+// NOTE: These callback pointers will be reset after SDL_GL_ResetAttributes.
+//
+// Should only be called on the main thread.
+inline void callbacks( attributeArrayCallback_t _platform,
+                       intArrayCallback_t _surface,
+                       intArrayCallback_t _context,
+                       void* _userData = nullptr ) {
+    SDL_EGL_SetAttributeCallbacks( _platform, _surface, _context, _userData );
+}
+
+} // namespace egl
+
+// Unload the OpenGL library previously loaded by SDL_GL_LoadLibrary().
+//
+// Should only be called on the main thread.
+inline void unload() {
+    SDL_GL_UnloadLibrary();
+}
+
+// Check if an OpenGL extension is supported for the current context.
+//
+// This function operates on the current GL context; you must have created a
+// context and it must be current before calling this function. Do not assume
+// that all contexts you create will have the same set of extensions
+// available, or that recreating an existing context will offer the same
+// extensions again.
+//
+// While it's probably not a massive overhead, this function is not an O(1)
+// operation. Check the extensions you care about after creating the GL
+// context and save that information somewhere instead of calling the function
+// every time you need to know.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto isExtensionSupported( std::string_view _extension )
+    -> bool {
+    return ( SDL_GL_ExtensionSupported( std::string( _extension ).c_str() ) );
+}
+
+// Reset all previously set OpenGL context attributes to their default values.
+//
+// Should only be called on the main thread.
+inline void resetAttributes() {
+    SDL_GL_ResetAttributes();
+}
+
+// Set an OpenGL window attribute before window creation.
+//
+// This function sets the OpenGL attribute `attr` to `value`. The requested
+// attributes should be set before creating an OpenGL window. You should use
+// SDL_GL_GetAttribute() to check the values after creating the OpenGL
+// context, since the values obtained can differ from the requested ones.
+//
+// Should only be called on the main thread.
+inline void setAttribute( attribute_t _attribute, int _value ) {
+    const bool l_result = SDL_GL_SetAttribute( toLegacy( _attribute ), _value );
+
+    assert( l_result );
+}
+
+// Get the actual value for an attribute from the current context.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto getAttribute( attribute_t _attribute ) -> int {
+    int l_value = 0;
+
+    const bool l_result =
+        SDL_GL_GetAttribute( toLegacy( _attribute ), &l_value );
+
+    assert( l_result );
+
+    return ( l_value );
+}
+
+// Create an OpenGL context for an OpenGL window, and make it current.
+//
+// Windows users new to OpenGL should note that, for historical reasons, GL
+// functions added after OpenGL version 1.1 are not available by default.
+// Those functions must be loaded at run-time, either with an OpenGL
+// extension-handling library or with SDL_GL_GetProcAddress() and its related
+// functions.
+//
+// SDL_GLContext is opaque to the application.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto createContext( window_t _window ) -> context_t {
+    return ( SDL_GL_CreateContext( _window ) );
+}
+
+// Set up an OpenGL context for rendering into an OpenGL window.
+//
+// The context must have been created with a compatible window.
+//
+// Should only be called on the main thread.
+inline void currentWindow( window_t _window, context_t _context ) {
+    const bool l_result = SDL_GL_MakeCurrent( _window, _context );
+
+    assert( l_result );
+}
+
+// Get the currently active OpenGL window.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto currentWindow() -> window_t {
+    return ( SDL_GL_GetCurrentWindow() );
+}
+
+// Get the currently active OpenGL context.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto current() -> context_t {
+    return ( SDL_GL_GetCurrentContext() );
+}
+
+// Set the swap interval for the current OpenGL context.
+//
+// Some systems allow specifying -1 for the interval, to enable adaptive
+// vsync. Adaptive vsync works the same as vsync, but if you've already missed
+// the vertical retrace for a given frame, it swaps buffers immediately, which
+// might be less jarring for the user during occasional framerate drops. If an
+// application requests adaptive vsync and the system does not support it,
+// this function will fail and return false. In such a case, you should
+// probably retry the call with 1 for the interval.
+//
+// Adaptive vsync is implemented for some glX drivers with
+// GLX_EXT_swap_control_tear, and for some Windows drivers with
+// WGL_EXT_swap_control_tear.
+//
+// Read more on the Khronos wiki:
+// https://www.khronos.org/opengl/wiki/Swap_Interval#Adaptive_Vsync
+//
+// 0 for immediate updates, 1 for updates synchronized with the vertical
+// retrace, -1 for adaptive vsync.
+//
+// Should only be called on the main thread.
+inline void swapInterval( int _interval ) {
+    const bool l_result = SDL_GL_SetSwapInterval( _interval );
+
+    assert( l_result );
+}
+
+// Get the swap interval for the current OpenGL context.
+//
+// If the system can't determine the swap interval, or there isn't a valid
+// current context, this function will set *interval to 0 as a safe default.
+//
+// Should only be called on the main thread.
+[[nodiscard]] inline auto swapInterval() -> int {
+    int l_interval = 0;
+
+    const bool l_result = SDL_GL_GetSwapInterval( &l_interval );
+
+    assert( l_result );
+
+    return ( l_interval );
+}
+
+// Update a window with OpenGL rendering.
+//
+// This is used with double-buffered OpenGL contexts, which are the default.
+//
+// On macOS, make sure you bind 0 to the draw framebuffer before swapping the
+// window, otherwise nothing will happen. If you aren't using
+// glBindFramebuffer(), this is the default and you won't have to do anything
+// extra.
+//
+// Should only be called on the main thread.
+inline void swapWindow( window_t _window ) {
+    const bool l_result = SDL_GL_SwapWindow( _window );
+
+    assert( l_result );
+}
+
+// Delete an OpenGL context.
+//
+// Should only be called on the main thread.
+inline void destroy( context_t _context ) {
+    const bool l_result = SDL_GL_DestroyContext( _context );
+
+    assert( l_result );
+}
+
+} // namespace open_gl
 
 } // namespace slickdl::video
